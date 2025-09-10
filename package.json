@@ -47,14 +47,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tolgahan-arikan/react-native-sdk.git"
+    "url": "git+https://github.com/0xsequence/react-native-sdk.git"
   },
-  "author": "Tolgahan Arikan <tolgahan.arikan@gmail.com> (https://github.com/tolgahan-arikan)",
+  "author": "0xsequence",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/tolgahan-arikan/react-native-sdk/issues"
+    "url": "https://github.com/0xsequence/react-native-sdk/issues"
   },
-  "homepage": "https://github.com/tolgahan-arikan/react-native-sdk#readme",
+  "homepage": "https://github.com/0xsequence/react-native-sdk#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
@@ -150,5 +150,19 @@
     "languages": "js",
     "type": "library",
     "version": "0.54.2"
+  },
+  "dependencies": {
+    "@0xsequence/dapp-client": "0.0.0-20250910142613",
+    "@0xsequence/network": "^2.3.23",
+    "@0xsequence/wallet-core": "0.0.0-20250910142613",
+    "@0xsequence/wallet-primitives": "0.0.0-20250910142613",
+    "expo-crypto": "^14.1.5",
+    "expo-secure-store": "~13.0.2",
+    "expo-standard-web-crypto": "^2.1.4",
+    "expo-web-browser": "~14.2.0",
+    "ox": "^0.9.6",
+    "react-native-mmkv": "^3.3.0",
+    "react-native-url-polyfill": "^2.0.0",
+    "viem": "^2.29.3"
   }
 }
