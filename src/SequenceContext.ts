@@ -1,12 +1,20 @@
-// src/SequenceContext.ts
+// File: src/SequenceContext.ts
+
 import { createContext, useContext } from 'react';
-import { DappClient, type Session } from '@0xsequence/dapp-client';
-import { Address } from 'ox';
+import {
+  type Session,
+  type Relayer,
+  type SignatureSuccessResponse,
+  type Transaction,
+  type Signers,
+  type LoginMethod, // <-- Import the official type here
+} from '@0xsequence/dapp-client';
+import { Address, Hex } from 'ox';
+import { type TypedData } from 'ox/TypedData';
+
+// The local definition of LoginMethod has been removed.
 
 export interface SequenceContextState {
-  // The DappClient instance
-  client: DappClient | null;
-
   // Connection state
   isInitializing: boolean;
   isInitialized: boolean;
@@ -16,6 +24,28 @@ export interface SequenceContextState {
   sessions: Session[];
   loginMethod: string | null;
   userEmail: string | null;
+
+  // Chain state
+  chainId: number;
+  setChainId: (chainId: number) => void;
+
+  // Wrapped DappClient methods
+  connect: (options?: {
+    permissions?: Signers.Session.ExplicitParams;
+    loginMethod?: LoginMethod; // <-- This now uses the imported type
+    email?: string;
+  }) => Promise<void>;
+
+  disconnect: () => Promise<void>;
+
+  signMessage: (message: string) => Promise<SignatureSuccessResponse>;
+
+  signTypedData: (typedData: TypedData) => Promise<SignatureSuccessResponse>;
+
+  sendTransaction: (
+    transactions: Transaction[],
+    feeOption?: Relayer.FeeOption
+  ) => Promise<Hex.Hex>;
 }
 
 // Create the context with a default undefined value

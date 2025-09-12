@@ -1,3 +1,17 @@
-export function multiply(a: number, b: number): number {
-  return a * b;
-}
+export { SequenceProvider } from './SequenceProvider';
+export { type SequenceProviderConfig } from './setup';
+
+export { SequenceContext, useSequence } from './SequenceContext';
+
+// Re-export all necessary types from the core dapp-client and other libraries.
+// This prevents type duplication and provides a clean, single point of import for SDK consumers.
+export {
+  Signers,
+  type LoginMethod,
+  type Session,
+  type Relayer,
+  type SignatureSuccessResponse,
+  type Transaction,
+} from '@0xsequence/dapp-client';
+
+export type { TypedData } from 'ox/TypedData';
