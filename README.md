@@ -13,13 +13,7 @@ npm install react-native-sdk
 ## Usage
 
 
-```js
-import { multiply } from 'react-native-sdk';
-
-// ...
-
-const result = await multiply(3, 7);
-```
+COMING SOON
 
 
 ## Contributing
