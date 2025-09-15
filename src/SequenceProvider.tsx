@@ -63,12 +63,10 @@ export const SequenceProvider = ({
     };
 
     const initializeClient = async () => {
-      console.log('Initializing DappClient...');
       try {
         const pendingRequest = await storage.isRedirectRequestPending();
 
         if (pendingRequest && url) {
-          console.log('Handling redirect response for URL:', url);
           await client.handleRedirectResponse(url);
           await storage.setPendingRedirectRequest(false);
           await WebBrowser.dismissBrowser();

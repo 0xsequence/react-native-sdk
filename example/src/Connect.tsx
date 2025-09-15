@@ -23,10 +23,17 @@ import {
   getRestrictivePermissions,
   EMITTER_ABI,
 } from './example-constants';
+import { createPublicClient, http } from 'viem';
+import { arbitrumSepolia } from 'viem/chains';
 
 // A simple utility to shorten addresses
 const shortenAddress = (address: string) =>
   `${address.slice(0, 6)}...${address.slice(-4)}`;
+
+const publicClient = createPublicClient({
+  chain: arbitrumSepolia,
+  transport: http(),
+});
 
 export default function Connect() {
   const {
@@ -82,9 +89,17 @@ export default function Connect() {
     try {
       const message = 'Hello Sequence!';
       const result = await signMessage(message);
+
+      // Verify the signature
+      const isValid = await publicClient.verifyMessage({
+        address: walletAddress!,
+        message,
+        signature: result.signature,
+      });
+
       Alert.alert(
-        'Signature Success',
-        `Signed by: ${result.walletAddress}\nSignature: ${result.signature}`
+        'Signature Verification',
+        `Signature valid: ${isValid}\n\nSigned by: ${result.walletAddress}`
       );
     } catch (e) {
       console.error('Error signing message:', e);
@@ -105,9 +120,17 @@ export default function Connect() {
         },
       };
       const result = await signTypedData(typedDataToSign as any);
+
+      // Verify the typed data signature
+      const isValid = await publicClient.verifyTypedData({
+        address: walletAddress!,
+        ...typedDataToSign,
+        signature: result.signature,
+      } as any); // Use `as any` to match viem's expected type
+
       Alert.alert(
-        'Typed Data Signature Success',
-        `Signed by: ${result.walletAddress}\nSignature: ${result.signature}`
+        'Typed Data Signature Verification',
+        `Signature valid: ${isValid}\n\nSigned by: ${result.walletAddress}`
       );
     } catch (e) {
       console.error('Error signing typed data:', e);
