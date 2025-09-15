@@ -4,10 +4,7 @@ Sequence v3 React Native SDK
 
 ## Installation
 
-
-```sh
-npm install react-native-sdk
-```
+COMING SOON
 
 
 ## Usage
