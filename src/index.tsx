@@ -1,11 +1,16 @@
 export { SequenceProvider } from './SequenceProvider';
 export { type SequenceProviderConfig } from './setup';
 
-export { SequenceContext, useSequence } from './SequenceContext';
+export {
+  SequenceContext,
+  useSequence,
+  type SendTransactionResult,
+} from './SequenceContext';
 
 // Re-export all necessary types from the core dapp-client and other libraries.
 // This prevents type duplication and provides a clean, single point of import for SDK consumers.
 export {
+  getExplorerUrl,
   Signers,
   type LoginMethod,
   type Session,

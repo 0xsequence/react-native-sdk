@@ -59,9 +59,9 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "@0xsequence/dapp-client": "0.0.0-20250911124907",
-    "@0xsequence/wallet-core": "0.0.0-20250911124907",
-    "@0xsequence/wallet-primitives": "0.0.0-20250911124907",
+    "@0xsequence/dapp-client": "0.0.0-20250912145054",
+    "@0xsequence/wallet-core": "0.0.0-20250912145054",
+    "@0xsequence/wallet-primitives": "0.0.0-20250912145054",
     "@commitlint/config-conventional": "^19.8.1",
     "@eslint/compat": "^1.3.2",
     "@eslint/eslintrc": "^3.3.1",
@@ -95,9 +95,9 @@
     "viem": "^2.29.3"
   },
   "peerDependencies": {
-    "@0xsequence/dapp-client": "0.0.0-20250911124907",
-    "@0xsequence/wallet-core": "0.0.0-20250911124907",
-    "@0xsequence/wallet-primitives": "0.0.0-20250911124907",
+    "@0xsequence/dapp-client": "0.0.0-20250912145054",
+    "@0xsequence/wallet-core": "0.0.0-20250912145054",
+    "@0xsequence/wallet-primitives": "0.0.0-20250912145054",
     "expo-crypto": "^14.1.5",
     "expo-linking": "~7.1.5",
     "expo-secure-store": "~13.0.2",
@@ -176,17 +176,17 @@
     "version": "0.54.2"
   },
   "resolutions": {
-    "@0xsequence/api": "0.0.0-20250911124907",
-    "@0xsequence/builder": "0.0.0-20250911124907",
-    "@0xsequence/guard": "0.0.0-20250911124907",
-    "@0xsequence/identity-instrument": "0.0.0-20250911124907",
-    "@0xsequence/indexer": "0.0.0-20250911124907",
-    "@0xsequence/marketplace": "0.0.0-20250911124907",
-    "@0xsequence/metadata": "0.0.0-20250911124907",
-    "@0xsequence/relayer": "0.0.0-20250911124907",
-    "@0xsequence/wallet-core": "0.0.0-20250911124907",
-    "@0xsequence/dapp-client": "0.0.0-20250911124907",
-    "@0xsequence/wallet-primitives": "0.0.0-20250911124907",
-    "@0xsequence/wallet-wdk": "0.0.0-20250911124907"
+    "@0xsequence/api": "0.0.0-20250912145054",
+    "@0xsequence/builder": "0.0.0-20250912145054",
+    "@0xsequence/guard": "0.0.0-20250912145054",
+    "@0xsequence/identity-instrument": "0.0.0-20250912145054",
+    "@0xsequence/indexer": "0.0.0-20250912145054",
+    "@0xsequence/marketplace": "0.0.0-20250912145054",
+    "@0xsequence/metadata": "0.0.0-20250912145054",
+    "@0xsequence/relayer": "0.0.0-20250912145054",
+    "@0xsequence/wallet-core": "0.0.0-20250912145054",
+    "@0xsequence/dapp-client": "0.0.0-20250912145054",
+    "@0xsequence/wallet-primitives": "0.0.0-20250912145054",
+    "@0xsequence/wallet-wdk": "0.0.0-20250912145054"
   }
 }

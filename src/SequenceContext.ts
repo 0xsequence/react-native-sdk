@@ -7,12 +7,22 @@ import {
   type SignatureSuccessResponse,
   type Transaction,
   type Signers,
-  type LoginMethod, // <-- Import the official type here
+  type LoginMethod,
 } from '@0xsequence/dapp-client';
 import { Address, Hex } from 'ox';
 import { type TypedData } from 'ox/TypedData';
 
-// The local definition of LoginMethod has been removed.
+export type SendTransactionResult =
+  | {
+      isFeeRequired: true;
+      feeOptions: Relayer.FeeOption[];
+      send: (feeOption: Relayer.FeeOption) => Promise<Hex.Hex>;
+    }
+  | {
+      isFeeRequired: false;
+      txHash: Hex.Hex;
+    };
+// --- END CHANGED ---
 
 export interface SequenceContextState {
   // Connection state
@@ -32,7 +42,7 @@ export interface SequenceContextState {
   // Wrapped DappClient methods
   connect: (options?: {
     permissions?: Signers.Session.ExplicitParams;
-    loginMethod?: LoginMethod; // <-- This now uses the imported type
+    loginMethod?: LoginMethod;
     email?: string;
   }) => Promise<void>;
 
@@ -42,10 +52,14 @@ export interface SequenceContextState {
 
   signTypedData: (typedData: TypedData) => Promise<SignatureSuccessResponse>;
 
+  /**
+   * Initiates a transaction.
+   * If fee options are available, it returns them along with a function to complete the transaction.
+   * If no fee options are required, it sends the transaction directly and returns the hash.
+   */
   sendTransaction: (
-    transactions: Transaction[],
-    feeOption?: Relayer.FeeOption
-  ) => Promise<Hex.Hex>;
+    transactions: Transaction[]
+  ) => Promise<SendTransactionResult>;
 }
 
 // Create the context with a default undefined value

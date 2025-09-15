@@ -17,54 +17,54 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@0xsequence/dapp-client@npm:0.0.0-20250911124907":
-  version: 0.0.0-20250911124907
-  resolution: "@0xsequence/dapp-client@npm:0.0.0-20250911124907"
+"@0xsequence/dapp-client@npm:0.0.0-20250912145054":
+  version: 0.0.0-20250912145054
+  resolution: "@0xsequence/dapp-client@npm:0.0.0-20250912145054"
   dependencies:
-    "@0xsequence/guard": ^0.0.0-20250911124907
-    "@0xsequence/wallet-core": ^0.0.0-20250911124907
-    "@0xsequence/wallet-primitives": ^0.0.0-20250911124907
+    "@0xsequence/guard": ^0.0.0-20250912145054
+    "@0xsequence/wallet-core": ^0.0.0-20250912145054
+    "@0xsequence/wallet-primitives": ^0.0.0-20250912145054
     ox: ^0.7.2
-  checksum: 3cc83064b3b136afa3518678d2e35006ff569af98efc59b2f88b1ac951863f01e996c4c2ddffb47a494ccabb92bfe51e943cb3b6fdabd68719d8b00492a55420
+  checksum: afde5fb19b88304e7506a4cbdfd6f0f9cabf21e221ebae3808824ede950d0c2ce04d10da1075f035d980f72aa6e853892521cf9933f8b05eaeeaf6fbbb2e6bcd
   languageName: node
   linkType: hard
 
-"@0xsequence/guard@npm:0.0.0-20250911124907":
-  version: 0.0.0-20250911124907
-  resolution: "@0xsequence/guard@npm:0.0.0-20250911124907"
+"@0xsequence/guard@npm:0.0.0-20250912145054":
+  version: 0.0.0-20250912145054
+  resolution: "@0xsequence/guard@npm:0.0.0-20250912145054"
   dependencies:
     ox: ^0.7.2
-  checksum: 095e4fd43dd6d8fcd29c07d5f2c29357385c434682207a174e874fe5d56dcd0f22da9c0d1b1436a0fb3f4a6730c9d578de28f7e39fb6b70bf14e9920c9485927
+  checksum: 47c727220c8d63fa21001ab58b7afc290bbb480e70ebb0fa192b09e60a2f822c47809ce81873264f628194277951ad762549063da630fa69905b28e26280123d
   languageName: node
   linkType: hard
 
-"@0xsequence/relayer@npm:0.0.0-20250911124907":
-  version: 0.0.0-20250911124907
-  resolution: "@0xsequence/relayer@npm:0.0.0-20250911124907"
-  checksum: af66c3d47a080986a32a10d547c4b8bc12727c27b4f03e40c05b4d23133c8c0592060081edde5b1046ecd0c40a5092f37c02a0e594b5defafc0cfd5529920553
+"@0xsequence/relayer@npm:0.0.0-20250912145054":
+  version: 0.0.0-20250912145054
+  resolution: "@0xsequence/relayer@npm:0.0.0-20250912145054"
+  checksum: 4190ca6c0fd144db935775f852438a2f8070ab1077e49bd2d4e0b1cc49fa9d36967596c95edb829fc8d7ee6d8030cbec6cffab5b5d521b44796f8dc0cbeb948b
   languageName: node
   linkType: hard
 
-"@0xsequence/wallet-core@npm:0.0.0-20250911124907":
-  version: 0.0.0-20250911124907
-  resolution: "@0xsequence/wallet-core@npm:0.0.0-20250911124907"
+"@0xsequence/wallet-core@npm:0.0.0-20250912145054":
+  version: 0.0.0-20250912145054
+  resolution: "@0xsequence/wallet-core@npm:0.0.0-20250912145054"
   dependencies:
-    "@0xsequence/guard": ^0.0.0-20250911124907
-    "@0xsequence/relayer": ^0.0.0-20250911124907
-    "@0xsequence/wallet-primitives": ^0.0.0-20250911124907
+    "@0xsequence/guard": ^0.0.0-20250912145054
+    "@0xsequence/relayer": ^0.0.0-20250912145054
+    "@0xsequence/wallet-primitives": ^0.0.0-20250912145054
     mipd: ^0.0.7
     ox: ^0.7.2
     viem: ^2.30.6
-  checksum: 77340e348d3b5b4df832c559c386b4c8d037a1908322bbe39c347c2a175dd86430a85ce35e11ecdded73baf513999cc320eaa59766a86d500a042793a591ffe9
+  checksum: 29eb4fae46518e1dd6f5d00e126054b3eb8ca5e936958ca26f33aa6a63dcf9e56dfbe2d6731e340071c84dbdf4ed0fa37653fb5863ec2299430417611350edc3
   languageName: node
   linkType: hard
 
-"@0xsequence/wallet-primitives@npm:0.0.0-20250911124907":
-  version: 0.0.0-20250911124907
-  resolution: "@0xsequence/wallet-primitives@npm:0.0.0-20250911124907"
+"@0xsequence/wallet-primitives@npm:0.0.0-20250912145054":
+  version: 0.0.0-20250912145054
+  resolution: "@0xsequence/wallet-primitives@npm:0.0.0-20250912145054"
   dependencies:
     ox: ^0.7.2
-  checksum: 581a430c77f4b16765684f412d32be51df746d876f26d00d80b4e9af706d75c12da09ffcebd9e44346d767ae059d17c34b84d30e7c6ce84adbf20956a42cba21
+  checksum: 117045785342c2c32eb62d71b5718af124695921cc677ad8033fdd6fea8eaf326de3fd1d7db4d97ca2a62656d44ff176676e273b41c7995a692e14cb4f55beb5
   languageName: node
   linkType: hard
 
@@ -11034,9 +11034,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "react-native-sdk-example@workspace:example"
   dependencies:
-    "@0xsequence/dapp-client": 0.0.0-20250911124907
-    "@0xsequence/wallet-core": 0.0.0-20250911124907
-    "@0xsequence/wallet-primitives": 0.0.0-20250911124907
+    "@0xsequence/dapp-client": 0.0.0-20250912145054
+    "@0xsequence/wallet-core": 0.0.0-20250912145054
+    "@0xsequence/wallet-primitives": 0.0.0-20250912145054
     "@babel/core": ^7.20.0
     "@expo/metro-runtime": ~5.0.4
     expo: ~53.0.22
@@ -11062,9 +11062,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "react-native-sdk@workspace:."
   dependencies:
-    "@0xsequence/dapp-client": 0.0.0-20250911124907
-    "@0xsequence/wallet-core": 0.0.0-20250911124907
-    "@0xsequence/wallet-primitives": 0.0.0-20250911124907
+    "@0xsequence/dapp-client": 0.0.0-20250912145054
+    "@0xsequence/wallet-core": 0.0.0-20250912145054
+    "@0xsequence/wallet-primitives": 0.0.0-20250912145054
     "@commitlint/config-conventional": ^19.8.1
     "@eslint/compat": ^1.3.2
     "@eslint/eslintrc": ^3.3.1
@@ -11097,9 +11097,9 @@ __metadata:
     typescript: ^5.9.2
     viem: ^2.29.3
   peerDependencies:
-    "@0xsequence/dapp-client": 0.0.0-20250911124907
-    "@0xsequence/wallet-core": 0.0.0-20250911124907
-    "@0xsequence/wallet-primitives": 0.0.0-20250911124907
+    "@0xsequence/dapp-client": 0.0.0-20250912145054
+    "@0xsequence/wallet-core": 0.0.0-20250912145054
+    "@0xsequence/wallet-primitives": 0.0.0-20250912145054
     expo-crypto: ^14.1.5
     expo-linking: ~7.1.5
     expo-secure-store: ~13.0.2
