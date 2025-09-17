@@ -35,6 +35,8 @@ export const SequenceProvider = ({
       | 'signMessage'
       | 'signTypedData'
       | 'sendTransaction'
+      | 'addExplicitSession'
+      | 'hasPermission'
     >
   >({
     isInitialized: false,

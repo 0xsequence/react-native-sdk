@@ -12,11 +12,13 @@ export {
 export {
   getExplorerUrl,
   Signers,
+  Utils,
   type LoginMethod,
   type Session,
   type Relayer,
   type SignatureSuccessResponse,
   type Transaction,
+  type ModifySessionSuccessResponsePayload,
 } from '@0xsequence/dapp-client';
 
 export type { TypedData } from 'ox/TypedData';

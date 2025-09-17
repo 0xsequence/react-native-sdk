@@ -8,6 +8,7 @@ import {
   type Transaction,
   type Signers,
   type LoginMethod,
+  type ModifySessionSuccessResponsePayload,
 } from '@0xsequence/dapp-client';
 import { Address, Hex } from 'ox';
 import { type TypedData } from 'ox/TypedData';
@@ -60,6 +61,12 @@ export interface SequenceContextState {
   sendTransaction: (
     transactions: Transaction[]
   ) => Promise<SendTransactionResult>;
+
+  addExplicitSession: (
+    permissions: Signers.Session.ExplicitParams
+  ) => Promise<ModifySessionSuccessResponsePayload>;
+
+  hasPermission: (transactions: Transaction[]) => Promise<boolean>;
 }
 
 // Create the context with a default undefined value

@@ -8,16 +8,17 @@ import {
   TouchableOpacity,
   Clipboard,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import {
   useSequence,
   type SendTransactionResult,
   type Transaction,
   getExplorerUrl,
   type Relayer,
+  type Signers,
 } from 'react-native-sdk';
-import { useState, useMemo } from 'react';
-import { AbiFunction } from 'ox';
-import * as WebBrowser from 'expo-web-browser';
+import { useState, useMemo, useEffect } from 'react';
+import { AbiFunction, Address } from 'ox';
 import { createPublicClient, http, type PublicClient } from 'viem';
 
 import {
@@ -25,6 +26,7 @@ import {
   EMITTER_ABI,
   getNFTContractAddress,
   mint,
+  getPermissionsForNFTMint,
   ACTIVE_CHAINS,
 } from './example-constants';
 import ChainPicker from './ChainPicker';
@@ -45,10 +47,17 @@ export default function Connected() {
     disconnect,
     signMessage,
     signTypedData,
+    hasPermission,
+    addExplicitSession,
     sendTransaction,
+    sessions,
   } = useSequence();
 
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [hasMintPermission, setHasMintPermission] = useState(false);
+  const [isPermissionCheckLoading, setIsPermissionCheckLoading] =
+    useState(true);
+
   const [isCopied, setIsCopied] = useState(false);
   const [preparedTx, setPreparedTx] = useState<Extract<
     SendTransactionResult,
@@ -64,6 +73,50 @@ export default function Connected() {
     () => ACTIVE_CHAINS.find((c) => c.id === chainId) || ACTIVE_CHAINS[0]!,
     [chainId]
   );
+
+  // Clear transaction hashes when the chain changes
+  useEffect(() => {
+    setMintTxHash(null);
+    setEmitterTxHash(null);
+  }, [chainId]);
+
+  const mintTransaction = useMemo<Transaction>(() => {
+    if (!walletAddress) {
+      return {
+        to: '0x0000000000000000000000000000000000000000' as Address.Address,
+        data: '0x',
+        value: 0n,
+      };
+    }
+    return {
+      to: getNFTContractAddress(chainId),
+      data: AbiFunction.encodeData(mint, [walletAddress as `0x${string}`]),
+      value: 0n,
+    };
+  }, [chainId, walletAddress]);
+
+  useEffect(() => {
+    if (!walletAddress) {
+      setHasMintPermission(false);
+      setIsPermissionCheckLoading(false);
+      return;
+    }
+
+    const checkPermission = async () => {
+      setIsPermissionCheckLoading(true);
+      try {
+        const hasPerms = await hasPermission([mintTransaction]);
+        setHasMintPermission(hasPerms);
+      } catch (e) {
+        console.error('Error checking permission:', e);
+        setHasMintPermission(false);
+      } finally {
+        setIsPermissionCheckLoading(false);
+      }
+    };
+
+    checkPermission();
+  }, [hasPermission, mintTransaction, walletAddress, sessions]);
 
   const publicClient = useMemo(
     () => createPublicClient({ chain: currentChain, transport: http() }),
@@ -176,13 +229,23 @@ export default function Connected() {
     }
   };
 
+  const handleAddPermission = async () => {
+    setIsActionLoading(true);
+    try {
+      const permissions = getPermissionsForNFTMint(
+        chainId
+      ) as Signers.Session.ExplicitParams;
+      await addExplicitSession(permissions);
+    } catch (e) {
+      console.error('Error adding permission:', e);
+      Alert.alert('Error', 'Failed to add mint permission.');
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
   const handleMintNFT = () => {
-    const tx = {
-      to: getNFTContractAddress(chainId),
-      data: AbiFunction.encodeData(mint, [walletAddress as `0x${string}`]),
-      value: 0n,
-    };
-    executeTransaction(tx, 'mint');
+    executeTransaction(mintTransaction, 'mint');
   };
 
   const handleCallEmitter = () => {
@@ -274,14 +337,25 @@ export default function Connected() {
               disabled={isActionLoading}
               color="#6B59CC"
             />
-            <View>
-              <Button
-                title="Send txn within app"
-                onPress={handleMintNFT}
-                disabled={isActionLoading}
-                color="#6B59CC"
-              />
-              {mintTxHash && (
+            <View style={styles.permissionedActionContainer}>
+              {isPermissionCheckLoading ? (
+                <ActivityIndicator size="small" color="#6B59CC" />
+              ) : hasMintPermission ? (
+                <Button
+                  title="Send txn within app"
+                  onPress={handleMintNFT}
+                  disabled={isActionLoading}
+                  color="#6B59CC"
+                />
+              ) : (
+                <Button
+                  title="Add Mint Permission"
+                  onPress={handleAddPermission}
+                  disabled={isActionLoading || isPermissionCheckLoading}
+                  color="#F5B94A"
+                />
+              )}
+              {mintTxHash && !isPermissionCheckLoading && (
                 <View style={styles.txHashButton}>
                   <Button
                     title={`View Tx: ${shortenAddress(mintTxHash)}`}
@@ -384,6 +458,10 @@ const styles = StyleSheet.create({
     marginTop: 12,
     width: '100%',
     gap: 12,
+  },
+  permissionedActionContainer: {
+    minHeight: 36, // Approximate height of a button
+    justifyContent: 'center',
   },
   secondaryButton: {
     backgroundColor: 'transparent',

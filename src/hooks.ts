@@ -8,6 +8,7 @@ import {
   type SignatureSuccessResponse,
   type Transaction,
   type Signers,
+  type ModifySessionSuccessResponsePayload,
 } from '@0xsequence/dapp-client';
 import type { TypedData } from 'ox/TypedData';
 
@@ -16,22 +17,14 @@ import type { SendTransactionResult } from './SequenceContext';
 const ACTION_TIMEOUT_MS = 120000; // 2 minutes for wallet actions
 
 /**
- * Defines the function type for the promisify helper to avoid TSX parsing issues.
- */
-type PromisifyFn = <T>(
-  actionType: any,
-  performer: () => Promise<any>
-) => Promise<T>;
-
-/**
  * A hook that encapsulates all wallet actions and event handling logic.
  * @param client The DappClient instance.
  * @param chainId The currently active chain ID.
  * @returns An object with memoized functions for wallet interactions.
  */
 export const useSequenceEvents = (client: DappClient, chainId: number) => {
-  const promisifyWalletAction: PromisifyFn = useCallback(
-    (actionType, performer) => {
+  const promisifyWalletAction = useCallback(
+    <R>(actionType: any, performer: () => Promise<any>): Promise<R> => {
       if (!client.isInitialized) {
         return Promise.reject(new Error('Sequence client not initialized.'));
       }
@@ -51,7 +44,43 @@ export const useSequenceEvents = (client: DappClient, chainId: number) => {
             if (data.error) {
               reject(new Error(JSON.stringify(data.error)));
             } else {
-              resolve(data.response as any);
+              resolve(data.response as R);
+            }
+          }
+        });
+
+        performer().catch((err) => {
+          clearTimeout(timeout);
+          unsubscribe();
+          reject(err);
+        });
+      });
+    },
+    [client, chainId]
+  );
+
+  const promisifySessionAction = useCallback(
+    <R>(actionType: any, performer: () => Promise<any>): Promise<R> => {
+      if (!client.isInitialized) {
+        return Promise.reject(new Error('Sequence client not initialized.'));
+      }
+
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          unsubscribe();
+          reject(
+            new Error(`Request timed out after ${ACTION_TIMEOUT_MS / 1000}s.`)
+          );
+        }, ACTION_TIMEOUT_MS);
+
+        const unsubscribe = client.on('explicitSessionResponse', (data) => {
+          if (data.action === actionType && data.chainId === chainId) {
+            clearTimeout(timeout);
+            unsubscribe();
+            if (data.error) {
+              reject(new Error(JSON.stringify(data.error)));
+            } else {
+              resolve(data.response as R);
             }
           }
         });
@@ -110,6 +139,33 @@ export const useSequenceEvents = (client: DappClient, chainId: number) => {
     [client, chainId, promisifyWalletAction]
   );
 
+  const hasPermission = useCallback(
+    async (transactions: Transaction[]): Promise<boolean> => {
+      if (!client.isInitialized) {
+        return false;
+      }
+      try {
+        return await client.hasPermission(chainId, transactions);
+      } catch (e) {
+        console.error('Error checking permissions:', e);
+        return false;
+      }
+    },
+    [client, chainId]
+  );
+
+  const addExplicitSession = useCallback(
+    async (
+      permissions: Signers.Session.ExplicitParams
+    ): Promise<ModifySessionSuccessResponsePayload> => {
+      return promisifySessionAction<ModifySessionSuccessResponsePayload>(
+        RequestActionType.ADD_EXPLICIT_SESSION,
+        () => client.addExplicitSession(chainId, permissions)
+      );
+    },
+    [client, chainId, promisifySessionAction]
+  );
+
   const sendTransaction = useCallback(
     async (transactions: Transaction[]): Promise<SendTransactionResult> => {
       if (!client.isInitialized) {
@@ -165,7 +221,9 @@ export const useSequenceEvents = (client: DappClient, chainId: number) => {
       } catch (e) {
         console.error('Error getting fee options:', e);
         throw new Error(
-          `Failed to get fee options: ${e instanceof Error ? e.message : String(e)}`
+          `Failed to get fee options: ${
+            e instanceof Error ? e.message : String(e)
+          }`
         );
       }
     },
@@ -178,5 +236,7 @@ export const useSequenceEvents = (client: DappClient, chainId: number) => {
     signMessage,
     signTypedData,
     sendTransaction,
+    hasPermission,
+    addExplicitSession,
   };
 };
