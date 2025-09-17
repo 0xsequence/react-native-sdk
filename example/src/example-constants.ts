@@ -24,7 +24,7 @@ export const getRestrictivePermissions = (
   return {
     chainId: chainId,
     valueLimit: 0n,
-    deadline: BigInt(Date.now() + 1000 * 60 * 5000), // 5000 minutes from now
+    deadline: BigInt(Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30), // 30 days from now, in seconds
     permissions:
       chainId === optimism.id
         ? [

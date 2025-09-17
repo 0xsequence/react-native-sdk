@@ -68,15 +68,22 @@ export const SequenceProvider = ({
 
         if (pendingRequest && url) {
           await client.handleRedirectResponse(url);
-          await storage.setPendingRedirectRequest(false);
-          await WebBrowser.dismissBrowser();
         }
+        await storage.setPendingRedirectRequest(false);
         await client.initialize();
       } catch (e) {
         console.error('Failed to initialize DappClient', e);
       } finally {
-        updateState();
         setIsInitializing(false);
+        await storage.setPendingRedirectRequest(false);
+        await storage.getAndClearPendingRequest();
+        await storage.getAndClearTempSessionPk();
+        updateState();
+        try {
+          await WebBrowser.dismissBrowser();
+        } catch (e) {
+          console.log('Error dismissing browser:', e);
+        }
       }
     };
 

@@ -12,6 +12,7 @@ import {
   type SendTransactionResult,
   type Transaction,
   getExplorerUrl,
+  type LoginMethod,
 } from 'react-native-sdk';
 import { useState } from 'react';
 import { AbiFunction } from 'ox';
@@ -67,10 +68,10 @@ export default function Connect() {
     null
   );
 
-  const handleConnect = async () => {
+  const handleConnect = async (loginWith: LoginMethod) => {
     try {
       await connect({
-        loginMethod: 'google',
+        loginMethod: loginWith,
         permissions: getRestrictivePermissions(chainId),
       });
     } catch (e) {
@@ -230,9 +231,20 @@ export default function Connect() {
       <Text style={styles.subtitle}>React Native</Text>
 
       {!isInitialized ? (
-        <TouchableOpacity style={styles.primaryButton} onPress={handleConnect}>
-          <Text style={styles.buttonText}>Connect with Google</Text>
-        </TouchableOpacity>
+        <>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => handleConnect('google')}
+          >
+            <Text style={styles.buttonText}>Connect with Google</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => handleConnect('passkey')}
+          >
+            <Text style={styles.buttonText}>Connect with Passkey</Text>
+          </TouchableOpacity>
+        </>
       ) : (
         <View style={styles.card}>
           {preparedTx ? (
