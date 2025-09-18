@@ -248,9 +248,11 @@ export default function Connected() {
     executeTransaction(mintTransaction, 'mint');
   };
 
+  // This is a test txn to demonstrate sending a transaction via the wallet for a txn without permissions
+  // Any call to a contract method that does not have explicit permissions will work here
   const handleCallEmitter = () => {
     const tx = {
-      to: getNFTContractAddress(chainId),
+      to: '0xb7bE532959236170064cf099e1a3395aEf228F44' as Address.Address,
       data: AbiFunction.getSelector(EMITTER_ABI[0]), // explicitEmit()
       value: 0n,
     };
