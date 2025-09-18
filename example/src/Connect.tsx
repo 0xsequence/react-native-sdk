@@ -6,7 +6,7 @@ import {
   Alert,
   TouchableOpacity,
 } from 'react-native';
-import { useSequence, type LoginMethod } from 'react-native-sdk';
+import { useSequence, type LoginMethod } from '@0xsequence/react-native-sdk';
 
 import { getPermissionsForNFTMint } from './example-constants';
 import Connected from './Connected';
@@ -34,8 +34,7 @@ export default function Connect() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sequence SDK Demo</Text>
-      <Text style={styles.subtitle}>React Native</Text>
+      <Text style={styles.title}>Sequence RN SDK Demo</Text>
 
       {!isInitialized ? (
         <>

@@ -1,5 +1,5 @@
 {
-  "name": "react-native-sdk",
+  "name": "@0xsequence/react-native-sdk",
   "version": "0.1.0",
   "description": "Sequence v3 React Native SDK",
   "main": "./lib/module/index.js",

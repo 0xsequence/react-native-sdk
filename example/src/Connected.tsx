@@ -16,7 +16,7 @@ import {
   getExplorerUrl,
   type Relayer,
   type Signers,
-} from 'react-native-sdk';
+} from '@0xsequence/react-native-sdk';
 import { useState, useMemo, useEffect } from 'react';
 import { AbiFunction, Address } from 'ox';
 import { createPublicClient, http, type PublicClient } from 'viem';

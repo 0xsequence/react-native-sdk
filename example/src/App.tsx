@@ -7,7 +7,7 @@ import {
 import {
   SequenceProvider,
   type SequenceProviderConfig,
-} from 'react-native-sdk';
+} from '@0xsequence/react-native-sdk';
 import Connect from './Connect';
 import { arbitrumSepolia } from 'viem/chains';
 

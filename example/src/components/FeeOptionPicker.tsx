@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   Button,
 } from 'react-native';
-import { type Relayer } from 'react-native-sdk';
+import { type Relayer } from '@0xsequence/react-native-sdk';
 import { formatUnits } from 'viem';
 
 interface FeeOptionPickerProps {

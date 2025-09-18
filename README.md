@@ -1,13 +1,13 @@
-# react-native-sdk
+# @0xsequence/react-native-sdk
 
 Sequence v3 React Native SDK for seamless web3 integration.
 
 ## Installation
 
-To get started, install the `react-native-sdk` and its peer dependencies.
+To get started, install the `@0xsequence/react-native-sdk` and its peer dependencies.
 
 ```sh
-yarn add react-native-sdk @0xsequence/dapp-client ox viem
+yarn add @0xsequence/react-native-sdk @0xsequence/dapp-client ox viem
 yarn add expo-crypto expo-linking expo-secure-store expo-standard-web-crypto expo-web-browser react-native-mmkv react-native-url-polyfill
 ```
 
@@ -24,7 +24,7 @@ In your main application file (e.g., `App.tsx`), import and wrap your components
 import {
   SequenceProvider,
   type SequenceProviderConfig,
-} from 'react-native-sdk';
+} from '@0xsequence/react-native-sdk';
 import { arbitrumSepolia } from 'viem/chains';
 
 // Configuration for the Sequence Provider
@@ -56,7 +56,7 @@ Here's a basic example of a component that handles connection and displays walle
 
 ```tsx
 // YourAppComponent.tsx
-import { useSequence, Signers, Utils } from 'react-native-sdk';
+import { useSequence, Signers, Utils } from '@0xsequence/react-native-sdk';
 import { View, Text, Button, ActivityIndicator, Alert } from 'react-native';
 import { AbiFunction } from 'ox';
 import { arbitrumSepolia } from 'viem/chains';
