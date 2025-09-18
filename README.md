@@ -186,6 +186,18 @@ This hook returns the `SequenceContextState` object, which contains all the nece
 - [Sending a pull request](CONTRIBUTING.md#sending-a-pull-request)
 - [Code of conduct](CODE_OF_CONDUCT.md)
 
+## Troubleshooting
+
+### Build Errors (`ERR_REQUIRE_ESM`)
+
+If you encounter an error similar to `Error [ERR_REQUIRE_ESM]: require() of ES Module ... not supported` while running the build script (`yarn prepare`), it is likely due to an incompatible Node.js version.
+
+**Solution:** The build tooling for this project requires a modern version of Node.js that supports ES Modules in CommonJS files. Please ensure you are using **Node.js v22.15.1 or higher**.
+
+It is highly recommended to use a version manager like [nvm](https://github.com/nvm-sh/nvm) to easily switch between Node.js versions. You can install and switch to the required version by running:`sh
+nvm install 22.15.1
+nvm use 22.15.1`
+
 ## License
 
 MIT
