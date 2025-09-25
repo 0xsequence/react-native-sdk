@@ -7,7 +7,7 @@ Sequence v3 React Native SDK for seamless web3 integration.
 To get started, install the `@0xsequence/react-native-sdk` and its peer dependencies.
 
 ```sh
-yarn add @0xsequence/react-native-sdk @0xsequence/dapp-client ox viem
+yarn add @0xsequence/react-native-sdk @0xsequence/dapp-client @0xsequence/wallet-core @0xsequence/wallet-primitives ox viem
 yarn add expo-crypto expo-linking expo-secure-store expo-standard-web-crypto expo-web-browser react-native-mmkv react-native-url-polyfill
 ```
 
@@ -94,7 +94,7 @@ export default function YourAppComponent() {
       await connect({
         loginMethod: 'google',
         // Request permission to mint an NFT when connecting
-        permissions: getPermissionsForNFTMint(chainId),
+        explicitSession: getPermissionsForNFTMint(chainId),
       });
     } catch (e) {
       console.error(e);
@@ -151,7 +151,7 @@ This hook returns the `SequenceContextState` object, which contains all the nece
 
 - `connect(options)`: Initiates the connection process.
   - `options.loginMethod`: The preferred login method ('google', 'email', 'passkey').
-  - `options.permissions`: Request specific session permissions upon connection. This allows for seamless transactions later without further user prompts.
+  - `options.explicitSession`: Request a specific explicit session upon connection. This allows for seamless transactions later without further user prompts.
 
 - `disconnect()`: Clears the current session and disconnects the user.
 
@@ -176,7 +176,7 @@ This hook returns the `SequenceContextState` object, which contains all the nece
     }
     ```
 
-- `addExplicitSession(permissions)`: Prompts the user to approve a new session with a specific set of permissions (e.g., for minting an NFT without being prompted every time).
+- `addExplicitSession(explicitSessionConfig)`: Prompts the user to approve a new session with a specific set of permissions (e.g., for minting an NFT without being prompted every time).
 
 - `hasPermission(transactions)`: Checks if the current session has sufficient permissions to execute the given transactions without requiring wallet approval. Returns `Promise<boolean>`.
 
