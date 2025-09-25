@@ -16,9 +16,9 @@ export {
   type LoginMethod,
   type Session,
   type Relayer,
-  type SignatureSuccessResponse,
+  type SignatureResponse,
   type Transaction,
-  type ModifySessionSuccessResponsePayload,
+  type SessionResponse,
 } from '@0xsequence/dapp-client';
 
 export type { TypedData } from 'ox/TypedData';

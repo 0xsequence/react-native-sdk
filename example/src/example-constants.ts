@@ -1,7 +1,7 @@
 // File: example/src/example-constants.ts
 import { Abi, AbiFunction } from 'ox';
 import { arbitrumSepolia, optimism } from 'viem/chains';
-import { Signers, Utils } from '@0xsequence/dapp-client';
+import { Utils, type ExplicitSessionConfig } from '@0xsequence/dapp-client';
 
 export const ACTIVE_CHAINS = [arbitrumSepolia, optimism];
 
@@ -37,7 +37,7 @@ export const mint = AbiFunction.from(['function safeMint(address to)']);
 // Permissions
 export const getPermissionsForNFTMint = (
   chainId: number
-): Signers.Session.ExplicitParams => {
+): ExplicitSessionConfig => {
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 60 * 24); // 24 hours from now
 
   if (chainId === optimism.id) {

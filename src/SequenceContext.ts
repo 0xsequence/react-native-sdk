@@ -4,11 +4,11 @@ import { createContext, useContext } from 'react';
 import {
   type Session,
   type Relayer,
-  type SignatureSuccessResponse,
+  type SignatureResponse,
   type Transaction,
-  type Signers,
   type LoginMethod,
-  type ModifySessionSuccessResponsePayload,
+  type SessionResponse,
+  type ExplicitSessionConfig,
 } from '@0xsequence/dapp-client';
 import { Address, Hex } from 'ox';
 import { type TypedData } from 'ox/TypedData';
@@ -42,16 +42,16 @@ export interface SequenceContextState {
 
   // Wrapped DappClient methods
   connect: (options?: {
-    permissions?: Signers.Session.ExplicitParams;
+    explicitSession?: ExplicitSessionConfig;
     loginMethod?: LoginMethod;
     email?: string;
   }) => Promise<void>;
 
   disconnect: () => Promise<void>;
 
-  signMessage: (message: string) => Promise<SignatureSuccessResponse>;
+  signMessage: (message: string) => Promise<SignatureResponse>;
 
-  signTypedData: (typedData: TypedData) => Promise<SignatureSuccessResponse>;
+  signTypedData: (typedData: TypedData) => Promise<SignatureResponse>;
 
   /**
    * Initiates a transaction.
@@ -63,8 +63,8 @@ export interface SequenceContextState {
   ) => Promise<SendTransactionResult>;
 
   addExplicitSession: (
-    permissions: Signers.Session.ExplicitParams
-  ) => Promise<ModifySessionSuccessResponsePayload>;
+    config: ExplicitSessionConfig
+  ) => Promise<SessionResponse>;
 
   hasPermission: (transactions: Transaction[]) => Promise<boolean>;
 }

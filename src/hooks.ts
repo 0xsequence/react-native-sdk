@@ -4,11 +4,11 @@ import {
   type DappClient,
   type LoginMethod,
   type Relayer,
-  type SendWalletTransactionSuccessResponse,
-  type SignatureSuccessResponse,
+  type SendWalletTransactionResponse,
+  type SignatureResponse,
   type Transaction,
-  type Signers,
-  type ModifySessionSuccessResponsePayload,
+  type SessionResponse,
+  type ExplicitSessionConfig,
 } from '@0xsequence/dapp-client';
 import type { TypedData } from 'ox/TypedData';
 
@@ -97,7 +97,7 @@ export const useSequenceEvents = (client: DappClient, chainId: number) => {
 
   const connect = useCallback(
     async (options?: {
-      permissions?: Signers.Session.ExplicitParams;
+      explicitSession?: ExplicitSessionConfig;
       loginMethod?: LoginMethod;
       email?: string;
     }) => {
@@ -106,7 +106,7 @@ export const useSequenceEvents = (client: DappClient, chainId: number) => {
       }
       // The connect method dispatches a redirect, and the app's state will
       // be updated automatically when it re-initializes upon return.
-      await client.connect(chainId, options?.permissions, {
+      await client.connect(chainId, options?.explicitSession, {
         preferredLoginMethod: options?.loginMethod,
         email: options?.email,
         // includeImplicitSession: true,
@@ -120,8 +120,8 @@ export const useSequenceEvents = (client: DappClient, chainId: number) => {
   }, [client]);
 
   const signMessage = useCallback(
-    async (message: string): Promise<SignatureSuccessResponse> => {
-      return promisifyWalletAction<SignatureSuccessResponse>(
+    async (message: string): Promise<SignatureResponse> => {
+      return promisifyWalletAction<SignatureResponse>(
         RequestActionType.SIGN_MESSAGE,
         () => client.signMessage(chainId, message)
       );
@@ -130,8 +130,8 @@ export const useSequenceEvents = (client: DappClient, chainId: number) => {
   );
 
   const signTypedData = useCallback(
-    async (typedData: TypedData): Promise<SignatureSuccessResponse> => {
-      return promisifyWalletAction<SignatureSuccessResponse>(
+    async (typedData: TypedData): Promise<SignatureResponse> => {
+      return promisifyWalletAction<SignatureResponse>(
         RequestActionType.SIGN_TYPED_DATA,
         () => client.signTypedData(chainId, typedData)
       );
@@ -156,14 +156,14 @@ export const useSequenceEvents = (client: DappClient, chainId: number) => {
 
   const addExplicitSession = useCallback(
     async (
-      permissions: Signers.Session.ExplicitParams
-    ): Promise<ModifySessionSuccessResponsePayload> => {
-      return promisifySessionAction<ModifySessionSuccessResponsePayload>(
+      explicitSessionConfig: ExplicitSessionConfig
+    ): Promise<SessionResponse> => {
+      return promisifySessionAction<SessionResponse>(
         RequestActionType.ADD_EXPLICIT_SESSION,
-        () => client.addExplicitSession(chainId, permissions)
+        () => client.addExplicitSession(explicitSessionConfig)
       );
     },
-    [client, chainId, promisifySessionAction]
+    [client, promisifySessionAction]
   );
 
   const sendTransaction = useCallback(
@@ -196,7 +196,7 @@ export const useSequenceEvents = (client: DappClient, chainId: number) => {
         }
 
         const response =
-          await promisifyWalletAction<SendWalletTransactionSuccessResponse>(
+          await promisifyWalletAction<SendWalletTransactionResponse>(
             RequestActionType.SEND_WALLET_TRANSACTION,
             () => client.sendWalletTransaction(chainId, txn)
           );

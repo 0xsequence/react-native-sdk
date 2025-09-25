@@ -8,9 +8,9 @@
     "ios": "expo run:ios"
   },
   "dependencies": {
-    "@0xsequence/dapp-client": "0.0.0-20250917144328",
-    "@0xsequence/wallet-core": "0.0.0-20250917144328",
-    "@0xsequence/wallet-primitives": "0.0.0-20250917144328",
+    "@0xsequence/dapp-client": "0.0.0-20250924200530",
+    "@0xsequence/wallet-core": "0.0.0-20250924200530",
+    "@0xsequence/wallet-primitives": "0.0.0-20250924200530",
     "@expo/metro-runtime": "~5.0.4",
     "expo": "~53.0.22",
     "expo-crypto": "^14.1.5",
@@ -23,7 +23,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.6",
-    "react-native-mmkv": "^3.3.0",
+    "react-native-mmkv": "^3.3.3",
     "react-native-url-polyfill": "^2.0.0",
     "viem": "^2.29.3"
   },

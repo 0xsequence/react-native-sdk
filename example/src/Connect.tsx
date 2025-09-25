@@ -20,7 +20,7 @@ export default function Connect() {
     try {
       await connect({
         loginMethod: loginWith,
-        permissions: getPermissionsForNFTMint(chainId),
+        explicitSession: getPermissionsForNFTMint(chainId),
       });
     } catch (e) {
       console.error('Error during connect:', e);
