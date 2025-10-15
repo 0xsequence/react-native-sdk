@@ -56,7 +56,8 @@
   },
   "homepage": "https://github.com/0xsequence/react-native-sdk#readme",
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "devDependencies": {
     "@0xsequence/dapp-client": "0.0.0-20250924200530",
