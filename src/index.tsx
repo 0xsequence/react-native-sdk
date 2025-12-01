@@ -15,10 +15,11 @@ export {
   Utils,
   type LoginMethod,
   type Session,
-  type Relayer,
   type SignatureResponse,
   type Transaction,
   type SessionResponse,
 } from '@0xsequence/dapp-client';
+
+export type { Relayer } from '@0xsequence/relayer';
 
 export type { TypedData } from 'ox/TypedData';

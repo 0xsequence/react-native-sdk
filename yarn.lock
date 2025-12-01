@@ -17,24 +17,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@0xsequence/dapp-client@npm:0.0.0-20250924200530":
-  version: 0.0.0-20250924200530
-  resolution: "@0xsequence/dapp-client@npm:0.0.0-20250924200530"
+"@0xsequence/dapp-client@npm:3.0.0-beta.3":
+  version: 3.0.0-beta.3
+  resolution: "@0xsequence/dapp-client@npm:3.0.0-beta.3"
   dependencies:
-    "@0xsequence/guard": ^0.0.0-20250924200530
-    "@0xsequence/wallet-core": ^0.0.0-20250924200530
-    "@0xsequence/wallet-primitives": ^0.0.0-20250924200530
-    ox: ^0.7.2
-  checksum: 7c07872c51c4332762fb8954038b2dbb2e82bcea4780e94f0b8108c13527b01b5e73761af727db5e2c59eec6bc2a9c32c22486b5a1613b1f0bdab06c76997afb
+    "@0xsequence/guard": ^3.0.0-beta.3
+    "@0xsequence/relayer": ^3.0.0-beta.3
+    "@0xsequence/wallet-core": ^3.0.0-beta.3
+    "@0xsequence/wallet-primitives": ^3.0.0-beta.3
+    ox: ^0.9.17
+  checksum: 1ff94d21fd1408c9f053e61a8c91382d654495973ffd200be9be3fb0eda28dba71f2fe0e58caeda5d65ec9b3184910675c2824001673967f9e8af6c36ce01eb9
   languageName: node
   linkType: hard
 
-"@0xsequence/guard@npm:0.0.0-20250924200530":
-  version: 0.0.0-20250924200530
-  resolution: "@0xsequence/guard@npm:0.0.0-20250924200530"
+"@0xsequence/guard@npm:3.0.0-beta.3":
+  version: 3.0.0-beta.3
+  resolution: "@0xsequence/guard@npm:3.0.0-beta.3"
   dependencies:
-    ox: ^0.7.2
-  checksum: 5d6d0821ed5a15b4bc796cf8ca2bd52278a25f74bdb412a54b072570994bbb6369886f1329da5b05f4e4966c6dd65376cb5dbd500e03eb4b828d200625f85638
+    ox: ^0.9.17
+  checksum: af761e3025b4f2aafab3d4384ead6ed163fab50c7a5ef3386dfa0101b43ae1641303fa3ab1faf138961e1cb77cb45c85a50001a68c611ab7e29b23ada7a924d4
   languageName: node
   linkType: hard
 
@@ -42,9 +43,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@0xsequence/react-native-sdk@workspace:."
   dependencies:
-    "@0xsequence/dapp-client": 0.0.0-20250924200530
-    "@0xsequence/wallet-core": 0.0.0-20250924200530
-    "@0xsequence/wallet-primitives": 0.0.0-20250924200530
+    "@0xsequence/dapp-client": 3.0.0-beta.3
+    "@0xsequence/relayer": 3.0.0-beta.3
+    "@0xsequence/wallet-core": 3.0.0-beta.3
+    "@0xsequence/wallet-primitives": 3.0.0-beta.3
     "@commitlint/config-conventional": ^19.8.1
     "@eslint/compat": ^1.3.2
     "@eslint/eslintrc": ^3.3.1
@@ -77,9 +79,10 @@ __metadata:
     typescript: ^5.9.2
     viem: ^2.29.3
   peerDependencies:
-    "@0xsequence/dapp-client": 0.0.0-20250924200530
-    "@0xsequence/wallet-core": 0.0.0-20250924200530
-    "@0xsequence/wallet-primitives": 0.0.0-20250924200530
+    "@0xsequence/dapp-client": 3.0.0-beta.3
+    "@0xsequence/relayer": 3.0.0-beta.3
+    "@0xsequence/wallet-core": 3.0.0-beta.3
+    "@0xsequence/wallet-primitives": 3.0.0-beta.3
     expo-crypto: ^14.1.5
     expo-linking: ~7.1.5
     expo-secure-store: ~13.0.2
@@ -94,33 +97,38 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@0xsequence/relayer@npm:0.0.0-20250924200530":
-  version: 0.0.0-20250924200530
-  resolution: "@0xsequence/relayer@npm:0.0.0-20250924200530"
-  checksum: 566fd24bcf8a0e52f34a99300af8f97fb303a97fb79fa7f9efbcc4d7b1eeb79243ddfd7804f829197af55953ec47d7ff90e3a21f2c0000bd2ca60a981660775e
-  languageName: node
-  linkType: hard
-
-"@0xsequence/wallet-core@npm:0.0.0-20250924200530":
-  version: 0.0.0-20250924200530
-  resolution: "@0xsequence/wallet-core@npm:0.0.0-20250924200530"
+"@0xsequence/relayer@npm:3.0.0-beta.3":
+  version: 3.0.0-beta.3
+  resolution: "@0xsequence/relayer@npm:3.0.0-beta.3"
   dependencies:
-    "@0xsequence/guard": ^0.0.0-20250924200530
-    "@0xsequence/relayer": ^0.0.0-20250924200530
-    "@0xsequence/wallet-primitives": ^0.0.0-20250924200530
+    "@0xsequence/wallet-primitives": ^3.0.0-beta.3
     mipd: ^0.0.7
-    ox: ^0.7.2
-    viem: ^2.30.6
-  checksum: 771b4f7facbc1f0bc52d6427fe35970bd2ec8de9c696328c8e25f19a87b868db349adcc58c96b1e04ee767b931975aad1fd3bf0ddeab502d08646c4f2f6ad6d1
+    ox: ^0.9.17
+    viem: ^2.40.3
+  checksum: da2d9fcb52ed3c5313ee7b6c3a7d06b48dcada7b98258bc050fc84be5ed36b8e71cca1820ae4d0f4427f13c6fdb921bf69fd615c12af8315279ace60c9cc4e59
   languageName: node
   linkType: hard
 
-"@0xsequence/wallet-primitives@npm:0.0.0-20250924200530":
-  version: 0.0.0-20250924200530
-  resolution: "@0xsequence/wallet-primitives@npm:0.0.0-20250924200530"
+"@0xsequence/wallet-core@npm:3.0.0-beta.3":
+  version: 3.0.0-beta.3
+  resolution: "@0xsequence/wallet-core@npm:3.0.0-beta.3"
   dependencies:
-    ox: ^0.7.2
-  checksum: 47006497bc533bf9727cd477de43fa3c449cc93e81ec7792dcdfcc394dec27f8d94501475646e315f34daf03195da513807e76d18eb91d2808d764fc3b85324d
+    "@0xsequence/guard": ^3.0.0-beta.3
+    "@0xsequence/relayer": ^3.0.0-beta.3
+    "@0xsequence/wallet-primitives": ^3.0.0-beta.3
+    mipd: ^0.0.7
+    ox: ^0.9.17
+    viem: ^2.40.3
+  checksum: 33cdc114ac26eade7ba1d09b394ac73cd629c0f12d77b127387545aa97a72b24e8dec129b07a6fae9f0f24ba61a56335a191a5a96d4c3c8d6d456564f055ab59
+  languageName: node
+  linkType: hard
+
+"@0xsequence/wallet-primitives@npm:3.0.0-beta.3":
+  version: 3.0.0-beta.3
+  resolution: "@0xsequence/wallet-primitives@npm:3.0.0-beta.3"
+  dependencies:
+    ox: ^0.9.17
+  checksum: dc0c6835a399c9d1608263c23a339c42a1eac56b8e1e4cac0aa32578398eb575d1104e1ace4faac90cc9d12d3197afb70713e9882253a40c8a910a710ae18031
   languageName: node
   linkType: hard
 
@@ -3030,7 +3038,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/curves@npm:^1.9.1, @noble/curves@npm:~1.9.0":
+"@noble/curves@npm:~1.9.0":
   version: 1.9.7
   resolution: "@noble/curves@npm:1.9.7"
   dependencies:
@@ -4032,7 +4040,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"abitype@npm:1.1.0, abitype@npm:^1.0.8, abitype@npm:^1.0.9":
+"abitype@npm:1.1.0, abitype@npm:^1.0.9":
   version: 1.1.0
   resolution: "abitype@npm:1.1.0"
   peerDependencies:
@@ -10391,28 +10399,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ox@npm:^0.7.2":
-  version: 0.7.2
-  resolution: "ox@npm:0.7.2"
-  dependencies:
-    "@adraffy/ens-normalize": ^1.11.0
-    "@noble/ciphers": ^1.3.0
-    "@noble/curves": ^1.9.1
-    "@noble/hashes": ^1.8.0
-    "@scure/bip32": ^1.7.0
-    "@scure/bip39": ^1.6.0
-    abitype: ^1.0.8
-    eventemitter3: 5.0.1
-  peerDependencies:
-    typescript: ">=5.4.0"
-  peerDependenciesMeta:
-    typescript:
-      optional: true
-  checksum: bd13a252a37ab003ab0252333436e6b506588732296802ba4fd5e71af981b491e6f7a7c9920102e66a079fc0f97f036ee80b36a402b7d0ed04aa8365ab672419
-  languageName: node
-  linkType: hard
-
-"ox@npm:^0.9.6":
+"ox@npm:0.9.6, ox@npm:^0.9.6":
   version: 0.9.6
   resolution: "ox@npm:0.9.6"
   dependencies:
@@ -10430,6 +10417,27 @@ __metadata:
     typescript:
       optional: true
   checksum: 5f5094502cab9b135f3de3dfe60691fc312a1e534b3a9ef03bd867bfe0921245360c78dcb59bb438f6d66316b7da29506da4b46633f48cd8f7c4f37f56a76e4c
+  languageName: node
+  linkType: hard
+
+"ox@npm:^0.9.17":
+  version: 0.9.17
+  resolution: "ox@npm:0.9.17"
+  dependencies:
+    "@adraffy/ens-normalize": ^1.11.0
+    "@noble/ciphers": ^1.3.0
+    "@noble/curves": 1.9.1
+    "@noble/hashes": ^1.8.0
+    "@scure/bip32": ^1.7.0
+    "@scure/bip39": ^1.6.0
+    abitype: ^1.0.9
+    eventemitter3: 5.0.1
+  peerDependencies:
+    typescript: ">=5.4.0"
+  peerDependenciesMeta:
+    typescript:
+      optional: true
+  checksum: d5ec8d0d6f141a5e7b52613050dd95a745dc751b689e4f5a6faf99e16fc9b5193241e92aa1cd127351769968b41db1718c4738b210464bffa0538aa300a50a07
   languageName: node
   linkType: hard
 
@@ -12888,7 +12896,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"viem@npm:^2.29.3, viem@npm:^2.30.6":
+"viem@npm:^2.29.3":
   version: 2.37.6
   resolution: "viem@npm:2.37.6"
   dependencies:
@@ -12906,6 +12914,27 @@ __metadata:
     typescript:
       optional: true
   checksum: 2a8b0ebf6eb09029acc4ca0aac3986c467b03b29c41afe0d3a24b3e0ec1ef38a1d1479f821051e00df8d93d230b8eecb527f033f23007a0157637cb37d336168
+  languageName: node
+  linkType: hard
+
+"viem@npm:^2.40.3":
+  version: 2.40.3
+  resolution: "viem@npm:2.40.3"
+  dependencies:
+    "@noble/curves": 1.9.1
+    "@noble/hashes": 1.8.0
+    "@scure/bip32": 1.7.0
+    "@scure/bip39": 1.6.0
+    abitype: 1.1.0
+    isows: 1.0.7
+    ox: 0.9.6
+    ws: 8.18.3
+  peerDependencies:
+    typescript: ">=5.0.4"
+  peerDependenciesMeta:
+    typescript:
+      optional: true
+  checksum: 09498fd69883ae44d6aa3fef618d5ab88215dadef7a5dea454673ea0b0e7806a7f21242c965176775ddb2e8352a6e9773561d8914edcaf15267cc758acf2df11
   languageName: node
   linkType: hard
 

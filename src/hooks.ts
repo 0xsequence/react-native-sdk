@@ -3,13 +3,13 @@ import {
   RequestActionType,
   type DappClient,
   type LoginMethod,
-  type Relayer,
   type SendWalletTransactionResponse,
   type SignatureResponse,
   type Transaction,
   type SessionResponse,
   type ExplicitSessionConfig,
 } from '@0xsequence/dapp-client';
+import type { Relayer } from '@0xsequence/relayer';
 import type { TypedData } from 'ox/TypedData';
 
 import type { SendTransactionResult } from './SequenceContext';

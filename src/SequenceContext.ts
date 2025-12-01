@@ -1,15 +1,13 @@
-// File: src/SequenceContext.ts
-
 import { createContext, useContext } from 'react';
 import {
   type Session,
-  type Relayer,
   type SignatureResponse,
   type Transaction,
   type LoginMethod,
   type SessionResponse,
   type ExplicitSessionConfig,
 } from '@0xsequence/dapp-client';
+import type { Relayer } from '@0xsequence/relayer';
 import { Address, Hex } from 'ox';
 import { type TypedData } from 'ox/TypedData';
 

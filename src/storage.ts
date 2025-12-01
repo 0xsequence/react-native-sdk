@@ -3,6 +3,7 @@ import {
   type ImplicitSessionData,
   type PendingRequestContext,
   type SequenceStorage,
+  type SessionlessConnectionData,
   jsonReplacers,
   jsonRevivers,
 } from '@0xsequence/dapp-client';
@@ -15,6 +16,9 @@ const EXPLICIT_SESSIONS_KEY = 'SequenceExplicitSession';
 const PENDING_REDIRECT_REQUEST_KEY = 'SequencePendingRedirect';
 const TEMP_SESSION_PK_KEY = 'SequencePendingTempSessionPk';
 const PENDING_REQUEST_CONTEXT_KEY = 'SequencePendingRequestContext';
+const SESSIONLESS_CONNECTION_KEY = 'SequenceSessionlessConnection';
+const SESSIONLESS_CONNECTION_SNAPSHOT_KEY =
+  'SequenceSessionlessConnectionSnapshot';
 
 // --- SecureStore Helper Functions ---
 const getItem = async <T>(key: string): Promise<T | null> => {
@@ -130,6 +134,36 @@ export class ReactNativeStorage implements SequenceStorage {
     await deleteItem(IMPLICIT_SESSIONS_KEY);
   }
 
+  async saveSessionlessConnection(
+    sessionData: SessionlessConnectionData
+  ): Promise<void> {
+    await setItem(SESSIONLESS_CONNECTION_KEY, sessionData);
+  }
+
+  async getSessionlessConnection(): Promise<SessionlessConnectionData | null> {
+    return getItem<SessionlessConnectionData>(SESSIONLESS_CONNECTION_KEY);
+  }
+
+  async clearSessionlessConnection(): Promise<void> {
+    await deleteItem(SESSIONLESS_CONNECTION_KEY);
+  }
+
+  async saveSessionlessConnectionSnapshot(
+    sessionData: SessionlessConnectionData
+  ): Promise<void> {
+    await setItem(SESSIONLESS_CONNECTION_SNAPSHOT_KEY, sessionData);
+  }
+
+  async getSessionlessConnectionSnapshot(): Promise<SessionlessConnectionData | null> {
+    return getItem<SessionlessConnectionData>(
+      SESSIONLESS_CONNECTION_SNAPSHOT_KEY
+    );
+  }
+
+  async clearSessionlessConnectionSnapshot(): Promise<void> {
+    await deleteItem(SESSIONLESS_CONNECTION_SNAPSHOT_KEY);
+  }
+
   async clearAllData(): Promise<void> {
     try {
       await Promise.all([
@@ -138,6 +172,8 @@ export class ReactNativeStorage implements SequenceStorage {
         deleteItem(PENDING_REQUEST_CONTEXT_KEY),
         deleteItem(EXPLICIT_SESSIONS_KEY),
         deleteItem(IMPLICIT_SESSIONS_KEY),
+        deleteItem(SESSIONLESS_CONNECTION_KEY),
+        deleteItem(SESSIONLESS_CONNECTION_SNAPSHOT_KEY),
       ]);
     } catch (error) {
       console.error('Failed to clear all data:', error);
