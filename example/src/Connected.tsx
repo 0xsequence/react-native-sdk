@@ -24,6 +24,7 @@ import { createPublicClient, http, type PublicClient } from 'viem';
 import {
   DEMO_TYPED_DATA,
   EMITTER_ABI,
+  EMITTER_CONTRACT_ADDRESS,
   getNFTContractAddress,
   mint,
   getPermissionsForNFTMint,
@@ -36,6 +37,8 @@ import FeeOptionPicker from './components/FeeOptionPicker';
 // A simple utility to shorten addresses
 const shortenAddress = (address: string) =>
   `${address.slice(0, 6)}...${address.slice(-4)}`;
+
+type PreparedTxOrigin = 'mint' | 'emitter' | 'implicitEmitter';
 
 export default function Connected() {
   const {
@@ -63,11 +66,13 @@ export default function Connected() {
     SendTransactionResult,
     { isFeeRequired: true }
   > | null>(null);
-  const [preparedTxOrigin, setPreparedTxOrigin] = useState<
-    'mint' | 'emitter' | null
-  >(null);
+  const [preparedTxOrigin, setPreparedTxOrigin] =
+    useState<PreparedTxOrigin | null>(null);
   const [mintTxHash, setMintTxHash] = useState<string | null>(null);
   const [emitterTxHash, setEmitterTxHash] = useState<string | null>(null);
+  const [implicitEmitterTxHash, setImplicitEmitterTxHash] = useState<
+    string | null
+  >(null);
 
   const currentChain = useMemo(
     () => ACTIVE_CHAINS.find((c) => c.id === chainId) || ACTIVE_CHAINS[0]!,
@@ -78,7 +83,13 @@ export default function Connected() {
   useEffect(() => {
     setMintTxHash(null);
     setEmitterTxHash(null);
+    setImplicitEmitterTxHash(null);
   }, [chainId]);
+
+  const hasImplicitSession = useMemo(
+    () => sessions.some((session) => session.type === 'implicit'),
+    [sessions]
+  );
 
   const mintTransaction = useMemo<Transaction>(() => {
     if (!walletAddress) {
@@ -140,6 +151,24 @@ export default function Connected() {
     publicClient as PublicClient,
     feeTokenAddresses,
     walletAddress
+  );
+
+  const emitterTransaction = useMemo<Transaction>(
+    () => ({
+      to: EMITTER_CONTRACT_ADDRESS as Address.Address,
+      data: AbiFunction.getSelector(EMITTER_ABI[0]), // explicitEmit()
+      value: 0n,
+    }),
+    []
+  );
+
+  const implicitEmitterTransaction = useMemo<Transaction>(
+    () => ({
+      to: EMITTER_CONTRACT_ADDRESS as Address.Address,
+      data: AbiFunction.getSelector(EMITTER_ABI[1]), // implicitEmit()
+      value: 0n,
+    }),
+    []
   );
 
   const handleCopyAddress = () => {
@@ -204,12 +233,13 @@ export default function Connected() {
 
   const executeTransaction = async (
     tx: Transaction,
-    origin: 'mint' | 'emitter'
+    origin: PreparedTxOrigin
   ) => {
     setIsActionLoading(true);
     setPreparedTx(null);
     setMintTxHash(null);
     setEmitterTxHash(null);
+    setImplicitEmitterTxHash(null);
 
     try {
       const result = await sendTransaction([tx]);
@@ -219,7 +249,8 @@ export default function Connected() {
       } else {
         Alert.alert('Transaction Sent', `Transaction hash: ${result.txHash}`);
         if (origin === 'mint') setMintTxHash(result.txHash);
-        else setEmitterTxHash(result.txHash);
+        else if (origin === 'emitter') setEmitterTxHash(result.txHash);
+        else setImplicitEmitterTxHash(result.txHash);
       }
     } catch (e) {
       console.error('Error sending transaction:', e);
@@ -251,12 +282,14 @@ export default function Connected() {
   // This is a test txn to demonstrate sending a transaction via the wallet for a txn without permissions
   // Any call to a contract method that does not have explicit permissions will work here
   const handleCallEmitter = () => {
-    const tx = {
-      to: '0xb7bE532959236170064cf099e1a3395aEf228F44' as Address.Address,
-      data: AbiFunction.getSelector(EMITTER_ABI[0]), // explicitEmit()
-      value: 0n,
-    };
-    executeTransaction(tx, 'emitter');
+    executeTransaction(emitterTransaction, 'emitter');
+  };
+
+  const handleCallImplicitEmitter = () => {
+    if (!hasImplicitSession) {
+      return;
+    }
+    executeTransaction(implicitEmitterTransaction, 'implicitEmitter');
   };
 
   const handleSendWithFee = async (feeOption: Relayer.FeeOption) => {
@@ -272,8 +305,10 @@ export default function Connected() {
       Alert.alert('Transaction Sent', `Transaction hash: ${txHash}`);
       if (preparedTxOrigin === 'mint') {
         setMintTxHash(txHash);
-      } else {
+      } else if (preparedTxOrigin === 'emitter') {
         setEmitterTxHash(txHash);
+      } else if (preparedTxOrigin === 'implicitEmitter') {
+        setImplicitEmitterTxHash(txHash);
       }
     } catch (e) {
       console.error('Error sending transaction with fee:', e);
@@ -384,6 +419,25 @@ export default function Connected() {
                 </View>
               )}
             </View>
+            {hasImplicitSession && (
+              <View>
+                <Button
+                  title="Send implicit txn (implicitEmit)"
+                  onPress={handleCallImplicitEmitter}
+                  disabled={isActionLoading}
+                  color="#6B59CC"
+                />
+                {implicitEmitterTxHash && (
+                  <View style={styles.txHashButton}>
+                    <Button
+                      title={`View Tx: ${shortenAddress(implicitEmitterTxHash)}`}
+                      onPress={() => openExplorer(implicitEmitterTxHash)}
+                      color="#007AFF"
+                    />
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         </>
       )}

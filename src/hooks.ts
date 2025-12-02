@@ -109,7 +109,7 @@ export const useSequenceEvents = (client: DappClient, chainId: number) => {
       await client.connect(chainId, options?.explicitSession, {
         preferredLoginMethod: options?.loginMethod,
         email: options?.email,
-        // includeImplicitSession: true,
+        includeImplicitSession: true,
       });
     },
     [client, chainId]
