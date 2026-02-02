@@ -97,9 +97,9 @@
     "viem": "^2.29.3"
   },
   "peerDependencies": {
-    "@0xsequence/dapp-client": "3.0.0-beta.4",
-    "@0xsequence/wallet-core": "3.0.0-beta.4",
-    "@0xsequence/wallet-primitives": "3.0.0-beta.4",
+    "@0xsequence/dapp-client": "3.0.0-beta.12",
+    "@0xsequence/wallet-core": "3.0.0-beta.12",
+    "@0xsequence/wallet-primitives": "3.0.0-beta.12",
     "expo-crypto": "^14.1.5",
     "expo-linking": "~7.1.5",
     "expo-secure-store": "~13.0.2",

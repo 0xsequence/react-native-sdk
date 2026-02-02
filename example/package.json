@@ -8,9 +8,9 @@
     "ios": "expo run:ios"
   },
   "dependencies": {
-    "@0xsequence/dapp-client": "0.0.0-20250924200530",
-    "@0xsequence/wallet-core": "0.0.0-20250924200530",
-    "@0xsequence/wallet-primitives": "0.0.0-20250924200530",
+    "@0xsequence/dapp-client": "3.0.0-beta.12",
+    "@0xsequence/wallet-core": "3.0.0-beta.12",
+    "@0xsequence/wallet-primitives": "3.0.0-beta.12",
     "@expo/metro-runtime": "~5.0.4",
     "expo": "~53.0.22",
     "expo-crypto": "^14.1.5",
