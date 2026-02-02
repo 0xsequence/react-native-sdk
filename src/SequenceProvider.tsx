@@ -84,7 +84,10 @@ export const SequenceProvider = ({
         try {
           await WebBrowser.dismissBrowser();
         } catch (e) {
-          console.log('Error dismissing browser:', e);
+          const message = e instanceof Error ? e.message : String(e);
+          if (!message.includes('There is no web browser to dismiss')) {
+            console.log('Error dismissing browser:', e);
+          }
         }
       }
     };

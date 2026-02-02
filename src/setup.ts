@@ -6,7 +6,7 @@ polyfillWebCrypto();
 
 import { Hex } from 'ox';
 import { getRandomBytes } from 'expo-crypto';
-import { MMKV } from 'react-native-mmkv';
+import { createMMKV } from 'react-native-mmkv';
 import * as WebBrowser from 'expo-web-browser';
 
 import { ReactNativeStorage } from './storage';
@@ -21,7 +21,7 @@ const reactNativeRandomPrivateKey = async (): Promise<Hex.Hex> => {
   return Hex.from(newPkBytes);
 };
 
-export const mmkvStorage = new MMKV();
+export const mmkvStorage = createMMKV();
 
 export const sequenceSessionStorage: SequenceSessionStorage = {
   getItem: (key: string): string | null => {
@@ -34,7 +34,7 @@ export const sequenceSessionStorage: SequenceSessionStorage = {
   },
 
   removeItem: (key: string): void => {
-    mmkvStorage.delete(key);
+    mmkvStorage.remove(key);
   },
 };
 

@@ -8,7 +8,14 @@ To get started, install the `@0xsequence/react-native-sdk` and its peer dependen
 
 ```sh
 yarn add @0xsequence/react-native-sdk @0xsequence/dapp-client @0xsequence/wallet-core @0xsequence/wallet-primitives ox viem
-yarn add expo-crypto expo-linking expo-secure-store expo-standard-web-crypto expo-web-browser react-native-mmkv react-native-url-polyfill
+yarn add expo-crypto expo-linking expo-secure-store expo-standard-web-crypto expo-web-browser react-native-mmkv react-native-nitro-modules react-native-url-polyfill
+```
+
+or
+
+```sh
+npm install @0xsequence/react-native-sdk @0xsequence/dapp-client @0xsequence/wallet-core @0xsequence/wallet-primitives ox viem
+npm install expo-crypto expo-linking expo-secure-store expo-standard-web-crypto expo-web-browser react-native-mmkv react-native-nitro-modules react-native-url-polyfill
 ```
 
 ## Usage
