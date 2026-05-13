@@ -20,12 +20,13 @@ import {
   completeEmailAuth,
   configure,
   getSupportedNetworks,
-  getWalletAddress,
+  getSession,
   sendTransaction,
   signMessage,
   signOut,
   startEmailAuth,
   verifyMessageSignature,
+  type OmsClientSessionState,
   type OmsNetwork,
 } from 'oms-client-react-native-sdk';
 
@@ -38,6 +39,12 @@ const DEMO_ENVIRONMENT = {
 
 const DEFAULT_TRANSACTION_TO = '0xE5E8B483FfC05967FcFed58cc98D053265af6D99';
 const PREFERRED_NETWORK_ORDER = ['80002', '137'];
+const SIGNED_OUT_SESSION: OmsClientSessionState = {
+  walletAddress: null,
+  expiresAt: null,
+  loginType: null,
+  sessionEmail: null,
+};
 
 LogBox.ignoreLogs(['SafeAreaView has been deprecated']);
 
@@ -131,10 +138,22 @@ function Card({
   );
 }
 
+function SessionDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.sessionDetailRow}>
+      <Text style={styles.sessionDetailLabel}>{label}</Text>
+      <Text selectable style={styles.sessionDetailValue}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 export default function App() {
   const [networks, setNetworks] = useState<OmsNetwork[]>([]);
   const [selectedChainId, setSelectedChainId] = useState('80002');
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [session, setSession] =
+    useState<OmsClientSessionState>(SIGNED_OUT_SESSION);
   const [authStage, setAuthStage] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -169,15 +188,15 @@ export default function App() {
     setLogLines((current) => [...current, messageToAppend].slice(-80));
   }, []);
 
-  const refreshWalletAddress = useCallback(async () => {
-    const address = await getWalletAddress();
-    setWalletAddress(address);
-    if (address) {
+  const refreshSession = useCallback(async () => {
+    const nextSession = await getSession();
+    setSession(nextSession);
+    if (nextSession.walletAddress) {
       setAuthStatus('Restored persisted wallet session');
       setSignatureStatus('Signature status: ready to sign.');
       setTransactionStatus('Transaction status: ready to send.');
     }
-    return address;
+    return nextSession;
   }, []);
 
   const runAction = useCallback(
@@ -215,9 +234,9 @@ export default function App() {
 
         setNetworks(supportedNetworks);
         setSelectedChainId(supportedNetworks[0]?.chainId ?? '80002');
-        const address = await refreshWalletAddress();
-        if (address) {
-          appendLog(`Wallet ready: ${address}`);
+        const nextSession = await refreshSession();
+        if (nextSession.walletAddress) {
+          appendLog(`Wallet ready: ${nextSession.walletAddress}`);
         }
       });
     }
@@ -229,8 +248,9 @@ export default function App() {
     return () => {
       disposed = true;
     };
-  }, [appendLog, refreshWalletAddress, runAction]);
+  }, [appendLog, refreshSession, runAction]);
 
+  const walletAddress = session.walletAddress;
   const isSignedIn = walletAddress != null;
   const isBusy = loadingAction != null;
 
@@ -259,13 +279,19 @@ export default function App() {
         const wallet = await completeEmailAuth(
           requireText(code, 'Verification code')
         );
+        const nextSession = await getSession();
+        const address = nextSession.walletAddress ?? wallet.address;
         setCode('');
         setAuthStage('email');
-        setWalletAddress(wallet.address);
+        setSession(
+          nextSession.walletAddress
+            ? nextSession
+            : { ...SIGNED_OUT_SESSION, walletAddress: address }
+        );
         setAuthStatus('Email login complete');
         setSignatureStatus('Signature status: ready to sign.');
         setTransactionStatus('Transaction status: ready to send.');
-        appendLog(`Wallet ready: ${wallet.address}`);
+        appendLog(`Wallet ready: ${address}`);
       },
       (error) => {
         setAuthStatus(`Code confirmation failed: ${describeError(error)}`);
@@ -276,6 +302,7 @@ export default function App() {
   const cancelCodeStep = () => {
     runAction('Cancel email code step', async () => {
       await signOut();
+      setSession(SIGNED_OUT_SESSION);
       setCode('');
       setAuthStage('email');
       setAuthStatus('Waiting for sign-in.');
@@ -285,7 +312,7 @@ export default function App() {
   const logout = () => {
     runAction('Logout', async () => {
       await signOut();
-      setWalletAddress(null);
+      setSession(SIGNED_OUT_SESSION);
       setAuthStage('email');
       setAuthStatus('Waiting for sign-in.');
       setLastSignedMessage(null);
@@ -457,6 +484,20 @@ export default function App() {
                       Wallet address:{'\n'}
                       {walletAddress}
                     </Text>
+                    <View style={styles.sessionDetails}>
+                      <SessionDetail
+                        label="Login type"
+                        value={formatLoginType(session.loginType)}
+                      />
+                      <SessionDetail
+                        label="Email"
+                        value={session.sessionEmail ?? 'Unavailable'}
+                      />
+                      <SessionDetail
+                        label="Expiration"
+                        value={formatSessionExpiration(session.expiresAt)}
+                      />
+                    </View>
                     <Text style={styles.fieldLabel}>Network</Text>
                     <View style={styles.networkList}>
                       {networks.map((network) => (
@@ -595,6 +636,41 @@ function requireText(value: string | null, label: string): string {
     throw new Error(`${label} is required`);
   }
   return trimmed;
+}
+
+function formatLoginType(
+  loginType: OmsClientSessionState['loginType']
+): string {
+  switch (loginType) {
+    case 'Email':
+      return 'Email';
+    case 'GoogleAuth':
+      return 'Google Auth';
+    case 'Oidc':
+      return 'OIDC';
+    default:
+      return 'Unavailable';
+  }
+}
+
+function formatSessionExpiration(expiresAt: string | null): string {
+  if (!expiresAt) {
+    return 'Unavailable';
+  }
+
+  const date = new Date(expiresAt);
+  if (Number.isNaN(date.getTime())) {
+    return expiresAt;
+  }
+
+  return date.toLocaleString(undefined, {
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    month: 'short',
+    timeZoneName: 'short',
+    year: 'numeric',
+  });
 }
 
 function decimalToBaseUnits(value: string, decimals: number): string {
@@ -754,6 +830,28 @@ const styles = StyleSheet.create({
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
     fontSize: 13,
     lineHeight: 19,
+  },
+  sessionDetails: {
+    gap: 8,
+  },
+  sessionDetailRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  sessionDetailLabel: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '600',
+    minWidth: 76,
+    textTransform: 'uppercase',
+  },
+  sessionDetailValue: {
+    color: '#E2E8F0',
+    flex: 1,
+    flexShrink: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
   status: {
     color: '#CBD5E1',
