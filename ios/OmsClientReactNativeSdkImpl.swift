@@ -39,6 +39,14 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
     resolve(address)
   }
 
+  @objc(getSessionWithResolve:reject:)
+  public func getSession(
+    resolve: @escaping RCTPromiseResolveBlock,
+    reject: @escaping RCTPromiseRejectBlock
+  ) {
+    resolve(sessionDictionary(client?.wallet.session))
+  }
+
   @objc(getSupportedNetworksWithResolve:reject:)
   public func getSupportedNetworks(
     resolve: @escaping RCTPromiseResolveBlock,
@@ -195,6 +203,25 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
       "id": wallet.walletId,
       "address": wallet.walletAddress
     ]
+  }
+
+  private func sessionDictionary(_ session: SessionState?) -> [String: Any] {
+    [
+      "walletAddress": nullableString(session?.walletAddress),
+      "expiresAt": nullableString(session?.expiresAt.map(iso8601String)),
+      "loginType": nullableString(session?.loginType?.rawValue),
+      "sessionEmail": nullableString(session?.sessionEmail)
+    ]
+  }
+
+  private func nullableString(_ value: String?) -> Any {
+    value ?? NSNull()
+  }
+
+  private func iso8601String(_ date: Date) -> String {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return formatter.string(from: date)
   }
 
   private func networkDictionary(_ network: Network) -> [String: Any] {

@@ -6,6 +6,15 @@ export type {
   OmsWallet,
 } from './NativeOmsClientReactNativeSdk';
 
+export type OmsClientSessionLoginType = 'Email' | 'GoogleAuth' | 'Oidc';
+
+export type OmsClientSessionState = {
+  walletAddress: string | null;
+  expiresAt: string | null;
+  loginType: OmsClientSessionLoginType | null;
+  sessionEmail: string | null;
+};
+
 export type OmsClientEnvironment = {
   walletApiUrl?: string;
   apiRpcUrl?: string;

@@ -10,6 +10,13 @@ export type OmsWallet = {
   address: string;
 };
 
+export type OmsClientSessionState = {
+  walletAddress: string | null;
+  expiresAt: string | null;
+  loginType: string | null;
+  sessionEmail: string | null;
+};
+
 export type OmsTokenBalancesPage = {
   page: number;
   pageSize: number;
@@ -42,6 +49,7 @@ export interface Spec extends TurboModule {
     scope: string | null
   ): Promise<void>;
   getWalletAddress(): Promise<string | null>;
+  getSession(): Promise<OmsClientSessionState>;
   getSupportedNetworks(): Promise<OmsNetwork[]>;
   startEmailAuth(email: string): Promise<void>;
   completeEmailAuth(code: string): Promise<OmsWallet>;

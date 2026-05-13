@@ -2,6 +2,7 @@ import OmsClientReactNativeSdk from './NativeOmsClientReactNativeSdk';
 import type {
   GetTokenBalancesParams,
   OmsClientConfig,
+  OmsClientSessionState,
   OmsNetwork,
   OmsTokenBalancesResult,
   OmsWallet,
@@ -21,6 +22,10 @@ export function configure(config: OmsClientConfig): Promise<void> {
 
 export function getWalletAddress(): Promise<string | null> {
   return OmsClientReactNativeSdk.getWalletAddress();
+}
+
+export function getSession(): Promise<OmsClientSessionState> {
+  return OmsClientReactNativeSdk.getSession() as Promise<OmsClientSessionState>;
 }
 
 export function getSupportedNetworks(): Promise<OmsNetwork[]> {

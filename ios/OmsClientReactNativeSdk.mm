@@ -43,6 +43,12 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
   [_impl getWalletAddressWithResolve:resolve reject:reject];
 }
 
+- (void)getSession:(RCTPromiseResolveBlock)resolve
+            reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl getSessionWithResolve:resolve reject:reject];
+}
+
 - (void)getSupportedNetworks:(RCTPromiseResolveBlock)resolve
                       reject:(RCTPromiseRejectBlock)reject
 {

@@ -6,6 +6,7 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.WritableMap
 import com.omsclient.kotlin_sdk.Network
 import com.omsclient.kotlin_sdk.OMSClient
+import com.omsclient.kotlin_sdk.OMSClientSessionState
 import com.omsclient.kotlin_sdk.models.SendTransactionRequest
 import com.omsclient.kotlin_sdk.models.TokenBalance
 import com.omsclient.kotlin_sdk.models.TokenBalancesPage
@@ -50,7 +51,11 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
   }
 
   override fun getWalletAddress(promise: Promise) {
-    promise.resolve(client?.wallet?.address)
+    promise.resolve(client?.session?.walletAddress)
+  }
+
+  override fun getSession(promise: Promise) {
+    promise.resolve(sessionMap(client?.session))
   }
 
   override fun getSupportedNetworks(promise: Promise) {
@@ -185,6 +190,14 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
     Arguments.createMap().apply {
       putString("id", id)
       putString("address", address)
+    }
+
+  private fun sessionMap(session: OMSClientSessionState?): WritableMap =
+    Arguments.createMap().apply {
+      putNullableString("walletAddress", session?.walletAddress)
+      putNullableString("expiresAt", session?.expiresAt?.toString())
+      putNullableString("loginType", session?.loginType?.name)
+      putNullableString("sessionEmail", session?.sessionEmail)
     }
 
   private fun tokenBalancesResultMap(result: TokenBalancesResult): WritableMap =

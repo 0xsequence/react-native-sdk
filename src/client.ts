@@ -1,6 +1,7 @@
 import type {
   GetTokenBalancesParams,
   OmsClientConfig,
+  OmsClientSessionState,
   OmsNetwork,
   OmsTokenBalancesResult,
   OmsWallet,
@@ -19,6 +20,10 @@ export function configure(_config: OmsClientConfig): Promise<void> {
 }
 
 export function getWalletAddress(): Promise<string | null> {
+  unsupported();
+}
+
+export function getSession(): Promise<OmsClientSessionState> {
   unsupported();
 }
 
