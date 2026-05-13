@@ -16,7 +16,7 @@ end
 
 target 'OmsClientReactNativeSdkExample' do
   config = use_native_modules!
-  pod "OMS-SDK", :path => "../../../swift-sdk"
+  pod "oms-client-swift-sdk", :path => "../../../swift-sdk"
 
   use_react_native!(
     :path => config[:reactNativePath],

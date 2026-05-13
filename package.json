@@ -2,6 +2,7 @@
   "name": "oms-client-react-native-sdk",
   "version": "0.1.0",
   "description": "React Native SDK for the OMS platform.",
+  "homepage": "https://github.com/0xsequence/react-native-sdk",
   "main": "./lib/commonjs/index.js",
   "module": "./lib/module/index.js",
   "types": "./lib/typescript/commonjs/src/index.d.ts",
