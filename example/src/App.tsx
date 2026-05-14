@@ -411,6 +411,7 @@ export default function App() {
           contentContainerStyle={styles.scrollContent}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
+          scrollsChildToFocus={false}
         >
           <TouchableWithoutFeedback
             accessible={false}
