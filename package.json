@@ -43,7 +43,8 @@
   ],
   "scripts": {
     "example": "yarn workspace oms-client-react-native-sdk-example",
-    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
+    "sdk-example": "yarn workspace oms-client-react-native-sdk-example",
+    "clean": "del-cli android/build examples/sdk-example/android/build examples/sdk-example/android/app/build examples/sdk-example/ios/build lib",
     "prepare": "bob build",
     "typecheck": "tsc",
     "lint": "eslint \"**/*.{js,ts,tsx}\""
@@ -82,7 +83,7 @@
     "react-native": "*"
   },
   "workspaces": [
-    "example"
+    "examples/*"
   ],
   "packageManager": "yarn@4.11.0",
   "react-native-builder-bob": {

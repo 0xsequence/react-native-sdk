@@ -6,7 +6,6 @@ buildscript {
         targetSdkVersion = 36
         ndkVersion = "27.1.12297006"
         kotlinVersion = "2.2.10"
-        omsClientKotlinSdkVersion = "0.0.1-local.2"
     }
     repositories {
         mavenLocal()

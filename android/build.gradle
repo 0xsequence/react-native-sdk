@@ -4,7 +4,7 @@ buildscript {
     minSdkVersion: 26,
     compileSdkVersion: 36,
     targetSdkVersion: 36,
-    omsClientKotlinSdkVersion: "0.0.1-local.2"
+    omsClientKotlinSdkVersion: "0.0.1-local.3"
   ]
 
   ext.getExtOrDefault = { prop ->

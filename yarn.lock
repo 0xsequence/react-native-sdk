@@ -6678,9 +6678,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"oms-client-react-native-sdk-example@workspace:example":
+"oms-client-react-native-sdk-example@workspace:examples/sdk-example":
   version: 0.0.0-use.local
-  resolution: "oms-client-react-native-sdk-example@workspace:example"
+  resolution: "oms-client-react-native-sdk-example@workspace:examples/sdk-example"
   dependencies:
     "@babel/core": "npm:^7.25.2"
     "@babel/preset-env": "npm:^7.25.3"

@@ -30,25 +30,16 @@ const signature = await signMessage('137', 'Hello from React Native');
 const address = await getWalletAddress();
 ```
 
-## Local native SDKs
+## Native SDK Dependencies
 
-Android resolves the local Kotlin SDK from Maven local:
+The React Native SDK owns its native SDK dependencies. Android resolves
+`oms-client-kotlin-sdk` from the SDK Gradle module, and iOS resolves
+`oms-client-swift-sdk` from the SDK podspec.
 
-```gradle
-implementation "io.github.0xsequence:oms-client-kotlin-sdk:0.0.1-local.2"
-```
-
-iOS resolves the local Swift SDK from the example Podfile:
-
-```ruby
-pod "OMS-SDK", :path => "../../../swift-sdk"
-```
-
-## Contributing
-
-- [Development workflow](CONTRIBUTING.md#development-workflow)
-- [Sending a pull request](CONTRIBUTING.md#sending-a-pull-request)
-- [Code of conduct](CODE_OF_CONDUCT.md)
+Example apps should depend on `oms-client-react-native-sdk`, not directly on the
+underlying native SDKs. For local development, the native SDK artifacts still
+need to be available through Maven local and CocoaPods local specs until they are
+published.
 
 ## License
 

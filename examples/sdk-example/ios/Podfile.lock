@@ -1776,8 +1776,7 @@ PODS:
 DEPENDENCIES:
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
-  - oms-client-swift-sdk (from `../../../swift-sdk`)
-  - OmsClientReactNativeSdk (from `../..`)
+  - OmsClientReactNativeSdk (from `../../..`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
   - RCTRequired (from `../node_modules/react-native/Libraries/Required`)
   - RCTSwiftUI (from `../node_modules/react-native/ReactApple/RCTSwiftUI`)
@@ -1851,16 +1850,18 @@ DEPENDENCIES:
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
+SPEC REPOS:
+  trunk:
+    - oms-client-swift-sdk
+
 EXTERNAL SOURCES:
   FBLazyVector:
     :path: "../node_modules/react-native/Libraries/FBLazyVector"
   hermes-engine:
     :podspec: "../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec"
     :tag: hermes-v250829098.0.10
-  oms-client-swift-sdk:
-    :path: "../../../swift-sdk"
   OmsClientReactNativeSdk:
-    :path: "../.."
+    :path: "../../.."
   RCTDeprecation:
     :path: "../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation"
   RCTRequired:
@@ -2007,7 +2008,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   FBLazyVector: c00c20551d40126351a6783c47ce75f5b374851b
   hermes-engine: 050bf0e0b60ac8f6b274d047bab7d63320f019cc
-  oms-client-swift-sdk: 8ada57254f2bed937e2e2c96a19a307afa2a9583
+  oms-client-swift-sdk: 8f957c1a5cd944c3136d3a539ef401a9b658e715
   OmsClientReactNativeSdk: 262a4cf48ef0b1fccfca512b391c8d8a4df9bc34
   RCTDeprecation: 3bb167081b134461cfeb875ff7ae1945f8635257
   RCTRequired: 74839f55d5058a133a0bc4569b0afec750957f64
@@ -2081,6 +2082,6 @@ SPEC CHECKSUMS:
   ReactNativeDependencies: 0c57cff3200ba90512de250102f335c2eed64a15
   Yoga: cc155241ea30670878e270d52d74cf29487c4bbb
 
-PODFILE CHECKSUM: 779fd01f210b99ee207bdf4878d35dff3d2f8c22
+PODFILE CHECKSUM: 287c20e8b3351f7d564be9fd7544afe469845e93
 
 COCOAPODS: 1.16.2
