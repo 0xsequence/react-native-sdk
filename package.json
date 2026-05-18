@@ -44,7 +44,8 @@
   "scripts": {
     "example": "yarn workspace oms-client-react-native-sdk-example",
     "sdk-example": "yarn workspace oms-client-react-native-sdk-example",
-    "clean": "del-cli android/build examples/sdk-example/android/build examples/sdk-example/android/app/build examples/sdk-example/ios/build lib",
+    "trails-actions-example": "yarn workspace oms-client-react-native-sdk-trails-actions-example",
+    "clean": "del-cli android/build examples/sdk-example/android/build examples/sdk-example/android/app/build examples/sdk-example/ios/build examples/trails-actions-example/android/build examples/trails-actions-example/android/app/build examples/trails-actions-example/ios/build lib",
     "prepare": "bob build",
     "typecheck": "tsc",
     "lint": "eslint \"**/*.{js,ts,tsx}\""
@@ -81,6 +82,11 @@
   "peerDependencies": {
     "react": "*",
     "react-native": "*"
+  },
+  "resolutions": {
+    "0xtrails": "file:/tmp/trails-rn-pack/0xtrails-0.15.1.tgz",
+    "@0xtrails/api": "file:/tmp/trails-rn-pack/0xtrails-api-0.15.0.tgz",
+    "@0xtrails/wallet": "file:/tmp/trails-rn-pack/0xtrails-wallet-0.1.0.tgz"
   },
   "workspaces": [
     "examples/*"
