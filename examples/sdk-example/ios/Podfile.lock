@@ -4,7 +4,7 @@ PODS:
     - hermes-engine/Pre-built (= 250829098.0.10)
   - hermes-engine/Pre-built (250829098.0.10)
   - oms-client-swift-sdk (0.1.0-alpha.1)
-  - OmsClientReactNativeSdk (0.1.0):
+  - OmsClientReactNativeSdk (0.1.0-alpha.1):
     - hermes-engine
     - oms-client-swift-sdk (= 0.1.0-alpha.1)
     - RCTRequired
@@ -2014,7 +2014,7 @@ SPEC CHECKSUMS:
   FBLazyVector: c00c20551d40126351a6783c47ce75f5b374851b
   hermes-engine: 050bf0e0b60ac8f6b274d047bab7d63320f019cc
   oms-client-swift-sdk: 3ebf1d3e0668616b7c0df697c4c87ca82df5bf35
-  OmsClientReactNativeSdk: f84cb81ceb2dd697f4cc53ee3f03b0be4a86eb15
+  OmsClientReactNativeSdk: db42bf9bff2bc38c2294af4c955bd40825843852
   RCTDeprecation: 3bb167081b134461cfeb875ff7ae1945f8635257
   RCTRequired: 74839f55d5058a133a0bc4569b0afec750957f64
   RCTSwiftUI: 87a316382f3eab4dd13d2a0d0fd2adcce917361a

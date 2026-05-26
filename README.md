@@ -159,8 +159,8 @@ yarn lint
 yarn prepare
 yarn sdk-example build:android
 yarn sdk-example build:ios
-yarn npm publish --dry-run --access public
-yarn npm publish --access public --tag latest
+yarn npm publish --dry-run --access public --tag alpha
+yarn npm publish --access public --tag alpha
 ```
 
 Before publishing a new release, update `package.json` with the target npm
