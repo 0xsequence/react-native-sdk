@@ -147,7 +147,7 @@ MIT
 
 Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)
 
-## Publishing
+## Publishing (for `alpha`)
 
 Publish from a clean worktree. The Android and iOS native SDK dependencies are
 resolved from Maven Central and CocoaPods by Gradle and CocoaPods.
