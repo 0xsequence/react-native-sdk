@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ViewStyle } from 'react-native';
 import {
+  FlatList,
   Keyboard,
   KeyboardAvoidingView,
   Linking,
   LogBox,
+  Modal,
   Platform,
   Pressable,
   SafeAreaView,
@@ -13,28 +15,35 @@ import {
   StatusBar,
   Text,
   TextInput,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { InAppBrowser } from 'react-native-inappbrowser-reborn';
 import {
   completeEmailAuth,
   configure,
   getSupportedNetworks,
   getSession,
   sendTransaction,
+  handleOidcRedirectCallback,
+  OidcProviders,
   signMessage,
   signOut,
   startEmailAuth,
+  startOidcRedirectAuth,
   verifyMessageSignature,
   type OmsClientSessionState,
   type OmsNetwork,
+  type OmsPendingWalletSelection,
+  type OmsWallet,
+  type OmsWalletActivationResult,
 } from 'oms-client-react-native-sdk';
 
 const DEMO_PROJECT_ACCESS_KEY = 'AQAAAAAAAAK2JvvZhWqZ51riasWBftkrVXE';
+const DEMO_PROJECT_ID = 'proj_014kg56dc0a75';
+const DEMO_OIDC_REDIRECT_URI = 'omsclientkotlindemo://auth/callback';
 const DEMO_ENVIRONMENT = {
   apiRpcUrl: 'https://dev-api.sequence.app/rpc/API',
   indexerUrlTemplate: 'https://dev-{value}-indexer.sequence.app/rpc/Indexer/',
-  scope: 'proj_1',
 };
 
 const DEFAULT_TRANSACTION_TO = '0xE5E8B483FfC05967FcFed58cc98D053265af6D99';
@@ -149,15 +158,162 @@ function SessionDetail({ label, value }: { label: string; value: string }) {
   );
 }
 
+function AuthMethodSeparator() {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.authMethodSeparator}
+    >
+      <View style={styles.authMethodSeparatorLine} />
+      <Text style={styles.authMethodSeparatorText}>or</Text>
+      <View style={styles.authMethodSeparatorLine} />
+    </View>
+  );
+}
+
+function ManualWalletSelectionToggle({
+  enabled,
+  disabled,
+  onToggle,
+}: {
+  enabled: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: enabled, disabled }}
+      disabled={disabled}
+      onPress={onToggle}
+      style={({ pressed }) => [
+        styles.toggleRow,
+        disabled && styles.toggleDisabled,
+        pressed && !disabled && styles.buttonPressed,
+      ]}
+    >
+      <View style={[styles.checkbox, enabled && styles.checkboxSelected]}>
+        {enabled ? <View style={styles.checkboxDot} /> : null}
+      </View>
+      <View style={styles.toggleTextGroup}>
+        <Text style={styles.toggleLabel}>Manual wallet selection</Text>
+        <Text style={styles.toggleCaption}>
+          Choose an existing wallet or create one after login.
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function WalletSelectionOption({
+  wallet,
+  disabled,
+  onPress,
+}: {
+  wallet: OmsWallet;
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.walletOption,
+        disabled && styles.buttonDisabled,
+        pressed && !disabled && styles.buttonPressed,
+      ]}
+    >
+      <Text selectable style={styles.walletOptionAddress}>
+        {wallet.address}
+      </Text>
+      <Text style={styles.walletOptionMeta}>
+        {wallet.type}
+        {wallet.reference ? ` · ${wallet.reference}` : ''}
+      </Text>
+    </Pressable>
+  );
+}
+
+function NetworkPickerModal({
+  networks,
+  selectedChainId,
+  visible,
+  onClose,
+  onSelect,
+}: {
+  networks: OmsNetwork[];
+  selectedChainId: string;
+  visible: boolean;
+  onClose: () => void;
+  onSelect: (network: OmsNetwork) => void;
+}) {
+  return (
+    <Modal
+      animationType="fade"
+      onRequestClose={onClose}
+      transparent
+      visible={visible}
+    >
+      <Pressable onPress={onClose} style={styles.modalBackdrop}>
+        <Pressable style={styles.pickerSheet}>
+          <View style={styles.pickerHeader}>
+            <Text style={styles.pickerTitle}>Network</Text>
+            <DemoButton label="Close" onPress={onClose} variant="outline" />
+          </View>
+          <FlatList
+            data={networks}
+            keyExtractor={(network) => network.chainId}
+            renderItem={({ item }) => {
+              const selected = item.chainId === selectedChainId;
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  onPress={() => onSelect(item)}
+                  style={({ pressed }) => [
+                    styles.networkOption,
+                    selected && styles.networkOptionSelected,
+                    pressed && styles.buttonPressed,
+                  ]}
+                >
+                  <View style={styles.networkOptionText}>
+                    <Text style={styles.networkOptionTitle}>
+                      {item.displayName}
+                    </Text>
+                    <Text style={styles.networkOptionSubtitle}>
+                      Chain {item.chainId} · {item.nativeTokenSymbol}
+                    </Text>
+                  </View>
+                  <Text style={styles.networkOptionState}>
+                    {selected ? 'Selected' : 'Select'}
+                  </Text>
+                </Pressable>
+              );
+            }}
+            style={styles.networkPickerList}
+          />
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 export default function App() {
   const [networks, setNetworks] = useState<OmsNetwork[]>([]);
   const [selectedChainId, setSelectedChainId] = useState('80002');
+  const [sdkReady, setSdkReady] = useState(false);
   const [session, setSession] =
     useState<OmsClientSessionState>(SIGNED_OUT_SESSION);
   const [authStage, setAuthStage] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [authStatus, setAuthStatus] = useState('Waiting for sign-in.');
+  const [manualWalletSelection, setManualWalletSelection] = useState(false);
+  const [pendingWalletSelection, setPendingWalletSelection] =
+    useState<OmsPendingWalletSelection | null>(null);
   const [message, setMessage] = useState('test');
   const [lastSignedMessage, setLastSignedMessage] = useState<string | null>(
     null
@@ -174,8 +330,11 @@ export default function App() {
   const [transactionStatus, setTransactionStatus] = useState(
     'Transaction status: waiting to send.'
   );
+  const [networkPickerVisible, setNetworkPickerVisible] = useState(false);
   const [logLines, setLogLines] = useState(['Ready.']);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const handledRedirectUrlsRef = useRef(new Set<string>());
+  const handlingRedirectUrlRef = useRef<string | null>(null);
 
   const selectedNetwork = useMemo(
     () =>
@@ -219,6 +378,97 @@ export default function App() {
     [appendLog]
   );
 
+  const activateWallet = useCallback(
+    async (result: OmsWalletActivationResult) => {
+      const nextSession = await getSession();
+      const address = nextSession.walletAddress ?? result.walletAddress;
+      setPendingWalletSelection(null);
+      setCode('');
+      setAuthStage('email');
+      setSession(
+        nextSession.walletAddress
+          ? nextSession
+          : { ...SIGNED_OUT_SESSION, walletAddress: address }
+      );
+      setAuthStatus('Email login complete');
+      setSignatureStatus('Signature status: ready to sign.');
+      setTransactionStatus('Transaction status: ready to send.');
+      appendLog(`Wallet ready: ${address}`);
+    },
+    [appendLog]
+  );
+
+  const finishOidcRedirectSignIn = useCallback(
+    async (callbackUrl: string) => {
+      if (
+        handlingRedirectUrlRef.current === callbackUrl ||
+        handledRedirectUrlsRef.current.has(callbackUrl)
+      ) {
+        return;
+      }
+
+      handlingRedirectUrlRef.current = callbackUrl;
+      try {
+        setAuthStatus('Completing Google redirect sign-in...');
+        const result = await handleOidcRedirectCallback({
+          callbackUrl,
+          walletSelection: manualWalletSelection ? 'manual' : 'automatic',
+        });
+
+        switch (result.type) {
+          case 'completed':
+            await activateWallet({
+              walletAddress: result.wallet.address,
+              wallet: result.wallet,
+            });
+            setAuthStatus('Google redirect login complete');
+            appendLog(
+              `Google redirect sign-in complete: ${result.wallet.address}`
+            );
+            break;
+          case 'walletSelection':
+            setPendingWalletSelection(result.pendingSelection);
+            setCode('');
+            setAuthStage('email');
+            setAuthStatus('Choose a wallet to finish Google sign-in.');
+            appendLog(
+              `Google redirect wallet selection available: ${result.pendingSelection.wallets.length} existing wallet(s)`
+            );
+            break;
+          case 'failed':
+            throw new Error(result.message);
+          case 'noPendingAuth':
+            setAuthStatus('No pending Google redirect sign-in.');
+            await refreshSession();
+            break;
+          case 'notOidcRedirectCallback':
+            setAuthStatus('Ignored non-auth redirect.');
+            break;
+        }
+      } finally {
+        handledRedirectUrlsRef.current.add(callbackUrl);
+        handlingRedirectUrlRef.current = null;
+      }
+    },
+    [activateWallet, appendLog, manualWalletSelection, refreshSession]
+  );
+
+  const selectNetwork = useCallback(
+    (network: OmsNetwork) => {
+      setSelectedChainId(network.chainId);
+      setNetworkPickerVisible(false);
+      setLastSignedMessage(null);
+      setLastSignature(null);
+      setLastTransactionHash(null);
+      setSignatureStatus('Signature status: ready to sign.');
+      setTransactionStatus('Transaction status: ready to send.');
+      appendLog(
+        `Selected network: ${network.displayName} (${network.chainId})`
+      );
+    },
+    [appendLog]
+  );
+
   useEffect(() => {
     let disposed = false;
 
@@ -226,6 +476,7 @@ export default function App() {
       await runAction('Initializing SDK', async () => {
         await configure({
           projectAccessKey: DEMO_PROJECT_ACCESS_KEY,
+          projectId: DEMO_PROJECT_ID,
           environment: DEMO_ENVIRONMENT,
         });
 
@@ -238,6 +489,7 @@ export default function App() {
         if (nextSession.walletAddress) {
           appendLog(`Wallet ready: ${nextSession.walletAddress}`);
         }
+        setSdkReady(true);
       });
     }
 
@@ -250,6 +502,44 @@ export default function App() {
     };
   }, [appendLog, refreshSession, runAction]);
 
+  useEffect(() => {
+    if (!sdkReady) return undefined;
+
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      if (isDemoOidcRedirectUrl(url)) {
+        runAction(
+          'Handle Google redirect sign-in callback',
+          () => finishOidcRedirectSignIn(url),
+          (error) => {
+            setAuthStatus(
+              `Google redirect completion failed: ${describeError(error)}`
+            );
+          }
+        );
+      }
+    });
+
+    Linking.getInitialURL()
+      .then((url) => {
+        if (url && isDemoOidcRedirectUrl(url)) {
+          runAction(
+            'Handle Google redirect sign-in callback',
+            () => finishOidcRedirectSignIn(url),
+            (error) => {
+              setAuthStatus(
+                `Google redirect completion failed: ${describeError(error)}`
+              );
+            }
+          );
+        }
+      })
+      .catch((error: unknown) => {
+        appendLog(`!! ${describeError(error)}`);
+      });
+
+    return () => subscription.remove();
+  }, [appendLog, finishOidcRedirectSignIn, runAction, sdkReady]);
+
   const walletAddress = session.walletAddress;
   const isSignedIn = walletAddress != null;
   const isBusy = loadingAction != null;
@@ -260,6 +550,7 @@ export default function App() {
       async () => {
         const normalizedEmail = requireText(email, 'Email');
         setAuthStatus('Requesting email code...');
+        setPendingWalletSelection(null);
         await startEmailAuth(normalizedEmail);
         setEmail('');
         setAuthStage('code');
@@ -276,25 +567,76 @@ export default function App() {
       'Confirm code and resolve wallet',
       async () => {
         setAuthStatus('Confirming code and resolving wallet...');
-        const wallet = await completeEmailAuth(
-          requireText(code, 'Verification code')
-        );
-        const nextSession = await getSession();
-        const address = nextSession.walletAddress ?? wallet.address;
-        setCode('');
-        setAuthStage('email');
-        setSession(
-          nextSession.walletAddress
-            ? nextSession
-            : { ...SIGNED_OUT_SESSION, walletAddress: address }
-        );
-        setAuthStatus('Email login complete');
-        setSignatureStatus('Signature status: ready to sign.');
-        setTransactionStatus('Transaction status: ready to send.');
-        appendLog(`Wallet ready: ${address}`);
+        const authResult = await completeEmailAuth({
+          code: requireText(code, 'Verification code'),
+          walletSelection: manualWalletSelection ? 'manual' : 'automatic',
+        });
+
+        if (authResult.type === 'walletSelection') {
+          setPendingWalletSelection(authResult.pendingSelection);
+          setAuthStatus('Choose a wallet to finish sign-in.');
+          appendLog(
+            `Wallet selection available: ${authResult.wallets.length} existing wallet(s)`
+          );
+          return;
+        }
+
+        await activateWallet({
+          walletAddress: authResult.walletAddress,
+          wallet: authResult.wallet,
+        });
       },
       (error) => {
         setAuthStatus(`Code confirmation failed: ${describeError(error)}`);
+      }
+    );
+  };
+
+  const startGoogleRedirectSignIn = () => {
+    runAction(
+      'Start Google redirect sign-in',
+      async () => {
+        setPendingWalletSelection(null);
+        setAuthStatus('Opening Google redirect sign-in...');
+        const started = await startOidcRedirectAuth({
+          provider: OidcProviders.google(),
+          redirectUri: DEMO_OIDC_REDIRECT_URI,
+        });
+        appendLog(`Google redirect auth started: state=${started.state}`);
+
+        if (!(await InAppBrowser.isAvailable())) {
+          throw new Error('In-app browser is not available on this device');
+        }
+
+        setAuthStatus('Waiting for Google redirect callback...');
+        const result = await InAppBrowser.openAuth(
+          started.authorizationUrl,
+          DEMO_OIDC_REDIRECT_URI,
+          {
+            dismissButtonStyle: 'cancel',
+            ephemeralWebSession: false,
+            preferredBarTintColor: '#11141B',
+            preferredControlTintColor: '#F8FAFC',
+            showTitle: true,
+            toolbarColor: '#11141B',
+            navigationBarColor: '#000000',
+            enableUrlBarHiding: true,
+            enableDefaultShare: false,
+            forceCloseOnRedirection: true,
+          }
+        );
+
+        if (result.type === 'success') {
+          await finishOidcRedirectSignIn(result.url);
+        } else {
+          setAuthStatus('Google redirect sign-in cancelled.');
+          appendLog(`Google redirect browser closed: ${result.type}`);
+        }
+      },
+      (error) => {
+        setAuthStatus(
+          `Google redirect sign-in failed: ${describeError(error)}`
+        );
       }
     );
   };
@@ -304,9 +646,40 @@ export default function App() {
       await signOut();
       setSession(SIGNED_OUT_SESSION);
       setCode('');
+      setPendingWalletSelection(null);
       setAuthStage('email');
       setAuthStatus('Waiting for sign-in.');
     });
+  };
+
+  const selectPendingWallet = (wallet: OmsWallet) => {
+    const selection = pendingWalletSelection;
+    if (!selection) return;
+    runAction(
+      'Select wallet',
+      async () => {
+        setAuthStatus('Selecting wallet...');
+        await activateWallet(await selection.selectWallet(wallet.id));
+      },
+      (error) => {
+        setAuthStatus(`Wallet selection failed: ${describeError(error)}`);
+      }
+    );
+  };
+
+  const createPendingWallet = () => {
+    const selection = pendingWalletSelection;
+    if (!selection) return;
+    runAction(
+      'Create wallet',
+      async () => {
+        setAuthStatus('Creating wallet...');
+        await activateWallet(await selection.createAndSelectWallet());
+      },
+      (error) => {
+        setAuthStatus(`Wallet creation failed: ${describeError(error)}`);
+      }
+    );
   };
 
   const logout = () => {
@@ -314,6 +687,7 @@ export default function App() {
       await signOut();
       setSession(SIGNED_OUT_SESSION);
       setAuthStage('email');
+      setPendingWalletSelection(null);
       setAuthStatus('Waiting for sign-in.');
       setLastSignedMessage(null);
       setLastSignature(null);
@@ -348,13 +722,11 @@ export default function App() {
       'Verify last signature',
       async () => {
         const network = requireNetwork(selectedNetwork);
-        const address = requireText(walletAddress, 'Wallet address');
         const signedMessage = requireText(lastSignedMessage, 'Signed message');
         const signature = requireText(lastSignature, 'Signature');
         setSignatureStatus('Signature status: verification in progress...');
         const isValid = await verifyMessageSignature({
           chainId: network.chainId,
-          walletAddress: address,
           message: signedMessage,
           signature,
         });
@@ -377,16 +749,22 @@ export default function App() {
       async () => {
         const network = requireNetwork(selectedNetwork);
         setTransactionStatus('Transaction status: sending in progress...');
-        const txHash = await sendTransaction({
+        const txResult = await sendTransaction({
           chainId: network.chainId,
           to: requireText(transactionTo, 'Transaction destination'),
           value: decimalToBaseUnits(transactionValue, 18),
         });
-        setLastTransactionHash(txHash);
+        setLastTransactionHash(txResult.txnHash);
         setTransactionStatus(
-          `Transaction status: sent on chain ${network.chainId}.`
+          txResult.txnHash
+            ? `Transaction status: sent on chain ${network.chainId}.`
+            : `Transaction status: ${txResult.status}. Transaction hash pending.`
         );
-        appendLog(`Transaction hash=${txHash}`);
+        appendLog(
+          txResult.txnHash
+            ? `Transaction hash=${txResult.txnHash}`
+            : `Transaction ${txResult.txnId} status=${txResult.status}; hash pending`
+        );
       },
       () => {
         setTransactionStatus('Transaction status: send failed.');
@@ -413,31 +791,37 @@ export default function App() {
           keyboardShouldPersistTaps="handled"
           scrollsChildToFocus={false}
         >
-          <TouchableWithoutFeedback
-            accessible={false}
-            onPress={Keyboard.dismiss}
-          >
-            <View style={styles.content}>
-              <View style={styles.header}>
-                <View style={styles.headerText}>
-                  <Text style={styles.title}>Auth Demo</Text>
-                  <Text style={styles.subtitle}>
-                    OMS Client React Native SDK
-                  </Text>
-                </View>
-                <DemoButton
-                  disabled={isBusy || !isSignedIn}
-                  label="Logout"
-                  onPress={logout}
-                  variant="outline"
-                />
+          <View onTouchStart={Keyboard.dismiss} style={styles.content}>
+            <View style={styles.header}>
+              <View style={styles.headerText}>
+                <Text style={styles.title}>Auth Demo</Text>
+                <Text style={styles.subtitle}>OMS Client React Native SDK</Text>
               </View>
+              <DemoButton
+                disabled={isBusy || !isSignedIn}
+                label="Logout"
+                onPress={logout}
+                variant="outline"
+              />
+            </View>
 
-              {!isSignedIn ? (
+            {!isSignedIn ? (
+              <>
                 <Card title="Sign-In">
                   <Text style={styles.status}>{authStatus}</Text>
-                  {authStage === 'email' ? (
+                  {pendingWalletSelection ? (
+                    <Text style={styles.status}>
+                      Finish sign-in by selecting a wallet below.
+                    </Text>
+                  ) : authStage === 'email' ? (
                     <>
+                      <ManualWalletSelectionToggle
+                        disabled={isBusy}
+                        enabled={manualWalletSelection}
+                        onToggle={() =>
+                          setManualWalletSelection((current) => !current)
+                        }
+                      />
                       <Field
                         keyboardType="email-address"
                         label="Email"
@@ -450,9 +834,24 @@ export default function App() {
                         onPress={requestEmailCode}
                         style={styles.fullWidthButton}
                       />
+                      <AuthMethodSeparator />
+                      <DemoButton
+                        disabled={isBusy}
+                        label="Sign In With Google"
+                        onPress={startGoogleRedirectSignIn}
+                        style={styles.fullWidthButton}
+                        variant="outline"
+                      />
                     </>
                   ) : (
                     <>
+                      <ManualWalletSelectionToggle
+                        disabled={isBusy}
+                        enabled={manualWalletSelection}
+                        onToggle={() =>
+                          setManualWalletSelection((current) => !current)
+                        }
+                      />
                       <Text style={styles.sectionLabel}>Verification Code</Text>
                       <Field
                         keyboardType="number-pad"
@@ -478,133 +877,166 @@ export default function App() {
                     </>
                   )}
                 </Card>
-              ) : (
-                <>
-                  <Card title="Wallet">
-                    <Text selectable style={styles.walletText}>
-                      Wallet address:{'\n'}
-                      {walletAddress}
-                    </Text>
-                    <View style={styles.sessionDetails}>
-                      <SessionDetail
-                        label="Login type"
-                        value={formatLoginType(session.loginType)}
-                      />
-                      <SessionDetail
-                        label="Email"
-                        value={session.sessionEmail ?? 'Unavailable'}
-                      />
-                      <SessionDetail
-                        label="Expiration"
-                        value={formatSessionExpiration(session.expiresAt)}
-                      />
-                    </View>
-                    <Text style={styles.fieldLabel}>Network</Text>
-                    <View style={styles.networkList}>
-                      {networks.map((network) => (
-                        <DemoButton
-                          key={network.chainId}
-                          disabled={isBusy}
-                          label={`${network.displayName} (${network.chainId})`}
-                          onPress={() => {
-                            setSelectedChainId(network.chainId);
-                            setLastSignedMessage(null);
-                            setLastSignature(null);
-                            setLastTransactionHash(null);
-                            setSignatureStatus(
-                              'Signature status: ready to sign.'
-                            );
-                            setTransactionStatus(
-                              'Transaction status: ready to send.'
-                            );
-                            appendLog(
-                              `Selected network: ${network.displayName} (${network.chainId})`
-                            );
-                          }}
-                          style={styles.networkButton}
-                          variant={
-                            network.chainId === selectedChainId
-                              ? 'primary'
-                              : 'outline'
-                          }
-                        />
-                      ))}
-                    </View>
-                  </Card>
 
-                  <Card title="Signature">
-                    <Field
-                      label="Message to sign"
-                      multiline
-                      onChangeText={setMessage}
-                      value={message}
-                    />
+                {pendingWalletSelection ? (
+                  <Card title="Select Wallet">
+                    <Text style={styles.status}>
+                      {pendingWalletSelection.wallets.length > 0
+                        ? 'Choose an existing wallet or create a new one.'
+                        : 'No existing wallet is available for this account.'}
+                    </Text>
+                    {pendingWalletSelection.wallets.map((wallet) => (
+                      <WalletSelectionOption
+                        key={wallet.id}
+                        disabled={isBusy}
+                        onPress={() => selectPendingWallet(wallet)}
+                        wallet={wallet}
+                      />
+                    ))}
                     <View style={styles.row}>
                       <DemoButton
                         disabled={isBusy}
-                        label="Sign Message"
-                        onPress={signCurrentMessage}
-                        style={styles.rowButton}
-                      />
-                      <DemoButton
-                        disabled={isBusy || !lastSignature}
-                        label="Verify Signature"
-                        onPress={verifyLastSignature}
+                        label="Cancel"
+                        onPress={cancelCodeStep}
                         style={styles.rowButton}
                         variant="outline"
                       />
+                      <DemoButton
+                        disabled={isBusy}
+                        label="Create New Wallet"
+                        onPress={createPendingWallet}
+                        style={styles.rowButton}
+                      />
                     </View>
-                    <Text selectable style={styles.mono}>
-                      Last signature: {lastSignature ?? 'none'}
-                    </Text>
-                    <Text style={styles.status}>{signatureStatus}</Text>
                   </Card>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <Card title="Wallet">
+                  <Text selectable style={styles.walletText}>
+                    Wallet address:{'\n'}
+                    {walletAddress}
+                  </Text>
+                  <View style={styles.sessionDetails}>
+                    <SessionDetail
+                      label="Login type"
+                      value={formatLoginType(session.loginType)}
+                    />
+                    <SessionDetail
+                      label="Email"
+                      value={session.sessionEmail ?? 'Unavailable'}
+                    />
+                    <SessionDetail
+                      label="Expiration"
+                      value={formatSessionExpiration(session.expiresAt)}
+                    />
+                  </View>
+                  <Text style={styles.fieldLabel}>Network</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={isBusy || networks.length === 0}
+                    onPress={() => setNetworkPickerVisible(true)}
+                    style={({ pressed }) => [
+                      styles.networkPickerButton,
+                      (isBusy || networks.length === 0) &&
+                        styles.buttonDisabled,
+                      pressed && !isBusy && styles.buttonPressed,
+                    ]}
+                  >
+                    <View style={styles.networkPickerText}>
+                      <Text style={styles.networkPickerTitle}>
+                        {selectedNetwork?.displayName ?? 'No network'}
+                      </Text>
+                      <Text style={styles.networkPickerSubtitle}>
+                        {selectedNetwork
+                          ? `Chain ${selectedNetwork.chainId} · ${selectedNetwork.nativeTokenSymbol}`
+                          : 'Supported networks unavailable'}
+                      </Text>
+                    </View>
+                    <Text style={styles.networkPickerAction}>Change</Text>
+                  </Pressable>
+                </Card>
 
-                  <Card title="Transaction">
-                    <Field
-                      label="Transaction destination"
-                      onChangeText={setTransactionTo}
-                      value={transactionTo}
-                    />
-                    <Field
-                      keyboardType="decimal-pad"
-                      label="Transaction value"
-                      onChangeText={setTransactionValue}
-                      value={transactionValue}
-                    />
+                <Card title="Signature">
+                  <Field
+                    label="Message to sign"
+                    multiline
+                    onChangeText={setMessage}
+                    value={message}
+                  />
+                  <View style={styles.row}>
                     <DemoButton
                       disabled={isBusy}
-                      label="Send Transaction"
-                      onPress={sendCurrentTransaction}
-                      style={styles.fullWidthButton}
+                      label="Sign Message"
+                      onPress={signCurrentMessage}
+                      style={styles.rowButton}
                     />
-                    <Text selectable style={styles.mono}>
-                      Last tx hash: {lastTransactionHash ?? 'none'}
-                    </Text>
-                    <Text style={styles.status}>{transactionStatus}</Text>
                     <DemoButton
-                      disabled={isBusy || !lastTransactionHash}
-                      label="Open Tx In Explorer"
-                      onPress={openExplorer}
-                      style={styles.fullWidthButton}
+                      disabled={isBusy || !lastSignature}
+                      label="Verify Signature"
+                      onPress={verifyLastSignature}
+                      style={styles.rowButton}
                       variant="outline"
                     />
-                  </Card>
-                </>
-              )}
+                  </View>
+                  <Text selectable style={styles.mono}>
+                    Last signature: {lastSignature ?? 'none'}
+                  </Text>
+                  <Text style={styles.status}>{signatureStatus}</Text>
+                </Card>
 
-              <Card title="Log">
-                <Text selectable style={styles.logText}>
-                  {logLines.join('\n')}
-                </Text>
-                {loadingAction ? (
-                  <Text style={styles.loading}>Running: {loadingAction}</Text>
-                ) : null}
-              </Card>
-            </View>
-          </TouchableWithoutFeedback>
+                <Card title="Transaction">
+                  <Field
+                    label="Transaction destination"
+                    onChangeText={setTransactionTo}
+                    value={transactionTo}
+                  />
+                  <Field
+                    keyboardType="decimal-pad"
+                    label="Transaction value"
+                    onChangeText={setTransactionValue}
+                    value={transactionValue}
+                  />
+                  <DemoButton
+                    disabled={isBusy}
+                    label="Send Transaction"
+                    onPress={sendCurrentTransaction}
+                    style={styles.fullWidthButton}
+                  />
+                  <Text selectable style={styles.mono}>
+                    Last tx hash: {lastTransactionHash ?? 'none'}
+                  </Text>
+                  <Text style={styles.status}>{transactionStatus}</Text>
+                  <DemoButton
+                    disabled={isBusy || !lastTransactionHash}
+                    label="Open Tx In Explorer"
+                    onPress={openExplorer}
+                    style={styles.fullWidthButton}
+                    variant="outline"
+                  />
+                </Card>
+              </>
+            )}
+
+            <Card title="Log">
+              <Text selectable style={styles.logText}>
+                {logLines.join('\n')}
+              </Text>
+              {loadingAction ? (
+                <Text style={styles.loading}>Running: {loadingAction}</Text>
+              ) : null}
+            </Card>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <NetworkPickerModal
+        networks={networks}
+        onClose={() => setNetworkPickerVisible(false)}
+        onSelect={selectNetwork}
+        selectedChainId={selectedChainId}
+        visible={networkPickerVisible}
+      />
     </SafeAreaView>
   );
 }
@@ -701,6 +1133,10 @@ function explorerUrlFor(chainId: string, txHash: string): string {
     return `https://polygonscan.com/tx/${txHash}`;
   }
   return `https://amoy.polygonscan.com/tx/${txHash}`;
+}
+
+function isDemoOidcRedirectUrl(url: string): boolean {
+  return url.startsWith(DEMO_OIDC_REDIRECT_URI);
 }
 
 const styles = StyleSheet.create({
@@ -821,6 +1257,22 @@ const styles = StyleSheet.create({
   rowButton: {
     flex: 1,
   },
+  authMethodSeparator: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  authMethodSeparatorLine: {
+    backgroundColor: '#303644',
+    flex: 1,
+    height: 1,
+  },
+  authMethodSeparatorText: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
   sectionLabel: {
     color: '#F8FAFC',
     fontSize: 16,
@@ -854,6 +1306,70 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
+  toggleRow: {
+    alignItems: 'center',
+    backgroundColor: '#171B24',
+    borderColor: '#303644',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    padding: 12,
+  },
+  toggleDisabled: {
+    opacity: 0.6,
+  },
+  checkbox: {
+    alignItems: 'center',
+    borderColor: '#64748B',
+    borderRadius: 4,
+    borderWidth: 1,
+    height: 22,
+    justifyContent: 'center',
+    width: 22,
+  },
+  checkboxSelected: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#F8FAFC',
+  },
+  checkboxDot: {
+    backgroundColor: '#000000',
+    borderRadius: 3,
+    height: 10,
+    width: 10,
+  },
+  toggleTextGroup: {
+    flex: 1,
+    gap: 2,
+  },
+  toggleLabel: {
+    color: '#F8FAFC',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  toggleCaption: {
+    color: '#94A3B8',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  walletOption: {
+    backgroundColor: '#0B0D12',
+    borderColor: '#303644',
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+    padding: 12,
+  },
+  walletOptionAddress: {
+    color: '#7EE787',
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  walletOptionMeta: {
+    color: '#94A3B8',
+    fontSize: 12,
+  },
   status: {
     color: '#CBD5E1',
     fontSize: 13,
@@ -876,13 +1392,97 @@ const styles = StyleSheet.create({
     color: '#7DD3FC',
     fontSize: 12,
   },
-  networkList: {
+  networkPickerButton: {
+    alignItems: 'center',
+    backgroundColor: '#0B0D12',
+    borderColor: '#303644',
+    borderRadius: 8,
+    borderWidth: 1,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    gap: 12,
+    justifyContent: 'space-between',
+    minHeight: 58,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  networkButton: {
-    flexGrow: 1,
-    minWidth: 140,
+  networkPickerText: {
+    flex: 1,
+    gap: 3,
+  },
+  networkPickerTitle: {
+    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  networkPickerSubtitle: {
+    color: '#94A3B8',
+    fontSize: 12,
+  },
+  networkPickerAction: {
+    color: '#7DD3FC',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  modalBackdrop: {
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 16,
+  },
+  pickerSheet: {
+    backgroundColor: '#11141B',
+    borderColor: '#303644',
+    borderRadius: 8,
+    borderWidth: 1,
+    maxHeight: '72%',
+    padding: 16,
+  },
+  pickerHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  pickerTitle: {
+    color: '#F8FAFC',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  networkPickerList: {
+    flexGrow: 0,
+  },
+  networkOption: {
+    alignItems: 'center',
+    borderColor: '#303644',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    padding: 12,
+  },
+  networkOptionSelected: {
+    backgroundColor: '#1F2937',
+    borderColor: '#F8FAFC',
+  },
+  networkOptionText: {
+    flex: 1,
+    gap: 3,
+  },
+  networkOptionTitle: {
+    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  networkOptionSubtitle: {
+    color: '#94A3B8',
+    fontSize: 12,
+  },
+  networkOptionState: {
+    color: '#7DD3FC',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

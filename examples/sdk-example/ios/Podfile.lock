@@ -3,10 +3,10 @@ PODS:
   - hermes-engine (250829098.0.10):
     - hermes-engine/Pre-built (= 250829098.0.10)
   - hermes-engine/Pre-built (250829098.0.10)
-  - oms-client-swift-sdk (0.0.1)
+  - oms-client-swift-sdk (0.1.0-alpha.1)
   - OmsClientReactNativeSdk (0.1.0):
     - hermes-engine
-    - oms-client-swift-sdk (~> 0.0.1)
+    - oms-client-swift-sdk (= 0.1.0-alpha.1)
     - RCTRequired
     - RCTTypeSafety
     - React-Core
@@ -1771,6 +1771,8 @@ PODS:
     - React-utils (= 0.85.0)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.85.0)
+  - RNInAppBrowser (3.7.1):
+    - React-Core
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -1848,6 +1850,7 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios/ReactCodegen`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
+  - RNInAppBrowser (from `../node_modules/react-native-inappbrowser-reborn`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -2002,14 +2005,16 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   ReactNativeDependencies:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
+  RNInAppBrowser:
+    :path: "../node_modules/react-native-inappbrowser-reborn"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
   FBLazyVector: c00c20551d40126351a6783c47ce75f5b374851b
   hermes-engine: 050bf0e0b60ac8f6b274d047bab7d63320f019cc
-  oms-client-swift-sdk: 8f957c1a5cd944c3136d3a539ef401a9b658e715
-  OmsClientReactNativeSdk: 262a4cf48ef0b1fccfca512b391c8d8a4df9bc34
+  oms-client-swift-sdk: 3ebf1d3e0668616b7c0df697c4c87ca82df5bf35
+  OmsClientReactNativeSdk: f84cb81ceb2dd697f4cc53ee3f03b0be4a86eb15
   RCTDeprecation: 3bb167081b134461cfeb875ff7ae1945f8635257
   RCTRequired: 74839f55d5058a133a0bc4569b0afec750957f64
   RCTSwiftUI: 87a316382f3eab4dd13d2a0d0fd2adcce917361a
@@ -2080,6 +2085,7 @@ SPEC CHECKSUMS:
   ReactCodegen: ab01ebfffac5cda9140204eb872ed97c15df225f
   ReactCommon: 47ef95b0920948a0b54d7439f7452501eeeac071
   ReactNativeDependencies: 0c57cff3200ba90512de250102f335c2eed64a15
+  RNInAppBrowser: b53e6f6072c931115bc22ac9dc9510ac2cbea62d
   Yoga: cc155241ea30670878e270d52d74cf29487c4bbb
 
 PODFILE CHECKSUM: 287c20e8b3351f7d564be9fd7544afe469845e93

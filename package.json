@@ -84,9 +84,9 @@
     "react-native": "*"
   },
   "resolutions": {
-    "0xtrails": "file:/tmp/trails-rn-pack/0xtrails-0.15.1.tgz",
-    "@0xtrails/api": "file:/tmp/trails-rn-pack/0xtrails-api-0.15.0.tgz",
-    "@0xtrails/wallet": "file:/tmp/trails-rn-pack/0xtrails-wallet-0.1.0.tgz"
+    "0xtrails": "0.16.0",
+    "@0xtrails/api": "0.16.0",
+    "@0xtrails/wallet": "0.16.0"
   },
   "workspaces": [
     "examples/*"

@@ -5,15 +5,15 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
-"0xtrails@file:/tmp/trails-rn-pack/0xtrails-0.15.1.tgz::locator=oms-client-react-native-sdk%40workspace%3A.":
-  version: 0.15.1
-  resolution: "0xtrails@file:/tmp/trails-rn-pack/0xtrails-0.15.1.tgz#/tmp/trails-rn-pack/0xtrails-0.15.1.tgz::hash=f4b97f&locator=oms-client-react-native-sdk%40workspace%3A."
+"0xtrails@npm:0.16.0":
+  version: 0.16.0
+  resolution: "0xtrails@npm:0.16.0"
   dependencies:
     "@0xsequence/indexer": "npm:^3.0.4"
     "@0xsequence/metadata": "npm:^3.0.4"
     "@0xsequence/wallet-primitives": "npm:3.0.0-beta.19"
-    "@0xtrails/api": "npm:0.15.0"
-    "@0xtrails/wallet": "npm:0.1.0"
+    "@0xtrails/api": "npm:0.16.0"
+    "@0xtrails/wallet": "npm:0.16.0"
     "@databeat/tracker": "npm:0.9.3"
     "@emotion/is-prop-valid": "npm:1.4.0"
     "@meshconnect/web-link-sdk": "npm:3.7.1"
@@ -30,33 +30,7 @@ __metadata:
     react: ^18.0.0 || ^19.0.0
     react-dom: ^18.0.0 || ^19.0.0
     viem: ^2.41.0
-  checksum: 10c0/95c56ecd9212bfe4ef508fec92521f06d3cff389aa82b357aeec5fc3fe8a1b8d559bffc6f2dc640f552c03ec2dbe9e014a77c690aa1de796e278891cd78de41c
-  languageName: node
-  linkType: hard
-
-"@0xsequence/abi@npm:2.3.43":
-  version: 2.3.43
-  resolution: "@0xsequence/abi@npm:2.3.43"
-  checksum: 10c0/a3798891e23fa6e203781a0c2fc0a99fbd897d5f339f05067572f360d12c329493dabdb54256af50b2763cc44d538a28bdeb428c7810151cfb9f97eea93daa97
-  languageName: node
-  linkType: hard
-
-"@0xsequence/core@npm:2.3.43":
-  version: 2.3.43
-  resolution: "@0xsequence/core@npm:2.3.43"
-  dependencies:
-    "@0xsequence/abi": "npm:2.3.43"
-    "@0xsequence/utils": "npm:2.3.43"
-  peerDependencies:
-    ethers: ">=6"
-  checksum: 10c0/2e2feb39354fd0804f25402b5a147e5a36075374d8d773ad2ab09d6ee9be32d526e1d5a061f2947bc251f6387c500f0edab13eed58285e00ba7de0b5a59df92a
-  languageName: node
-  linkType: hard
-
-"@0xsequence/indexer@npm:2.3.43":
-  version: 2.3.43
-  resolution: "@0xsequence/indexer@npm:2.3.43"
-  checksum: 10c0/91a22472456363c58fbc369c7f488eb298abcdb3b585e26f4d7e6f39246d4058ccbdd6ec579e8ccd19d730df6824420c07092e6845716e77e56c9a1784459b8e
+  checksum: 10c0/ba22b6f09df75078360952eb2738fd4b23f7dda9cdc5d44544d3e3f28e1209b0da0a62a46cdf9d98bcdc09678aeb41e01fc7d770ad4d6cbf59e8899871eb5a4c
   languageName: node
   linkType: hard
 
@@ -74,44 +48,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@0xsequence/network@npm:^2.3.43":
-  version: 2.3.43
-  resolution: "@0xsequence/network@npm:2.3.43"
-  dependencies:
-    "@0xsequence/core": "npm:2.3.43"
-    "@0xsequence/indexer": "npm:2.3.43"
-    "@0xsequence/relayer": "npm:2.3.43"
-    "@0xsequence/utils": "npm:2.3.43"
-  peerDependencies:
-    ethers: ">=6"
-  checksum: 10c0/a4dffae7449fffe342f4c510c4244205cc361e4d0d93ad480968a5a89874062b3eb8ee6271d4a8b337f2ad79675fa655ccdafee87e65b99ae44b826333b3f90e
-  languageName: node
-  linkType: hard
-
-"@0xsequence/relayer@npm:2.3.43":
-  version: 2.3.43
-  resolution: "@0xsequence/relayer@npm:2.3.43"
-  dependencies:
-    "@0xsequence/abi": "npm:2.3.43"
-    "@0xsequence/core": "npm:2.3.43"
-    "@0xsequence/utils": "npm:2.3.43"
-  peerDependencies:
-    ethers: ">=6"
-  checksum: 10c0/3e2d67b283061adad66317abd2dca19ba7477a28552bd84c319db73bf07a36d32da49664e3392b2f83d3345b798a482a5d8c111073a220da71c0bf8a08447a62
-  languageName: node
-  linkType: hard
-
-"@0xsequence/utils@npm:2.3.43":
-  version: 2.3.43
-  resolution: "@0xsequence/utils@npm:2.3.43"
-  dependencies:
-    js-base64: "npm:^3.7.2"
-  peerDependencies:
-    ethers: ">=6"
-  checksum: 10c0/5ca695fcc3fdac2a2b73636a942e4154bb0c4bec05babc09f8433f4dbc70e90ce4c3732ecc1fea512637230da569a2cbb869a250520efb479746c994082c6838
-  languageName: node
-  linkType: hard
-
 "@0xsequence/wallet-primitives@npm:3.0.0-beta.19":
   version: 3.0.0-beta.19
   resolution: "@0xsequence/wallet-primitives@npm:3.0.0-beta.19"
@@ -121,18 +57,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@0xtrails/api@file:/tmp/trails-rn-pack/0xtrails-api-0.15.0.tgz::locator=oms-client-react-native-sdk%40workspace%3A.":
-  version: 0.15.0
-  resolution: "@0xtrails/api@file:/tmp/trails-rn-pack/0xtrails-api-0.15.0.tgz#/tmp/trails-rn-pack/0xtrails-api-0.15.0.tgz::hash=272478&locator=oms-client-react-native-sdk%40workspace%3A."
-  checksum: 10c0/9ecb4239a4513d66f868ce301303517f3e2b9948ff5e401110f784fd2dd4d4090ad2cff14a0cd45832967fdaad7cf386f6dc342e2c3f3a4952d63c4eb12712c7
+"@0xtrails/api@npm:0.16.0":
+  version: 0.16.0
+  resolution: "@0xtrails/api@npm:0.16.0"
+  checksum: 10c0/ac4f33aca737bda4a5407b191a9144738f9ffa7321e23092b7ef5dfba4be1bffd106922dbfa90031644818deb2a9c11cfcc71f45090a993f28338d5ec0ecb0c1
   languageName: node
   linkType: hard
 
-"@0xtrails/wallet@file:/tmp/trails-rn-pack/0xtrails-wallet-0.1.0.tgz::locator=oms-client-react-native-sdk%40workspace%3A.":
-  version: 0.1.0
-  resolution: "@0xtrails/wallet@file:/tmp/trails-rn-pack/0xtrails-wallet-0.1.0.tgz#/tmp/trails-rn-pack/0xtrails-wallet-0.1.0.tgz::hash=4170d8&locator=oms-client-react-native-sdk%40workspace%3A."
+"@0xtrails/wallet@npm:0.16.0":
+  version: 0.16.0
+  resolution: "@0xtrails/wallet@npm:0.16.0"
   dependencies:
-    "@0xsequence/network": "npm:^2.3.43"
     "@base-org/account": "npm:2.4.0"
     "@safe-global/safe-apps-provider": "npm:0.18.6"
     "@safe-global/safe-apps-sdk": "npm:9.1.0"
@@ -142,7 +77,7 @@ __metadata:
     "@tanstack/react-query": ^5.90.20
     react: ^18.0.0 || ^19.0.0
     viem: ^2.41.0
-  checksum: 10c0/cf182ebbbc97384b9f5e12fa4bf9bdbde4627bf06c4aa15da8fd1e907b6b2667b99985190a0c63dad0a6cba599e2bf99e2ed26894db9f208e5f0350404441506
+  checksum: 10c0/ed8faaf189aa132f988777264689091a125889f0d6e8597f529de4b47e6ce66bfd899fd651d0ffcb144001384fdc247f91ff058217c21252b0cbf9887d20b475
   languageName: node
   linkType: hard
 
@@ -8647,13 +8582,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"js-base64@npm:^3.7.2":
-  version: 3.7.8
-  resolution: "js-base64@npm:3.7.8"
-  checksum: 10c0/a4452a7e7f32b0ef568a344157efec00c14593bbb1cf0c113f008dddff7ec515b35147af0cd70a7735adb69a2a2bdee921adffea2ea465e2c856ba50d649b11e
-  languageName: node
-  linkType: hard
-
 "js-tokens@npm:^3.0.0 || ^4.0.0, js-tokens@npm:^4.0.0":
   version: 4.0.0
   resolution: "js-tokens@npm:4.0.0"
@@ -9746,6 +9674,7 @@ __metadata:
     react: "npm:19.2.3"
     react-native: "npm:0.85.0"
     react-native-builder-bob: "npm:^0.41.0"
+    react-native-inappbrowser-reborn: "npm:3.7.1"
     react-native-monorepo-config: "npm:^0.3.3"
   languageName: unknown
   linkType: soft
@@ -9754,8 +9683,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "oms-client-react-native-sdk-trails-actions-example@workspace:examples/trails-actions-example"
   dependencies:
-    0xtrails: "file:/tmp/trails-rn-pack/0xtrails-0.15.1.tgz"
-    "@0xtrails/api": "file:/tmp/trails-rn-pack/0xtrails-api-0.15.0.tgz"
+    0xtrails: "npm:0.16.0"
+    "@0xtrails/api": "npm:0.16.0"
     "@babel/core": "npm:^7.25.2"
     "@babel/plugin-transform-export-namespace-from": "npm:^7.27.1"
     "@babel/preset-env": "npm:^7.25.3"
@@ -9871,6 +9800,15 @@ __metadata:
     is-docker: "npm:^2.0.0"
     is-wsl: "npm:^2.1.1"
   checksum: 10c0/77573a6a68f7364f3a19a4c80492712720746b63680ee304555112605ead196afe91052bd3c3d165efdf4e9d04d255e87de0d0a77acec11ef47fd5261251813f
+  languageName: node
+  linkType: hard
+
+"opencollective-postinstall@npm:^2.0.3":
+  version: 2.0.3
+  resolution: "opencollective-postinstall@npm:2.0.3"
+  bin:
+    opencollective-postinstall: index.js
+  checksum: 10c0/8a0104a218bc1afaae943f0af378461eeb2836f9848bad872bbd067ec5d1d9791636f307454ab77d0746f10341366f295384656a340ebdb87a2585058e8567e5
   languageName: node
   linkType: hard
 
@@ -10485,6 +10423,18 @@ __metadata:
   bin:
     bob: bin/bob
   checksum: 10c0/51add65da65b1bd1a2c1e4e07886e33bec50a927db5adcc95d9002e65cf7ddaa45f58883d5009df94058c8a4c6f5d2e17bf891a1f0977e2d6afafa988fa872e5
+  languageName: node
+  linkType: hard
+
+"react-native-inappbrowser-reborn@npm:3.7.1":
+  version: 3.7.1
+  resolution: "react-native-inappbrowser-reborn@npm:3.7.1"
+  dependencies:
+    invariant: "npm:^2.2.4"
+    opencollective-postinstall: "npm:^2.0.3"
+  peerDependencies:
+    react-native: ">=0.56"
+  checksum: 10c0/eb5560b9ee8ffba05f28d09b356076b5533a19fd115b2d35c55877e8dfe388666e2ab38b6224e1cdec8ab9db0d2f64c646b33ba20808e2ef31b7ef647644f129
   languageName: node
   linkType: hard
 

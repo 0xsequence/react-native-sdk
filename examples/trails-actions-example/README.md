@@ -34,8 +34,6 @@ or:
 corepack yarn trails-actions-example ios
 ```
 
-## Local Trails package
+## Trails package
 
-This app currently points at local tarballs under `/tmp/trails-rn-pack` because
-it depends on unreleased Trails actions exports. Replace those `file:` package
-references with published package versions once the Trails changes are released.
+This app uses the published `0xtrails` and `@0xtrails/api` packages.
