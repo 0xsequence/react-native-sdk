@@ -2,6 +2,7 @@ import OmsClientReactNativeSdk from './NativeOmsClientReactNativeSdk';
 import type {
   GetTokenBalancesParams,
   OmsClientConfig,
+  OmsSendTransactionResult,
   OmsClientSessionState,
   OmsNetwork,
   OmsTokenBalancesResult,
@@ -13,10 +14,10 @@ import type {
 export function configure(config: OmsClientConfig): Promise<void> {
   return OmsClientReactNativeSdk.configure(
     config.projectAccessKey,
+    config.projectId,
     config.environment?.walletApiUrl ?? null,
     config.environment?.apiRpcUrl ?? null,
-    config.environment?.indexerUrlTemplate ?? null,
-    config.environment?.scope ?? null
+    config.environment?.indexerUrlTemplate ?? null
   );
 }
 
@@ -50,7 +51,7 @@ export function signMessage(chainId: string, message: string): Promise<string> {
 
 export function sendTransaction(
   params: SendTransactionParams
-): Promise<string> {
+): Promise<OmsSendTransactionResult> {
   return OmsClientReactNativeSdk.sendTransaction(
     params.chainId,
     params.to,

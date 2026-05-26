@@ -6,24 +6,27 @@ import React
 public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
   private var client: OMSClient?
 
-  @objc(configureWithProjectAccessKey:walletApiUrl:apiRpcUrl:indexerUrlTemplate:scope:resolve:reject:)
+  @objc(configureWithProjectAccessKey:projectId:walletApiUrl:apiRpcUrl:indexerUrlTemplate:resolve:reject:)
   public func configure(
     projectAccessKey: String,
+    projectId: String,
     walletApiUrl: String?,
     apiRpcUrl: String?,
     indexerUrlTemplate: String?,
-    scope: String?,
     resolve: @escaping RCTPromiseResolveBlock,
     reject: @escaping RCTPromiseRejectBlock
   ) {
     let environment = OMSClientEnvironment(
       walletApiUrl: walletApiUrl ?? OMSClientEnvironment.defaultWalletApiUrl,
       apiRpcUrl: apiRpcUrl ?? OMSClientEnvironment.defaultApiRpcUrl,
-      indexerUrlTemplate: indexerUrlTemplate ?? OMSClientEnvironment.defaultIndexerUrlTemplate,
-      scope: scope ?? OMSClientEnvironment.defaultScope
+      indexerUrlTemplate: indexerUrlTemplate ?? OMSClientEnvironment.defaultIndexerUrlTemplate
     )
 
-    client = OMSClient(projectAccessKey: projectAccessKey, environment: environment)
+    client = OMSClient(
+      projectAccessKey: projectAccessKey,
+      projectId: projectId,
+      environment: environment
+    )
     resolve(nil)
   }
 
@@ -116,11 +119,20 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
   ) {
     run(resolve: resolve, reject: reject) { client in
       let network = try self.requireNetwork(client, chainId: chainId)
-      return try await client.wallet.sendTransaction(
+      let result = try await client.wallet.sendTransaction(
         network: network,
         request: SendTransactionRequest(to: to, value: value, data: data)
       )
+      return self.sendTransactionResultDictionary(result)
     }
+  }
+
+  private func sendTransactionResultDictionary(_ result: SendTransactionResponse) -> [String: Any] {
+    [
+      "txnId": result.txnId,
+      "status": result.status.wireValue,
+      "txnHash": result.txnHash ?? NSNull()
+    ]
   }
 
   @objc(getTokenBalancesWithChainId:contractAddress:walletAddress:includeMetadata:resolve:reject:)
@@ -192,7 +204,8 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
   }
 
   private func requireNetwork(_ client: OMSClient, chainId: String) throws -> Network {
-    guard let network = client.network(chainId: chainId) else {
+    guard let chainIdValue = Int(chainId),
+          let network = client.findNetworkById(chainId: chainIdValue) else {
       throw makeError("Unsupported chain id: \(chainId)")
     }
     return network

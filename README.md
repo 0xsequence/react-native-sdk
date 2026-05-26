@@ -15,12 +15,14 @@ import {
   completeEmailAuth,
   configure,
   getWalletAddress,
+  sendTransaction,
   signMessage,
   startEmailAuth,
 } from 'oms-client-react-native-sdk';
 
 await configure({
   projectAccessKey: '<project-access-key>',
+  projectId: '<project-id>',
 });
 
 await startEmailAuth('player@example.com');
@@ -28,6 +30,12 @@ const wallet = await completeEmailAuth('<otp-code>');
 
 const signature = await signMessage('137', 'Hello from React Native');
 const address = await getWalletAddress();
+const transaction = await sendTransaction({
+  chainId: '137',
+  to: '<recipient-address>',
+  value: '0',
+});
+console.log(transaction.txnHash ?? transaction.txnId, transaction.status);
 ```
 
 ## Native SDK Dependencies

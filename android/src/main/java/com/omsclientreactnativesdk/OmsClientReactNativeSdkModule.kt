@@ -8,10 +8,12 @@ import com.omsclient.kotlin_sdk.Network
 import com.omsclient.kotlin_sdk.OMSClient
 import com.omsclient.kotlin_sdk.OMSClientSessionState
 import com.omsclient.kotlin_sdk.models.SendTransactionRequest
+import com.omsclient.kotlin_sdk.models.SendTransactionResponse
 import com.omsclient.kotlin_sdk.models.TokenBalance
 import com.omsclient.kotlin_sdk.models.TokenBalancesPage
 import com.omsclient.kotlin_sdk.models.TokenBalancesResult
 import com.omsclient.kotlin_sdk.network.OMSClientEnvironment
+import com.omsclient.kotlin_sdk.wallet.CompleteAuthResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,21 +29,21 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
 
   override fun configure(
     projectAccessKey: String,
+    projectId: String,
     walletApiUrl: String?,
     apiRpcUrl: String?,
     indexerUrlTemplate: String?,
-    scope: String?,
     promise: Promise
   ) {
     try {
       client = OMSClient(
         context = reactApplicationContext,
-        projectAccessKey = projectAccessKey,
+        publicApiKey = projectAccessKey,
+        projectId = projectId,
         environment = OMSClientEnvironment(
           walletApiUrl ?: OMSClientEnvironment.walletApiUrlDefault,
           apiRpcUrl ?: OMSClientEnvironment.apiRpcUrlDefault,
-          indexerUrlTemplate ?: OMSClientEnvironment.indexerUrlTemplateDefault,
-          scope ?: DEFAULT_SCOPE
+          indexerUrlTemplate ?: OMSClientEnvironment.indexerUrlTemplateDefault
         )
       )
       promise.resolve(null)
@@ -60,10 +62,11 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
 
   override fun getSupportedNetworks(promise: Promise) {
     val networks = Arguments.createArray()
-    Network.values().forEach { network ->
+    val supportedNetworks = client?.supportedNetworks ?: Network.entries
+    supportedNetworks.forEach { network ->
       networks.pushMap(
         Arguments.createMap().apply {
-          putString("chainId", network.chainId)
+          putString("chainId", network.id.toString())
           putString("displayName", network.displayName)
         }
       )
@@ -73,21 +76,27 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
 
   override fun startEmailAuth(email: String, promise: Promise) {
     launch(promise) {
-      requireClient().startEmailAuth(email)
+      requireClient().wallet.startEmailAuth(email)
       null
     }
   }
 
   override fun completeEmailAuth(code: String, promise: Promise) {
     launch(promise) {
-      val wallet = requireClient().completeEmailAuth(code)
+      val authResult = requireClient().wallet.completeEmailAuth(code)
+      val wallet = when (authResult) {
+        is CompleteAuthResult.WalletSelected -> authResult.wallet
+        is CompleteAuthResult.WalletSelection -> error(
+          "Manual wallet selection is not exposed by the React Native SDK"
+        )
+      }
       walletMap(wallet.id, wallet.address)
     }
   }
 
   override fun signOut(promise: Promise) {
     try {
-      requireClient().signOut()
+      requireClient().wallet.signOut()
       promise.resolve(null)
     } catch (throwable: Throwable) {
       reject(promise, throwable)
@@ -100,7 +109,7 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
       activeClient.wallet.signMessage(
         network = activeClient.requireNetwork(chainId),
         message = message
-      ).signature
+      )
     }
   }
 
@@ -113,16 +122,16 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
   ) {
     launch(promise) {
       val activeClient = requireClient()
-      val result = activeClient.wallet.sendTransaction(
-        network = activeClient.requireNetwork(chainId),
-        request = SendTransactionRequest(
-          to = to,
-          value = BigInteger(value),
-          data = data
+      transactionResultMap(
+        activeClient.wallet.sendTransaction(
+          network = activeClient.requireNetwork(chainId),
+          request = SendTransactionRequest(
+            to = to,
+            value = BigInteger(value),
+            data = data
+          )
         )
       )
-
-      result.txHash ?: error("Transaction completed without a transaction hash")
     }
   }
 
@@ -184,7 +193,8 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
     client ?: error("Call configure before using the OMS client")
 
   private fun OMSClient.requireNetwork(chainId: String): Network =
-    network(chainId) ?: error("Unsupported chain id: $chainId")
+    supportedNetworks.firstOrNull { it.id.toString() == chainId }
+      ?: error("Unsupported chain id: $chainId")
 
   private fun walletMap(id: String, address: String): WritableMap =
     Arguments.createMap().apply {
@@ -198,6 +208,13 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
       putNullableString("expiresAt", session?.expiresAt?.toString())
       putNullableString("loginType", session?.loginType?.name)
       putNullableString("sessionEmail", session?.sessionEmail)
+    }
+
+  private fun transactionResultMap(result: SendTransactionResponse): WritableMap =
+    Arguments.createMap().apply {
+      putString("txnId", result.txnId)
+      putString("status", result.status.wireValue)
+      putNullableString("txnHash", result.txnHash)
     }
 
   private fun tokenBalancesResultMap(result: TokenBalancesResult): WritableMap =
@@ -245,6 +262,5 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
 
   companion object {
     const val NAME = NativeOmsClientReactNativeSdkSpec.NAME
-    private const val DEFAULT_SCOPE = "proj_1"
   }
 }

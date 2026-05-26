@@ -1,6 +1,7 @@
 import type {
   GetTokenBalancesParams,
   OmsClientConfig,
+  OmsSendTransactionResult,
   OmsClientSessionState,
   OmsNetwork,
   OmsTokenBalancesResult,
@@ -52,7 +53,7 @@ export function signMessage(
 
 export function sendTransaction(
   _params: SendTransactionParams
-): Promise<string> {
+): Promise<OmsSendTransactionResult> {
   unsupported();
 }
 

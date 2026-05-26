@@ -40,13 +40,21 @@ export type OmsTokenBalancesResult = {
   balances: OmsTokenBalance[];
 };
 
+export type OmsTransactionStatus = string;
+
+export type OmsSendTransactionResult = {
+  txnId: string;
+  status: OmsTransactionStatus;
+  txnHash: string | null;
+};
+
 export interface Spec extends TurboModule {
   configure(
     projectAccessKey: string,
+    projectId: string,
     walletApiUrl: string | null,
     apiRpcUrl: string | null,
-    indexerUrlTemplate: string | null,
-    scope: string | null
+    indexerUrlTemplate: string | null
   ): Promise<void>;
   getWalletAddress(): Promise<string | null>;
   getSession(): Promise<OmsClientSessionState>;
@@ -60,7 +68,7 @@ export interface Spec extends TurboModule {
     to: string,
     value: string,
     data: string | null
-  ): Promise<string>;
+  ): Promise<OmsSendTransactionResult>;
   getTokenBalances(
     chainId: string,
     contractAddress: string,

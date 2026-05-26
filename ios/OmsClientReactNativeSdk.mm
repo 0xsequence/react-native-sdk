@@ -21,18 +21,18 @@
 }
 
 - (void)configure:(NSString *)projectAccessKey
+        projectId:(NSString *)projectId
      walletApiUrl:(nullable NSString *)walletApiUrl
         apiRpcUrl:(nullable NSString *)apiRpcUrl
 indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
-            scope:(nullable NSString *)scope
           resolve:(RCTPromiseResolveBlock)resolve
            reject:(RCTPromiseRejectBlock)reject
 {
   [_impl configureWithProjectAccessKey:projectAccessKey
+                             projectId:projectId
                           walletApiUrl:walletApiUrl
                              apiRpcUrl:apiRpcUrl
                     indexerUrlTemplate:indexerUrlTemplate
-                                 scope:scope
                                resolve:resolve
                                 reject:reject];
 }

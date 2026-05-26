@@ -31,10 +31,10 @@ import {
 } from 'oms-client-react-native-sdk';
 
 const DEMO_PROJECT_ACCESS_KEY = 'AQAAAAAAAAK2JvvZhWqZ51riasWBftkrVXE';
+const DEMO_PROJECT_ID = 'proj_1';
 const DEMO_ENVIRONMENT = {
   apiRpcUrl: 'https://dev-api.sequence.app/rpc/API',
   indexerUrlTemplate: 'https://dev-{value}-indexer.sequence.app/rpc/Indexer/',
-  scope: 'proj_1',
 };
 
 const DEFAULT_TRANSACTION_TO = '0xE5E8B483FfC05967FcFed58cc98D053265af6D99';
@@ -226,6 +226,7 @@ export default function App() {
       await runAction('Initializing SDK', async () => {
         await configure({
           projectAccessKey: DEMO_PROJECT_ACCESS_KEY,
+          projectId: DEMO_PROJECT_ID,
           environment: DEMO_ENVIRONMENT,
         });
 
@@ -377,16 +378,23 @@ export default function App() {
       async () => {
         const network = requireNetwork(selectedNetwork);
         setTransactionStatus('Transaction status: sending in progress...');
-        const txHash = await sendTransaction({
+        const transaction = await sendTransaction({
           chainId: network.chainId,
           to: requireText(transactionTo, 'Transaction destination'),
           value: decimalToBaseUnits(transactionValue, 18),
         });
+        const txHash = transaction.txnHash;
         setLastTransactionHash(txHash);
         setTransactionStatus(
-          `Transaction status: sent on chain ${network.chainId}.`
+          txHash
+            ? `Transaction status: ${transaction.status} on chain ${network.chainId}.`
+            : `Transaction status: ${transaction.status} with id ${shortHash(transaction.txnId)}.`
         );
-        appendLog(`Transaction hash=${txHash}`);
+        appendLog(
+          `Transaction ${transaction.status}: ${
+            txHash ? `hash=${txHash}` : `txnId=${transaction.txnId}`
+          }`
+        );
       },
       () => {
         setTransactionStatus('Transaction status: send failed.');
@@ -694,6 +702,10 @@ function describeError(error: unknown): string {
     return error.message;
   }
   return String(error);
+}
+
+function shortHash(hash: string): string {
+  return `${hash.slice(0, 10)}...${hash.slice(-8)}`;
 }
 
 function explorerUrlFor(chainId: string, txHash: string): string {

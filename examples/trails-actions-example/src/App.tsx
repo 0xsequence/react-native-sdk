@@ -121,10 +121,10 @@ type DemoButtonProps = {
 };
 
 const DEMO_PROJECT_ACCESS_KEY = 'AQAAAAAAAAK2JvvZhWqZ51riasWBftkrVXE';
+const DEMO_PROJECT_ID = 'proj_1';
 const DEMO_ENVIRONMENT = {
   apiRpcUrl: 'https://dev-api.sequence.app/rpc/API',
   indexerUrlTemplate: 'https://dev-{value}-indexer.sequence.app/rpc/Indexer/',
-  scope: 'proj_1',
 };
 
 const TRAILS_API_URL = 'https://trails-api.sequence.app';
@@ -528,6 +528,15 @@ function describeError(error: unknown): string {
 
 function shortHash(hash: string): string {
   return `${hash.slice(0, 10)}...${hash.slice(-8)}`;
+}
+
+function transactionLabel(transaction: {
+  txnId: string;
+  status: string;
+  txnHash: string | null;
+}): string {
+  const reference = transaction.txnHash ?? transaction.txnId;
+  return `${shortHash(reference)} (${transaction.status})`;
 }
 
 function formatUsdAmount(amountUsd: string | undefined): string | null {
@@ -1521,6 +1530,7 @@ export default function App() {
       await runAction('Initializing SDK', async () => {
         await configure({
           projectAccessKey: DEMO_PROJECT_ACCESS_KEY,
+          projectId: DEMO_PROJECT_ID,
           environment: DEMO_ENVIRONMENT,
         });
 
@@ -1761,15 +1771,16 @@ export default function App() {
         const before = await readBalanceSnapshot(address);
 
         setSwapStatus('Swap status: sending...');
-        const txHash = await sendTransaction({
+        const transaction = await sendTransaction({
           chainId: POLYGON_CHAIN_ID,
           to: prepared.to,
           value: prepared.value,
           data: prepared.data,
         });
+        const txHash = transaction.txnHash;
         setLastSwapTransactionHash(txHash);
         setSwapStatus(
-          `Swap status: sent ${shortHash(txHash)}. Waiting for USDC and POL balance updates...`
+          `Swap status: sent ${transactionLabel(transaction)}. Waiting for USDC and POL balance updates...`
         );
         await pollBalancesUntilExpected({
           operation: 'swap',
@@ -1777,12 +1788,12 @@ export default function App() {
           before,
           onWaiting: () => {
             setSwapStatus(
-              `Swap status: sent ${shortHash(txHash)}. Waiting for USDC and POL balance updates...`
+              `Swap status: sent ${transactionLabel(transaction)}. Waiting for USDC and POL balance updates...`
             );
           },
         });
         setSwapStatus(
-          `Swap status: sent ${shortHash(txHash)}. USDC and POL updated.`
+          `Swap status: sent ${transactionLabel(transaction)}. USDC and POL updated.`
         );
       },
       (error) => {
@@ -1800,6 +1811,7 @@ export default function App() {
         const before = await readBalanceSnapshot(address);
         const beforePositions = await readEarnPositionsSnapshot(address);
 
+        let txLabel: string | null = null;
         let txHash: string | null = null;
         for (const [index, transaction] of prepared.transactions.entries()) {
           const label =
@@ -1807,25 +1819,27 @@ export default function App() {
               ? 'transaction'
               : `transaction ${index + 1}/${prepared.transactions.length}`;
           setDepositStatus(`Deposit status: sending ${label}...`);
-          txHash = await sendTransaction({
+          const result = await sendTransaction({
             chainId: String(transaction.chainId),
             to: transaction.to,
             value: transaction.value.toString(),
             data: transaction.data,
           });
+          txLabel = transactionLabel(result);
+          txHash = result.txnHash;
           setLastDepositTransactionHash(txHash);
           setDepositStatus(
-            `Deposit status: sent ${label} ${shortHash(txHash)}.`
+            `Deposit status: sent ${label} ${txLabel}.`
           );
         }
 
-        if (!txHash) {
+        if (!txLabel) {
           throw new Error('Deposit did not send a transaction.');
         }
 
-        const sentTxHash = txHash;
+        const sentTxLabel = txLabel;
         setDepositStatus(
-          `Deposit status: sent ${shortHash(sentTxHash)}. Waiting for USDC balance update...`
+          `Deposit status: sent ${sentTxLabel}. Waiting for USDC balance update...`
         );
         await pollBalancesUntilExpected({
           operation: 'depositEarn',
@@ -1833,24 +1847,24 @@ export default function App() {
           before,
           onWaiting: () => {
             setDepositStatus(
-              `Deposit status: sent ${shortHash(sentTxHash)}. Waiting for USDC balance update...`
+              `Deposit status: sent ${sentTxLabel}. Waiting for USDC balance update...`
             );
           },
         });
         setDepositStatus(
-          `Deposit status: sent ${shortHash(sentTxHash)}. Waiting for earn positions update...`
+          `Deposit status: sent ${sentTxLabel}. Waiting for earn positions update...`
         );
         await pollEarnPositionsUntilChanged({
           walletAddress: address,
           before: beforePositions,
           onWaiting: () => {
             setDepositStatus(
-              `Deposit status: sent ${shortHash(sentTxHash)}. Waiting for earn positions update...`
+              `Deposit status: sent ${sentTxLabel}. Waiting for earn positions update...`
             );
           },
         });
         setDepositStatus(
-          `Deposit status: sent ${shortHash(sentTxHash)}. USDC and earn positions updated.`
+          `Deposit status: sent ${sentTxLabel}. USDC and earn positions updated.`
         );
       },
       (error) => {
@@ -1869,15 +1883,16 @@ export default function App() {
         const beforePositions = await readEarnPositionsSnapshot(address);
 
         setEarnStatus('Swap and Deposit status: sending...');
-        const txHash = await sendTransaction({
+        const transaction = await sendTransaction({
           chainId: POLYGON_CHAIN_ID,
           to: prepared.to,
           value: prepared.value,
           data: prepared.data,
         });
+        const txHash = transaction.txnHash;
         setLastEarnTransactionHash(txHash);
         setEarnStatus(
-          `Swap and Deposit status: sent ${shortHash(txHash)}. Waiting for POL balance update...`
+          `Swap and Deposit status: sent ${transactionLabel(transaction)}. Waiting for POL balance update...`
         );
         await pollBalancesUntilExpected({
           operation: 'earn',
@@ -1885,24 +1900,24 @@ export default function App() {
           before,
           onWaiting: () => {
             setEarnStatus(
-              `Swap and Deposit status: sent ${shortHash(txHash)}. Waiting for POL balance update...`
+              `Swap and Deposit status: sent ${transactionLabel(transaction)}. Waiting for POL balance update...`
             );
           },
         });
         setEarnStatus(
-          `Swap and Deposit status: sent ${shortHash(txHash)}. Waiting for earn positions update...`
+          `Swap and Deposit status: sent ${transactionLabel(transaction)}. Waiting for earn positions update...`
         );
         await pollEarnPositionsUntilChanged({
           walletAddress: address,
           before: beforePositions,
           onWaiting: () => {
             setEarnStatus(
-              `Swap and Deposit status: sent ${shortHash(txHash)}. Waiting for earn positions update...`
+              `Swap and Deposit status: sent ${transactionLabel(transaction)}. Waiting for earn positions update...`
             );
           },
         });
         setEarnStatus(
-          `Swap and Deposit status: sent ${shortHash(txHash)}. POL and earn positions updated.`
+          `Swap and Deposit status: sent ${transactionLabel(transaction)}. POL and earn positions updated.`
         );
       },
       (error) => {
@@ -1924,6 +1939,7 @@ export default function App() {
           position,
         });
 
+        let lastTxLabel: string | null = null;
         let lastTxHash: string | null = null;
         for (const [index, transaction] of transactions.entries()) {
           const label =
@@ -1931,35 +1947,37 @@ export default function App() {
               ? 'withdraw transaction'
               : `withdraw transaction ${index + 1}`;
           setEarnPositionsStatus(`Sending ${label}...`);
-          lastTxHash = await sendTransaction({
+          const result = await sendTransaction({
             chainId: String(transaction.chainId),
             to: transaction.to,
             value: transaction.value.toString(),
             data: transaction.data,
           });
+          lastTxLabel = transactionLabel(result);
+          lastTxHash = result.txnHash;
           setLastWithdrawTransactionHash(lastTxHash);
           setEarnPositionsStatus(
-            `Sent ${shortHash(lastTxHash)}. Waiting for withdraw position update...`
+            `Sent ${lastTxLabel}. Waiting for withdraw position update...`
           );
         }
 
-        if (!lastTxHash) {
+        if (!lastTxLabel) {
           throw new Error('Withdraw did not send a transaction.');
         }
 
-        const sentTxHash = lastTxHash;
+        const sentTxLabel = lastTxLabel;
         await pollEarnPositionUntilWithdrawn({
           walletAddress: address,
           position,
           onWaiting: () => {
             setEarnPositionsStatus(
-              `Sent ${shortHash(sentTxHash)}. Waiting for withdraw position update...`
+              `Sent ${sentTxLabel}. Waiting for withdraw position update...`
             );
           },
         });
         await refreshBalances(address, 'Refreshing balances after withdraw...');
         setEarnPositionsStatus(
-          `Withdraw sent ${shortHash(sentTxHash)}. Earn position updated.`
+          `Withdraw sent ${sentTxLabel}. Earn position updated.`
         );
       },
       (error) => {

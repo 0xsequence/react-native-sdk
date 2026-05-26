@@ -1,8 +1,10 @@
 export type {
   OmsNetwork,
+  OmsSendTransactionResult,
   OmsTokenBalance,
   OmsTokenBalancesPage,
   OmsTokenBalancesResult,
+  OmsTransactionStatus,
   OmsWallet,
 } from './NativeOmsClientReactNativeSdk';
 
@@ -19,11 +21,11 @@ export type OmsClientEnvironment = {
   walletApiUrl?: string;
   apiRpcUrl?: string;
   indexerUrlTemplate?: string;
-  scope?: string;
 };
 
 export type OmsClientConfig = {
   projectAccessKey: string;
+  projectId: string;
   environment?: OmsClientEnvironment;
 };
 
