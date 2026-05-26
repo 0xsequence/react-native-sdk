@@ -14,10 +14,15 @@ npm install oms-client-react-native-sdk
 import {
   completeEmailAuth,
   configure,
+  formatUnits,
   getWalletAddress,
+  handleOidcRedirectCallback,
   OidcProviders,
+  parseUnits,
+  sendTransaction,
   signMessage,
   startEmailAuth,
+  startOidcRedirectAuth,
 } from 'oms-client-react-native-sdk';
 
 await configure({
@@ -50,7 +55,7 @@ an embedded WebView.
 import { InAppBrowser } from 'react-native-inappbrowser-reborn';
 
 const started = await startOidcRedirectAuth({
-  provider: OidcProviders.google({ clientId: '<client-id>' }),
+  provider: OidcProviders.google(),
   redirectUri: 'com.example.app:/oauth/callback',
 });
 
@@ -83,22 +88,32 @@ const txResult = await sendTransaction({
   selectFeeOption: async (feeOptions) => {
     const selected =
       feeOptions.find((option) => option.availableRaw !== '0') ?? feeOptions[0];
-    return selected ? { token: selected.feeOption.token.symbol } : null;
+    return selected ? selected.selection : null;
   },
 });
 ```
 
 `selectFeeOption` receives the same enriched fee options as the native SDKs:
 `feeOption`, wallet `balance`, formatted `available`, raw `availableRaw`, and
-`decimals`. Returning `null` means no fee option is selected, which is only valid
-for sponsored transactions.
+`decimals`. Return `option.selection` for a quoted option; it preserves token IDs
+when present and falls back to the token symbol for native fee options. Returning
+`null` means no fee option is selected, which is only valid for sponsored
+transactions.
 
 ### Unit Formatting
 
 ```ts
 const raw = parseUnits('12.34', 6); // "12340000"
 const formatted = formatUnits(raw, 6); // "12.34"
+const rounded = parseUnits('1.235', 2, { roundingMode: 'nearest' }); // "124"
 ```
+
+By default `parseUnits` rejects fractional precision beyond `decimals`.
+Pass `{ roundingMode: 'nearest' }` when you want Kotlin-compatible rounding.
+
+## API Reference
+
+See [API.md](./API.md) for the public API surface and TypeScript shapes.
 
 ## Supported APIs
 

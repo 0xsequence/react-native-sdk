@@ -67,14 +67,14 @@ export type OmsTokenBalancesPage = {
 };
 
 export type OmsTokenBalance = {
-  contractType?: string;
-  contractAddress?: string;
-  accountAddress?: string;
-  tokenId?: string;
-  balance?: string;
-  blockHash?: string;
-  blockNumber?: number;
-  chainId?: number;
+  contractType: string | null;
+  contractAddress: string | null;
+  accountAddress: string | null;
+  tokenId: string | null;
+  balance: string | null;
+  blockHash: string | null;
+  blockNumber?: number | null;
+  chainId?: number | null;
 };
 
 export type OmsTokenBalancesResult = {
@@ -117,6 +117,7 @@ export type OmsFeeOptionSelection = {
 
 export type OmsFeeOptionWithBalance = {
   feeOption: OmsFeeOption;
+  selection: OmsFeeOptionSelection;
   balance: OmsTokenBalance | null;
   available: string | null;
   availableRaw: string | null;

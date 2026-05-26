@@ -711,9 +711,20 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
     [
       "walletAddress": nullableString(session?.walletAddress),
       "expiresAt": nullableString(session?.expiresAt.map(iso8601String)),
-      "loginType": nullableString(session?.loginType?.rawValue),
+      "loginType": nullableString(session?.loginType.map(sessionLoginTypeString)),
       "sessionEmail": nullableString(session?.sessionEmail)
     ]
+  }
+
+  private func sessionLoginTypeString(_ loginType: SessionLoginType) -> String {
+    switch loginType {
+    case .email:
+      return "Email"
+    case .googleAuth:
+      return "GoogleAuth"
+    case .oidc:
+      return "Oidc"
+    }
   }
 
   private func nullableString(_ value: String?) -> Any {
@@ -784,10 +795,17 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
   private func feeOptionWithBalanceDictionary(_ option: FeeOptionWithBalance) -> [String: Any] {
     [
       "feeOption": feeOptionDictionary(option.feeOption),
+      "selection": feeOptionSelectionDictionary(option.selection),
       "balance": option.balance.map(tokenBalanceDictionary) ?? NSNull(),
       "available": option.available ?? NSNull(),
       "availableRaw": option.availableRaw ?? NSNull(),
       "decimals": option.decimals.map(NSNumber.init(value:)) ?? NSNull()
+    ]
+  }
+
+  private func feeOptionSelectionDictionary(_ selection: FeeOptionSelection) -> [String: Any] {
+    [
+      "token": selection.token
     ]
   }
 

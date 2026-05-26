@@ -29,6 +29,7 @@ export {
 } from './client';
 export { OidcProviders } from './oidcProviders';
 export { formatUnits, parseUnits } from './units';
+export type { ParseUnitsOptions, ParseUnitsRoundingMode } from './units';
 export type {
   CallContractArg,
   CallContractParams,

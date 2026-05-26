@@ -58,6 +58,19 @@ function stringifyOptionalJson(
   return stringifyRequiredJson(value, 'value');
 }
 
+function hasOwnProperty(value: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function resolveRelayRedirectUri(
+  params: StartOidcRedirectAuthParams
+): string | null {
+  if (hasOwnProperty(params, 'relayRedirectUri')) {
+    return params.relayRedirectUri ?? null;
+  }
+  return params.provider.relayRedirectUri ?? null;
+}
+
 function hydratePendingWalletSelection(
   pendingSelection: OmsNativePendingWalletSelection
 ): OmsPendingWalletSelection {
@@ -275,7 +288,7 @@ export function startOidcRedirectAuth(
     stringifyRequiredJson(params.provider, 'provider'),
     params.redirectUri,
     params.walletType ?? null,
-    params.relayRedirectUri ?? params.provider.relayRedirectUri ?? null,
+    resolveRelayRedirectUri(params),
     stringifyOptionalJson(params.authorizeParams)
   );
 }

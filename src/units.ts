@@ -23,8 +23,79 @@ function trimLeadingZeros(value: string): string {
   return trimmed.length === 0 ? '0' : trimmed;
 }
 
-export function parseUnits(value: string, decimals = 18): string {
+function incrementDecimalString(value: string): string {
+  let carry = 1;
+  let result = '';
+
+  for (let index = value.length - 1; index >= 0; index -= 1) {
+    const next = Number(value[index]) + carry;
+    if (next >= 10) {
+      result = `0${result}`;
+      carry = 1;
+    } else {
+      result = `${next}${result}`;
+      carry = 0;
+    }
+  }
+
+  return carry === 1 ? `1${result}` : result;
+}
+
+export type ParseUnitsRoundingMode = 'reject' | 'nearest';
+
+export type ParseUnitsOptions = {
+  /**
+   * `reject` matches Swift and common JS parseUnits behavior.
+   * `nearest` matches the Kotlin SDK helper by rounding over-precision to the
+   * nearest base unit.
+   */
+  roundingMode?: ParseUnitsRoundingMode;
+};
+
+function resolveRoundingMode(
+  options: ParseUnitsOptions
+): ParseUnitsRoundingMode {
+  const mode = options.roundingMode ?? 'reject';
+  if (mode !== 'reject' && mode !== 'nearest') {
+    throw new Error(`Unsupported parseUnits rounding mode: ${String(mode)}`);
+  }
+  return mode;
+}
+
+function roundFractionalPart(
+  wholePart: string,
+  fractionalPart: string,
+  decimals: number
+): { wholePart: string; fractionalPart: string } {
+  let normalizedWhole = wholePart.length === 0 ? '0' : wholePart;
+
+  if (decimals === 0) {
+    if (fractionalPart[0] != null && fractionalPart[0] >= '5') {
+      normalizedWhole = incrementDecimalString(normalizedWhole);
+    }
+    return { wholePart: normalizedWhole, fractionalPart: '' };
+  }
+
+  let normalizedFraction = fractionalPart.slice(0, decimals);
+  if (fractionalPart[decimals] != null && fractionalPart[decimals] >= '5') {
+    normalizedFraction = incrementDecimalString(normalizedFraction);
+  }
+
+  if (normalizedFraction.length > decimals) {
+    normalizedWhole = incrementDecimalString(normalizedWhole);
+    normalizedFraction = normalizedFraction.slice(1);
+  }
+
+  return { wholePart: normalizedWhole, fractionalPart: normalizedFraction };
+}
+
+export function parseUnits(
+  value: string,
+  decimals = 18,
+  options: ParseUnitsOptions = {}
+): string {
   validateDecimals(decimals);
+  const roundingMode = resolveRoundingMode(options);
 
   const trimmedValue = value.trim();
   const sign = parseSign(trimmedValue);
@@ -47,7 +118,28 @@ export function parseUnits(value: string, decimals = 18): string {
     throw new Error(`Invalid decimal number: ${value}`);
   }
 
+  let normalizedWhole = wholePart;
   let normalizedFraction = fractionalPart;
+  if (normalizedFraction.length > decimals) {
+    if (roundingMode === 'nearest') {
+      const rounded = roundFractionalPart(
+        normalizedWhole,
+        normalizedFraction,
+        decimals
+      );
+      normalizedWhole = rounded.wholePart;
+      normalizedFraction = rounded.fractionalPart;
+    } else {
+      const extra = normalizedFraction.slice(decimals);
+      if (!/^0*$/.test(extra)) {
+        throw new Error(
+          `Fractional component exceeds ${decimals} decimals: ${value}`
+        );
+      }
+      normalizedFraction = normalizedFraction.slice(0, decimals);
+    }
+  }
+
   if (normalizedFraction.length > decimals) {
     const extra = normalizedFraction.slice(decimals);
     if (!/^0*$/.test(extra)) {
@@ -59,7 +151,7 @@ export function parseUnits(value: string, decimals = 18): string {
   }
 
   normalizedFraction = normalizedFraction.padEnd(decimals, '0');
-  const rawValue = trimLeadingZeros(`${wholePart}${normalizedFraction}`);
+  const rawValue = trimLeadingZeros(`${normalizedWhole}${normalizedFraction}`);
   if (rawValue === '0') {
     return '0';
   }
