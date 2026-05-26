@@ -146,3 +146,26 @@ MIT
 ---
 
 Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)
+
+## Publishing
+
+Publish from a clean worktree after the native SDK dependencies referenced in
+`android/build.gradle` and `OmsClientReactNativeSdk.podspec` are available from
+Maven Central and CocoaPods.
+
+```sh
+yarn typecheck
+yarn lint
+yarn prepare
+yarn sdk-example build:android
+yarn sdk-example build:ios
+yarn npm publish --dry-run --access public
+yarn npm publish --access public --tag latest
+```
+
+Before publishing a new release, update `package.json` with the target npm
+version and make sure that version has not already been published:
+
+```sh
+npm view oms-client-react-native-sdk version
+```
