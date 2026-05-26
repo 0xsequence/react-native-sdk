@@ -4,7 +4,8 @@ buildscript {
     minSdkVersion: 26,
     compileSdkVersion: 36,
     targetSdkVersion: 36,
-    omsClientKotlinSdkVersion: "0.0.1-local.3"
+    omsClientKotlinSdkVersion: "0.1.0-alpha.1",
+    kotlinxSerializationJsonVersion: "1.9.0"
   ]
 
   ext.getExtOrDefault = { prop ->
@@ -78,4 +79,5 @@ dependencies {
   implementation "com.facebook.react:react-android"
   implementation "io.github.0xsequence:oms-client-kotlin-sdk:${getExtOrDefault('omsClientKotlinSdkVersion')}"
   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
+  implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:${getExtOrDefault('kotlinxSerializationJsonVersion')}"
 }

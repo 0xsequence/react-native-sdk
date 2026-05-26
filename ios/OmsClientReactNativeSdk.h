@@ -1,5 +1,5 @@
 #import <OmsClientReactNativeSdkSpec/OmsClientReactNativeSdkSpec.h>
 
-@interface OmsClientReactNativeSdk : NSObject <NativeOmsClientReactNativeSdkSpec>
+@interface OmsClientReactNativeSdk : NativeOmsClientReactNativeSdkSpecBase <NativeOmsClientReactNativeSdkSpec>
 
 @end

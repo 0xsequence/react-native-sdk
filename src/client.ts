@@ -1,12 +1,34 @@
 import type {
+  CallContractParams,
+  CompleteEmailAuthParams,
+  CreateWalletParams,
+  HandleOidcRedirectCallbackParams,
+  GetIdTokenParams,
+  GetNativeTokenBalanceParams,
   GetTokenBalancesParams,
+  ListAccessPageParams,
+  ListAccessPagesParams,
+  ListAccessParams,
   OmsClientConfig,
   OmsClientSessionState,
+  OmsCompleteAuthResult,
+  OmsCredentialInfo,
+  OmsListAccessResponse,
   OmsNetwork,
+  OmsOidcRedirectAuthResult,
+  OmsSendTransactionResponse,
+  OmsStartOidcRedirectAuthResult,
+  OmsTokenBalance,
   OmsTokenBalancesResult,
+  OmsTransactionStatus,
   OmsWallet,
+  OmsWalletActivationResult,
   SendTransactionParams,
+  SignInWithOidcIdTokenParams,
+  SignTypedDataParams,
+  StartOidcRedirectAuthParams,
   VerifyMessageSignatureParams,
+  VerifyTypedDataSignatureParams,
 } from './types';
 
 function unsupported(): never {
@@ -35,7 +57,43 @@ export function startEmailAuth(_email: string): Promise<void> {
   unsupported();
 }
 
-export function completeEmailAuth(_code: string): Promise<OmsWallet> {
+export function completeEmailAuth(
+  _params: CompleteEmailAuthParams
+): Promise<OmsCompleteAuthResult> {
+  unsupported();
+}
+
+export function signInWithOidcIdToken(
+  _params: SignInWithOidcIdTokenParams
+): Promise<OmsCompleteAuthResult> {
+  unsupported();
+}
+
+export function startOidcRedirectAuth(
+  _params: StartOidcRedirectAuthParams
+): Promise<OmsStartOidcRedirectAuthResult> {
+  unsupported();
+}
+
+export function handleOidcRedirectCallback(
+  _params: HandleOidcRedirectCallbackParams = {}
+): Promise<OmsOidcRedirectAuthResult> {
+  unsupported();
+}
+
+export function listWallets(): Promise<OmsWallet[]> {
+  unsupported();
+}
+
+export function useWallet(
+  _walletId: string
+): Promise<OmsWalletActivationResult> {
+  unsupported();
+}
+
+export function createWallet(
+  _params: CreateWalletParams = {}
+): Promise<OmsWalletActivationResult> {
   unsupported();
 }
 
@@ -50,9 +108,25 @@ export function signMessage(
   unsupported();
 }
 
+export function signTypedData(_params: SignTypedDataParams): Promise<string> {
+  unsupported();
+}
+
 export function sendTransaction(
   _params: SendTransactionParams
-): Promise<string> {
+): Promise<OmsSendTransactionResponse> {
+  unsupported();
+}
+
+export function callContract(
+  _params: CallContractParams
+): Promise<OmsSendTransactionResponse> {
+  unsupported();
+}
+
+export function getTransactionStatus(
+  _txnId: string
+): Promise<OmsTransactionStatus> {
   unsupported();
 }
 
@@ -62,8 +136,46 @@ export function getTokenBalances(
   unsupported();
 }
 
+export function getNativeTokenBalance(
+  _params: GetNativeTokenBalanceParams
+): Promise<OmsTokenBalance | null> {
+  unsupported();
+}
+
 export function verifyMessageSignature(
   _params: VerifyMessageSignatureParams
 ): Promise<boolean> {
+  unsupported();
+}
+
+export function verifyTypedDataSignature(
+  _params: VerifyTypedDataSignatureParams
+): Promise<boolean> {
+  unsupported();
+}
+
+export function getIdToken(_params: GetIdTokenParams = {}): Promise<string> {
+  unsupported();
+}
+
+export function listAccess(
+  _params: ListAccessParams = {}
+): Promise<OmsCredentialInfo[]> {
+  unsupported();
+}
+
+export async function* listAccessPages(
+  _params: ListAccessPagesParams = {}
+): AsyncGenerator<OmsListAccessResponse, void, void> {
+  unsupported();
+}
+
+export function listAccessPage(
+  _params: ListAccessPageParams = {}
+): Promise<OmsListAccessResponse> {
+  unsupported();
+}
+
+export function revokeAccess(_targetCredentialId: string): Promise<void> {
   unsupported();
 }

@@ -16,6 +16,13 @@
   self = [super init];
   if (self) {
     _impl = [OmsClientReactNativeSdkImpl new];
+    __weak OmsClientReactNativeSdk *weakSelf = self;
+    [_impl setFeeOptionSelectionRequestEmitter:^(NSDictionary *payload) {
+      OmsClientReactNativeSdk *strongSelf = weakSelf;
+      if (strongSelf) {
+        [strongSelf emitOnFeeOptionSelectionRequest:payload];
+      }
+    }];
   }
   return self;
 }
@@ -24,7 +31,7 @@
      walletApiUrl:(nullable NSString *)walletApiUrl
         apiRpcUrl:(nullable NSString *)apiRpcUrl
 indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
-            scope:(nullable NSString *)scope
+        projectId:(NSString *)projectId
           resolve:(RCTPromiseResolveBlock)resolve
            reject:(RCTPromiseRejectBlock)reject
 {
@@ -32,7 +39,7 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
                           walletApiUrl:walletApiUrl
                              apiRpcUrl:apiRpcUrl
                     indexerUrlTemplate:indexerUrlTemplate
-                                 scope:scope
+                             projectId:projectId
                                resolve:resolve
                                 reject:reject];
 }
@@ -63,10 +70,107 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
 }
 
 - (void)completeEmailAuth:(NSString *)code
+          walletSelection:(nullable NSString *)walletSelection
+               walletType:(nullable NSString *)walletType
                   resolve:(RCTPromiseResolveBlock)resolve
                    reject:(RCTPromiseRejectBlock)reject
 {
-  [_impl completeEmailAuthWithCode:code resolve:resolve reject:reject];
+  [_impl completeEmailAuthWithCode:code
+                    walletSelection:walletSelection
+                         walletType:walletType
+                            resolve:resolve
+                             reject:reject];
+}
+
+- (void)signInWithOidcIdToken:(NSString *)idToken
+                       issuer:(NSString *)issuer
+                     audience:(NSString *)audience
+              walletSelection:(nullable NSString *)walletSelection
+                    walletType:(nullable NSString *)walletType
+                      resolve:(RCTPromiseResolveBlock)resolve
+                       reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl signInWithOidcIdTokenWithIdToken:idToken
+                                   issuer:issuer
+                                 audience:audience
+                          walletSelection:walletSelection
+                                walletType:walletType
+                                  resolve:resolve
+                                   reject:reject];
+}
+
+- (void)startOidcRedirectAuth:(NSString *)providerJson
+                  redirectUri:(NSString *)redirectUri
+                   walletType:(nullable NSString *)walletType
+             relayRedirectUri:(nullable NSString *)relayRedirectUri
+          authorizeParamsJson:(nullable NSString *)authorizeParamsJson
+                      resolve:(RCTPromiseResolveBlock)resolve
+                       reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl startOidcRedirectAuthWithProviderJson:providerJson
+                                   redirectUri:redirectUri
+                                    walletType:walletType
+                              relayRedirectUri:relayRedirectUri
+                           authorizeParamsJson:authorizeParamsJson
+                                       resolve:resolve
+                                        reject:reject];
+}
+
+- (void)handleOidcRedirectCallback:(nullable NSString *)callbackUrl
+                   walletSelection:(nullable NSString *)walletSelection
+                            resolve:(RCTPromiseResolveBlock)resolve
+                             reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl handleOidcRedirectCallbackWithCallbackUrl:callbackUrl
+                                   walletSelection:walletSelection
+                                           resolve:resolve
+                                            reject:reject];
+}
+
+- (void)listWallets:(RCTPromiseResolveBlock)resolve
+             reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl listWalletsWithResolve:resolve reject:reject];
+}
+
+- (void)useWallet:(NSString *)walletId
+          resolve:(RCTPromiseResolveBlock)resolve
+           reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl useWalletWithWalletId:walletId resolve:resolve reject:reject];
+}
+
+- (void)createWallet:(nullable NSString *)walletType
+           reference:(nullable NSString *)reference
+             resolve:(RCTPromiseResolveBlock)resolve
+              reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl createWalletWithWalletType:walletType
+                           reference:reference
+                             resolve:resolve
+                              reject:reject];
+}
+
+- (void)selectWalletForPendingSelection:(NSString *)pendingSelectionId
+                               walletId:(NSString *)walletId
+                                resolve:(RCTPromiseResolveBlock)resolve
+                                 reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl selectWalletForPendingSelectionWithPendingSelectionId:pendingSelectionId
+                                                      walletId:walletId
+                                                       resolve:resolve
+                                                        reject:reject];
+}
+
+- (void)createAndSelectWalletForPendingSelection:(NSString *)pendingSelectionId
+                                      reference:(nullable NSString *)reference
+                                        resolve:(RCTPromiseResolveBlock)resolve
+                                         reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl createAndSelectWalletForPendingSelectionWithPendingSelectionId:pendingSelectionId
+                                                              reference:reference
+                                                                resolve:resolve
+                                                                 reject:reject];
 }
 
 - (void)signOut:(RCTPromiseResolveBlock)resolve
@@ -83,10 +187,23 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
   [_impl signMessageWithChainId:chainId message:message resolve:resolve reject:reject];
 }
 
+- (void)signTypedData:(NSString *)chainId
+        typedDataJson:(NSString *)typedDataJson
+              resolve:(RCTPromiseResolveBlock)resolve
+               reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl signTypedDataWithChainId:chainId
+                    typedDataJson:typedDataJson
+                          resolve:resolve
+                           reject:reject];
+}
+
 - (void)sendTransaction:(NSString *)chainId
                      to:(NSString *)to
                   value:(NSString *)value
                    data:(nullable NSString *)data
+                   mode:(nullable NSString *)mode
+    feeOptionSelectorId:(nullable NSString *)feeOptionSelectorId
                 resolve:(RCTPromiseResolveBlock)resolve
                  reject:(RCTPromiseRejectBlock)reject
 {
@@ -94,8 +211,49 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
                                  to:to
                               value:value
                                data:data
+                               mode:mode
+                feeOptionSelectorId:feeOptionSelectorId
                             resolve:resolve
                              reject:reject];
+}
+
+- (void)callContract:(NSString *)chainId
+     contractAddress:(NSString *)contractAddress
+              method:(NSString *)method
+            argsJson:(nullable NSString *)argsJson
+                mode:(nullable NSString *)mode
+ feeOptionSelectorId:(nullable NSString *)feeOptionSelectorId
+             resolve:(RCTPromiseResolveBlock)resolve
+              reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl callContractWithChainId:chainId
+                 contractAddress:contractAddress
+                          method:method
+                        argsJson:argsJson
+                            mode:mode
+             feeOptionSelectorId:feeOptionSelectorId
+                         resolve:resolve
+                          reject:reject];
+}
+
+- (void)respondToFeeOptionSelection:(NSString *)requestId
+                      selectionToken:(nullable NSString *)selectionToken
+                         errorMessage:(nullable NSString *)errorMessage
+                              resolve:(RCTPromiseResolveBlock)resolve
+                               reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl respondToFeeOptionSelectionWithRequestId:requestId
+                                    selectionToken:selectionToken
+                                     errorMessage:errorMessage
+                                          resolve:resolve
+                                           reject:reject];
+}
+
+- (void)getTransactionStatus:(NSString *)txnId
+                     resolve:(RCTPromiseResolveBlock)resolve
+                      reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl getTransactionStatusWithTxnId:txnId resolve:resolve reject:reject];
 }
 
 - (void)getTokenBalances:(NSString *)chainId
@@ -113,19 +271,79 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
                                reject:reject];
 }
 
+- (void)getNativeTokenBalance:(NSString *)chainId
+                walletAddress:(NSString *)walletAddress
+                      resolve:(RCTPromiseResolveBlock)resolve
+                       reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl getNativeTokenBalanceWithChainId:chainId
+                            walletAddress:walletAddress
+                                  resolve:resolve
+                                   reject:reject];
+}
+
 - (void)verifyMessageSignature:(NSString *)chainId
-                 walletAddress:(NSString *)walletAddress
                        message:(NSString *)message
                      signature:(NSString *)signature
                        resolve:(RCTPromiseResolveBlock)resolve
                         reject:(RCTPromiseRejectBlock)reject
 {
   [_impl verifyMessageSignatureWithChainId:chainId
-                             walletAddress:walletAddress
                                    message:message
                                  signature:signature
                                    resolve:resolve
                                     reject:reject];
+}
+
+- (void)verifyTypedDataSignature:(NSString *)chainId
+                    typedDataJson:(NSString *)typedDataJson
+                        signature:(NSString *)signature
+                          resolve:(RCTPromiseResolveBlock)resolve
+                           reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl verifyTypedDataSignatureWithChainId:chainId
+                                typedDataJson:typedDataJson
+                                    signature:signature
+                                      resolve:resolve
+                                       reject:reject];
+}
+
+- (void)getIdToken:(nullable NSString *)ttlSeconds
+  customClaimsJson:(nullable NSString *)customClaimsJson
+           resolve:(RCTPromiseResolveBlock)resolve
+            reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl getIdTokenWithTtlSeconds:ttlSeconds
+                 customClaimsJson:customClaimsJson
+                          resolve:resolve
+                           reject:reject];
+}
+
+- (void)listAccess:(nullable NSString *)pageSize
+           resolve:(RCTPromiseResolveBlock)resolve
+            reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl listAccessWithPageSize:pageSize resolve:resolve reject:reject];
+}
+
+- (void)listAccessPage:(nullable NSString *)pageSize
+                cursor:(nullable NSString *)cursor
+               resolve:(RCTPromiseResolveBlock)resolve
+                reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl listAccessPageWithPageSize:pageSize
+                              cursor:cursor
+                             resolve:resolve
+                              reject:reject];
+}
+
+- (void)revokeAccess:(NSString *)targetCredentialId
+             resolve:(RCTPromiseResolveBlock)resolve
+              reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl revokeAccessWithTargetCredentialId:targetCredentialId
+                                    resolve:resolve
+                                     reject:reject];
 }
 
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
