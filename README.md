@@ -139,6 +139,18 @@ iOS resolves `oms-client-swift-sdk` `0.1.0-alpha.1` from CocoaPods.
 Example apps should depend on `oms-client-react-native-sdk`, not directly on the
 underlying native SDKs.
 
+## Consumer Requirements
+
+- Bare React Native apps are supported through normal React Native autolinking.
+- Expo apps must use a development build, Expo prebuild/EAS Build, or the bare
+  workflow. Expo Go cannot load this SDK because it includes custom native code.
+- Android apps need `minSdk 26`, `compileSdk 34` or newer, and Java 17 compile
+  options.
+- iOS apps need deployment target 15.0 or newer.
+- OIDC redirect auth requires the consuming app to configure its own URL scheme
+  or app links. This package does not include an Expo config plugin for redirect
+  configuration.
+
 ## License
 
 MIT
