@@ -3,12 +3,6 @@ on:
   push:
     branches:
       - master
-  pull_request:
-    branches:
-      - master
-  merge_group:
-    types:
-      - checks_requested
   workflow_dispatch:
 
 concurrency:
