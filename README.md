@@ -149,9 +149,8 @@ Made with [create-react-native-library](https://github.com/callstack/react-nativ
 
 ## Publishing
 
-Publish from a clean worktree after the native SDK dependencies referenced in
-`android/build.gradle` and `OmsClientReactNativeSdk.podspec` are available from
-Maven Central and CocoaPods.
+Publish from a clean worktree. The Android and iOS native SDK dependencies are
+resolved from Maven Central and CocoaPods by Gradle and CocoaPods.
 
 ```sh
 yarn typecheck
@@ -164,8 +163,8 @@ yarn npm publish --access public --tag alpha
 ```
 
 Before publishing a new release, update `package.json` with the target npm
-version and make sure that version has not already been published:
+version and make sure that exact version has not already been published:
 
 ```sh
-npm view oms-client-react-native-sdk version
+npm view oms-client-react-native-sdk@<version> version
 ```
