@@ -148,8 +148,7 @@ underlying native SDKs.
   options.
 - iOS apps need deployment target 15.0 or newer.
 - OIDC redirect auth requires the consuming app to configure its own URL scheme
-  or app links. This package does not include an Expo config plugin for redirect
-  configuration.
+  or app links.
 
 ## License
 
