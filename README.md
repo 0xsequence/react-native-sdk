@@ -1,213 +1,196 @@
-# @0xsequence/react-native-sdk
+# oms-client-react-native-sdk
 
-Sequence v3 React Native SDK for seamless web3 integration.
+React Native SDK for the OMS platform.
 
 ## Installation
 
-To get started, install the `@0xsequence/react-native-sdk` and its peer dependencies.
-
 ```sh
-yarn add @0xsequence/react-native-sdk @0xsequence/dapp-client @0xsequence/wallet-core @0xsequence/wallet-primitives ox viem
-yarn add expo-crypto expo-linking expo-secure-store expo-standard-web-crypto expo-web-browser react-native-mmkv react-native-nitro-modules react-native-url-polyfill
-```
-
-or
-
-```sh
-npm install @0xsequence/react-native-sdk @0xsequence/dapp-client @0xsequence/wallet-core @0xsequence/wallet-primitives ox viem
-npm install expo-crypto expo-linking expo-secure-store expo-standard-web-crypto expo-web-browser react-native-mmkv react-native-nitro-modules react-native-url-polyfill
+npm install oms-client-react-native-sdk
 ```
 
 ## Usage
 
-First, you need to wrap your application with the `SequenceProvider`. This provider manages the connection state and makes the Sequence context available to all child components.
-
-### 1. Configure the `SequenceProvider`
-
-In your main application file (e.g., `App.tsx`), import and wrap your components with `SequenceProvider`.
-
-```tsx
-// App.tsx
+```ts
 import {
-  SequenceProvider,
-  type SequenceProviderConfig,
-} from '@0xsequence/react-native-sdk';
-import { arbitrumSepolia } from 'viem/chains';
+  completeEmailAuth,
+  configure,
+  formatUnits,
+  getWalletAddress,
+  handleOidcRedirectCallback,
+  OidcProviders,
+  parseUnits,
+  sendTransaction,
+  signMessage,
+  startEmailAuth,
+  startOidcRedirectAuth,
+} from 'oms-client-react-native-sdk';
 
-// Configuration for the Sequence Provider
-const config: SequenceProviderConfig = {
-  walletUrl: 'https://v3.sequence-dev.app',
-  // IMPORTANT: This must match the "scheme" in your app.json
-  origin: 'rndemosequencev3://',
-  projectAccessKey: 'YOUR_PROJECT_ACCESS_KEY', // Replace with your key
-  defaultChainId: arbitrumSepolia.id,
-};
+await configure({
+  projectAccessKey: '<project-access-key>',
+  projectId: '<project-id>',
+});
 
-export default function App() {
-  return (
-    <SequenceProvider config={config}>
-      {/* Your application components */}
-      <YourAppComponent />
-    </SequenceProvider>
-  );
+await startEmailAuth('player@example.com');
+const auth = await completeEmailAuth({ code: '<otp-code>' });
+
+if (auth.type === 'walletSelection') {
+  const selected = await auth.pendingSelection.selectWallet('<wallet-id>');
+  console.log(selected.walletAddress);
+} else {
+  console.log(auth.walletAddress);
+}
+
+const signature = await signMessage('137', 'Hello from React Native');
+const address = await getWalletAddress();
+```
+
+### OIDC Redirect Auth
+
+The SDK exposes the low-level redirect methods. Apps own browser opening and
+deep-link handling. Use a system auth browser such as Custom Tabs or
+ASWebAuthenticationSession/SFAuthenticationSession; do not run provider OAuth in
+an embedded WebView.
+
+```ts
+import { InAppBrowser } from 'react-native-inappbrowser-reborn';
+
+const started = await startOidcRedirectAuth({
+  provider: OidcProviders.google(),
+  redirectUri: 'com.example.app:/oauth/callback',
+});
+
+const browserResult = await InAppBrowser.openAuth(
+  started.authorizationUrl,
+  'com.example.app:/oauth/callback'
+);
+
+if (browserResult.type !== 'success') {
+  throw new Error('OIDC sign-in was cancelled');
+}
+
+const result = await handleOidcRedirectCallback({
+  callbackUrl: browserResult.url,
+  walletSelection: 'manual',
+});
+
+if (result.type === 'walletSelection') {
+  await result.pendingSelection.createAndSelectWallet();
 }
 ```
 
-**Note:** The `origin` in your config **must** match the `scheme` defined in your `app.json` to handle redirects correctly after a wallet action.
+### Fee Option Selection
 
-### 2. Use the `useSequence` Hook
-
-The `useSequence` hook provides access to the wallet state and methods to interact with the user's wallet.
-
-Here's a basic example of a component that handles connection and displays wallet information. You can optionally request permissions during the connection process to enable seamless transactions later.
-
-```tsx
-// YourAppComponent.tsx
-import { useSequence, Signers, Utils } from '@0xsequence/react-native-sdk';
-import { View, Text, Button, ActivityIndicator, Alert } from 'react-native';
-import { AbiFunction } from 'ox';
-import { arbitrumSepolia } from 'viem/chains';
-
-// Define the contract and function you want permission for
-const nftContractAddress = '0xD25b37E2fB07f85E9ecA9d40FE3BcF60BA2dc57b';
-const mint = AbiFunction.from(['function safeMint(address to)']);
-
-// Construct the permissions object
-const getPermissionsForNFTMint = (chainId: number) => {
-  const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 60 * 24); // 24 hours from now
-
-  return {
-    chainId: chainId,
-    valueLimit: 0n,
-    deadline,
-    permissions: [
-      Utils.PermissionBuilder.for(nftContractAddress).forFunction(mint).build(),
-    ],
-  };
-};
-
-export default function YourAppComponent() {
-  const {
-    isInitializing,
-    isInitialized,
-    walletAddress,
-    chainId,
-    connect,
-    disconnect,
-  } = useSequence();
-
-  const handleConnect = async () => {
-    try {
-      await connect({
-        loginMethod: 'google',
-        // Request permission to mint an NFT when connecting
-        explicitSession: getPermissionsForNFTMint(chainId),
-      });
-    } catch (e) {
-      console.error(e);
-      Alert.alert('Error', 'Failed to connect');
-    }
-  };
-
-  if (isInitializing) {
-    return <ActivityIndicator />;
-  }
-
-  return (
-    <View>
-      {!isInitialized ? (
-        <Button
-          title="Connect with Google and Get Mint Permission"
-          onPress={handleConnect}
-        />
-      ) : (
-        <View>
-          <Text>Wallet Address: {walletAddress}</Text>
-          <Button title="Disconnect" onPress={() => disconnect()} />
-        </View>
-      )}
-    </View>
-  );
-}
+```ts
+const txResult = await sendTransaction({
+  chainId: '137',
+  to: '0xRecipient',
+  value: '0',
+  selectFeeOption: async (feeOptions) => {
+    const selected =
+      feeOptions.find((option) => option.availableRaw !== '0') ?? feeOptions[0];
+    return selected ? selected.selection : null;
+  },
+});
 ```
+
+`selectFeeOption` receives the same enriched fee options as the native SDKs:
+`feeOption`, wallet `balance`, formatted `available`, raw `availableRaw`, and
+`decimals`. Return `option.selection` for a quoted option; it preserves token IDs
+when present and falls back to the token symbol for native fee options. Returning
+`null` means no fee option is selected, which is only valid for sponsored
+transactions.
+
+### Unit Formatting
+
+```ts
+const raw = parseUnits('12.34', 6); // "12340000"
+const formatted = formatUnits(raw, 6); // "12.34"
+const rounded = parseUnits('1.235', 2, { roundingMode: 'nearest' }); // "124"
+```
+
+By default `parseUnits` rejects fractional precision beyond `decimals`.
+Pass `{ roundingMode: 'nearest' }` when you want Kotlin-compatible rounding.
 
 ## API Reference
 
-### `useSequence()`
+See [API.md](./API.md) for the public API surface and TypeScript shapes.
 
-This hook returns the `SequenceContextState` object, which contains all the necessary state and methods for interacting with the SDK.
+## Supported APIs
 
-#### Connection State
+- Email OTP auth and OIDC ID-token auth
+- Manual wallet selection for email, OIDC ID-token, and OIDC redirect auth
+- Low-level OIDC redirect auth start/callback handling
+- Session restore, sign-out, wallet address, and session metadata
+- Wallet list, use existing wallet, and create wallet
+- Supported network listing
+- Message and typed-data signing and verification
+- Transaction sending, custom fee-option selection, contract calls, and transaction status lookup
+- Token balances and native token balance
+- Wallet ID token retrieval
+- Wallet access list, access-page iteration, single-page access lookup, and revoke access
+- Unit parsing and formatting helpers
 
-- `isInitializing: boolean`: True while the SDK is establishing its initial state.
-- `isInitialized: boolean`: True once the SDK is initialized and a session is restored or ready to be created.
+## Native SDK Dependencies
 
-#### Session Properties
+The React Native SDK owns its native SDK dependencies. Android resolves
+`io.github.0xsequence:oms-client-kotlin-sdk:0.1.0-alpha.1` from Maven, and
+iOS resolves `oms-client-swift-sdk` `0.1.0-alpha.1` from CocoaPods.
 
-- `walletAddress: string | null`: The address of the connected wallet.
-- `sessions: Session[]`: An array of all active sessions for the current user.
-- `loginMethod: string | null`: The method used for logging in (e.g., 'google', 'passkey').
-- `userEmail: string | null`: The user's email if available.
+The React Native wrapper itself is distributed through npm. React Native
+autolinking consumes the wrapper podspec and Android project from
+`node_modules`.
 
-#### Chain State
+Example apps should depend on `oms-client-react-native-sdk`, not directly on the
+underlying native SDKs.
 
-- `chainId: number`: The currently selected chain ID.
-- `setChainId: (chainId: number) => void`: A function to update the active chain ID.
+## Consumer Requirements
 
-#### Core Functions
-
-- `connect(options)`: Initiates the connection process.
-  - `options.loginMethod`: The preferred login method ('google', 'email', 'passkey').
-  - `options.explicitSession`: Request a specific explicit session upon connection. This allows for seamless transactions later without further user prompts.
-
-- `disconnect()`: Clears the current session and disconnects the user.
-
-- `signMessage(message)`: Prompts the user to sign a standard string message. Returns a promise that resolves with the signature.
-
-- `signTypedData(typedData)`: Prompts the user to sign an EIP-712 typed data structure.
-
-- `sendTransaction(transactions)`: Initiates one or more transactions. The return value depends on whether the session has permissions for the transaction.
-  - **If permissioned:** It may return `feeOptions` if the relayer requires a fee. The developer can then choose a fee and call the returned `send` function. If no fee is required, it sends the transaction directly.
-  - **If not permissioned:** It redirects the user to the wallet for approval.
-  - **Returns:** `Promise<SendTransactionResult>`
-
-    ```typescript
-    // If no fee is required or if sent via wallet
-    { isFeeRequired: false, txHash: HexString }
-
-    // If a fee is required for a permissioned session
-    {
-      isFeeRequired: true,
-      feeOptions: Relayer.FeeOption[],
-      send: (feeOption) => Promise<HexString>
-    }
-    ```
-
-- `addExplicitSession(explicitSessionConfig)`: Prompts the user to approve a new session with a specific set of permissions (e.g., for minting an NFT without being prompted every time).
-
-- `hasPermission(transactions)`: Checks if the current session has sufficient permissions to execute the given transactions without requiring wallet approval. Returns `Promise<boolean>`.
-
-## Contributing
-
-- [Development workflow](CONTRIBUTING.md#development-workflow)
-- [Sending a pull request](CONTRIBUTING.md#sending-a-pull-request)
-- [Code of conduct](CODE_OF_CONDUCT.md)
-
-## Troubleshooting
-
-### Build Errors (`ERR_REQUIRE_ESM`)
-
-If you encounter an error similar to `Error [ERR_REQUIRE_ESM]: require() of ES Module ... not supported` while running the build script (`yarn prepare`), it is likely due to an incompatible Node.js version.
-
-**Solution:** The build tooling for this project requires a modern version of Node.js that supports ES Modules in CommonJS files. Please ensure you are using **Node.js v22.15.1 or higher**.
-
-It is highly recommended to use a version manager like [nvm](https://github.com/nvm-sh/nvm) to easily switch between Node.js versions. You can install and switch to the required version by running:
-
-```sh
-nvm install 22.15.1
-nvm use 22.15.1
-```
+- Bare React Native apps are supported through normal React Native autolinking.
+- Expo apps must use a development build, Expo prebuild/EAS Build, or the bare
+  workflow. Expo Go cannot load this SDK because it includes custom native code.
+- Android apps need `minSdk 26`, `compileSdk 34` or newer, and Java 17 compile
+  options.
+- iOS apps need deployment target 15.0 or newer.
+- OIDC redirect auth requires the consuming app to configure its own URL scheme
+  or app links.
 
 ## License
 
 MIT
+
+---
+
+Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)
+
+## Publishing (for `alpha`)
+
+Publish from a clean worktree. The Android and iOS native SDK dependencies are
+resolved from Maven Central and CocoaPods by Gradle and CocoaPods; the React
+Native wrapper podspec is shipped in the npm package and consumed from
+`node_modules` by React Native autolinking.
+
+Before publishing a new release, update `package.json` with the target npm
+version and make sure that exact version has not already been published:
+
+```sh
+npm view oms-client-react-native-sdk@<version> version
+```
+
+An npm 404 means that version is available. If npm prints a version, choose a
+new version before publishing.
+
+Then verify and publish:
+
+```sh
+git status --short
+yarn typecheck
+yarn lint
+yarn prepare
+yarn sdk-example build:android
+yarn sdk-example build:ios
+yarn npm publish --dry-run --access public --tag alpha
+yarn npm publish --access public --tag alpha
+```
+
+The dry-run should include `lib`, `src`, `android`, `ios`, and
+`OmsClientReactNativeSdk.podspec`.

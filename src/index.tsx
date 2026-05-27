@@ -1,25 +1,80 @@
-export { SequenceProvider } from './SequenceProvider';
-export { type SequenceProviderConfig } from './setup';
-
 export {
-  SequenceContext,
-  useSequence,
-  type SendTransactionResult,
-} from './SequenceContext';
-
-// Re-export all necessary types from the core dapp-client and other libraries.
-// This prevents type duplication and provides a clean, single point of import for SDK consumers.
-export {
-  getExplorerUrl,
-  Signers,
-  Utils,
-  type LoginMethod,
-  type Session,
-  type SignatureResponse,
-  type Transaction,
-  type SessionResponse,
-} from '@0xsequence/dapp-client';
-
-export type { Relayer } from '@0xsequence/relayer';
-
-export type { TypedData } from 'ox/TypedData';
+  callContract,
+  completeEmailAuth,
+  configure,
+  createWallet,
+  getIdToken,
+  getNativeTokenBalance,
+  getSupportedNetworks,
+  getSession,
+  getTokenBalances,
+  getTransactionStatus,
+  getWalletAddress,
+  handleOidcRedirectCallback,
+  listAccess,
+  listAccessPages,
+  listAccessPage,
+  listWallets,
+  revokeAccess,
+  sendTransaction,
+  signInWithOidcIdToken,
+  signMessage,
+  signTypedData,
+  signOut,
+  startEmailAuth,
+  startOidcRedirectAuth,
+  verifyMessageSignature,
+  verifyTypedDataSignature,
+  useWallet,
+} from './client';
+export { OidcProviders } from './oidcProviders';
+export { formatUnits, parseUnits } from './units';
+export type { ParseUnitsOptions, ParseUnitsRoundingMode } from './units';
+export type {
+  CallContractArg,
+  CallContractParams,
+  CompleteEmailAuthParams,
+  CreateWalletParams,
+  HandleOidcRedirectCallbackParams,
+  GetIdTokenParams,
+  GetNativeTokenBalanceParams,
+  GetTokenBalancesParams,
+  GoogleOidcProviderParams,
+  ListAccessPageParams,
+  ListAccessPagesParams,
+  ListAccessParams,
+  OmsAccessPage,
+  OmsClientConfig,
+  OmsClientEnvironment,
+  OmsClientSessionLoginType,
+  OmsClientSessionState,
+  OmsCompleteAuthResult,
+  OmsCredentialInfo,
+  OmsFeeOption,
+  OmsFeeOptionSelection,
+  OmsFeeOptionSelector,
+  OmsFeeOptionWithBalance,
+  OmsFeeToken,
+  OmsListAccessResponse,
+  OmsNetwork,
+  OmsOidcRedirectAuthResult,
+  OmsPendingWalletSelection,
+  OmsSendTransactionResponse,
+  OmsStartOidcRedirectAuthResult,
+  OmsTokenBalance,
+  OmsTokenBalancesPage,
+  OmsTokenBalancesResult,
+  OmsTransactionMode,
+  OmsTransactionStatus,
+  OmsWallet,
+  OmsWalletActivationResult,
+  OmsWalletSelectionBehavior,
+  OmsWalletType,
+  OidcProviderConfig,
+  SendTransactionParams,
+  SignInWithOidcIdTokenParams,
+  SignTypedDataParams,
+  StartOidcRedirectAuthParams,
+  VerifyMessageSignatureParams,
+  VerifyTypedDataSignatureParams,
+} from './types';
