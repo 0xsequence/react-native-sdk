@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -10,6 +11,7 @@ import {
   Clipboard,
   Keyboard,
   KeyboardAvoidingView,
+  Linking,
   LogBox,
   Modal,
   Platform,
@@ -23,6 +25,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { InAppBrowser } from 'react-native-inappbrowser-reborn';
 import { WebView } from 'react-native-webview';
 import { TrailsApi } from '@0xtrails/api';
 import {
@@ -46,9 +49,12 @@ import {
   getSession,
   getSupportedNetworks,
   getTokenBalances,
+  handleOidcRedirectCallback,
+  OidcProviders,
   sendTransaction,
   signOut,
   startEmailAuth,
+  startOidcRedirectAuth,
   type OmsClientSessionState,
   type OmsNetwork,
   type OmsSendTransactionResponse,
@@ -123,6 +129,7 @@ type DemoButtonProps = {
 
 const DEMO_PROJECT_ACCESS_KEY = 'AQAAAAAAAAK2JvvZhWqZ51riasWBftkrVXE';
 const DEMO_PROJECT_ID = 'proj_014kg56dc0a75';
+const DEMO_OIDC_REDIRECT_URI = 'omsclientkotlindemo://auth/callback';
 const DEMO_ENVIRONMENT = {
   apiRpcUrl: 'https://dev-api.sequence.app/rpc/API',
   indexerUrlTemplate: 'https://dev-{value}-indexer.sequence.app/rpc/Indexer/',
@@ -239,6 +246,20 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{title}</Text>
       {children}
+    </View>
+  );
+}
+
+function AuthMethodSeparator() {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.authMethodSeparator}
+    >
+      <View style={styles.authMethodSeparatorLine} />
+      <Text style={styles.authMethodSeparatorText}>or</Text>
+      <View style={styles.authMethodSeparatorLine} />
     </View>
   );
 }
@@ -780,6 +801,10 @@ function explorerUrlFor(txHash: string): string {
   return `https://polygonscan.com/tx/${txHash}`;
 }
 
+function isDemoOidcRedirectUrl(url: string): boolean {
+  return url.startsWith(DEMO_OIDC_REDIRECT_URI);
+}
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
@@ -1190,6 +1215,7 @@ async function prepareSwapAndEarnUsdc({
 
 export default function App() {
   const [networks, setNetworks] = useState<OmsNetwork[]>([]);
+  const [sdkReady, setSdkReady] = useState(false);
   const [session, setSession] =
     useState<OmsClientSessionState>(SIGNED_OUT_SESSION);
   const [authStage, setAuthStage] = useState<'email' | 'code'>('email');
@@ -1235,6 +1261,8 @@ export default function App() {
   const [browserUrl, setBrowserUrl] = useState<string | null>(null);
   const [logLines, setLogLines] = useState(['Ready.']);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const handledRedirectUrlsRef = useRef(new Set<string>());
+  const handlingRedirectUrlRef = useRef<string | null>(null);
 
   const appendLog = useCallback((messageToAppend: string) => {
     setLogLines((current) => [...current, messageToAppend].slice(-80));
@@ -1286,6 +1314,65 @@ export default function App() {
       }
     },
     [appendLog]
+  );
+
+  const finishOidcRedirectSignIn = useCallback(
+    async (callbackUrl: string) => {
+      if (
+        handlingRedirectUrlRef.current === callbackUrl ||
+        handledRedirectUrlsRef.current.has(callbackUrl)
+      ) {
+        return;
+      }
+
+      handlingRedirectUrlRef.current = callbackUrl;
+      try {
+        setAuthStatus('Completing Google redirect sign-in...');
+        const result = await handleOidcRedirectCallback({
+          callbackUrl,
+          walletSelection: 'automatic',
+        });
+
+        switch (result.type) {
+          case 'completed': {
+            const nextSession = await refreshSession();
+            const address = nextSession.walletAddress ?? result.wallet.address;
+            setCode('');
+            setAuthStage('email');
+            setAuthStatus('Google redirect login complete');
+            appendLog(`Google redirect sign-in complete: ${address}`);
+            break;
+          }
+          case 'walletSelection': {
+            const existingWallet = result.pendingSelection.wallets[0];
+            const activation = existingWallet
+              ? await result.pendingSelection.selectWallet(existingWallet.id)
+              : await result.pendingSelection.createAndSelectWallet();
+            const nextSession = await refreshSession();
+            setCode('');
+            setAuthStage('email');
+            setAuthStatus('Google redirect login complete');
+            appendLog(
+              `Google redirect wallet selected: ${nextSession.walletAddress ?? activation.walletAddress}`
+            );
+            break;
+          }
+          case 'failed':
+            throw new Error(result.message);
+          case 'noPendingAuth':
+            setAuthStatus('No pending Google redirect sign-in.');
+            await refreshSession();
+            break;
+          case 'notOidcRedirectCallback':
+            setAuthStatus('Ignored non-auth redirect.');
+            break;
+        }
+      } finally {
+        handledRedirectUrlsRef.current.add(callbackUrl);
+        handlingRedirectUrlRef.current = null;
+      }
+    },
+    [appendLog, refreshSession]
   );
 
   const refreshBalances = useCallback(
@@ -1549,6 +1636,7 @@ export default function App() {
         if (nextSession.walletAddress) {
           appendLog(`Wallet ready: ${nextSession.walletAddress}`);
         }
+        setSdkReady(true);
       });
     }
 
@@ -1560,6 +1648,40 @@ export default function App() {
       disposed = true;
     };
   }, [appendLog, refreshSession, runAction]);
+
+  useEffect(() => {
+    if (!sdkReady) return undefined;
+
+    const handleRedirectUrl = (url: string) => {
+      if (!isDemoOidcRedirectUrl(url)) return;
+
+      runAction(
+        'Handle Google redirect sign-in callback',
+        () => finishOidcRedirectSignIn(url),
+        (error) => {
+          setAuthStatus(
+            `Google redirect completion failed: ${describeError(error)}`
+          );
+        }
+      );
+    };
+
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      handleRedirectUrl(url);
+    });
+
+    Linking.getInitialURL()
+      .then((url) => {
+        if (url) {
+          handleRedirectUrl(url);
+        }
+      })
+      .catch((error: unknown) => {
+        appendLog(`!! ${describeError(error)}`);
+      });
+
+    return () => subscription.remove();
+  }, [appendLog, finishOidcRedirectSignIn, runAction, sdkReady]);
 
   const walletAddress = session.walletAddress;
   const isSignedIn = walletAddress != null;
@@ -1618,6 +1740,56 @@ export default function App() {
       },
       (error) => {
         setAuthStatus(`Sign-in error: ${describeError(error)}`);
+      }
+    );
+  };
+
+  const startGoogleRedirectSignIn = () => {
+    runAction(
+      'Start Google redirect sign-in',
+      async () => {
+        setCode('');
+        setAuthStage('email');
+        setAuthStatus('Opening Google redirect sign-in...');
+        const started = await startOidcRedirectAuth({
+          provider: OidcProviders.google(),
+          redirectUri: DEMO_OIDC_REDIRECT_URI,
+        });
+        appendLog(`Google redirect auth started: state=${started.state}`);
+
+        if (!(await InAppBrowser.isAvailable())) {
+          throw new Error('In-app browser is not available on this device');
+        }
+
+        setAuthStatus('Waiting for Google redirect callback...');
+        const result = await InAppBrowser.openAuth(
+          started.authorizationUrl,
+          DEMO_OIDC_REDIRECT_URI,
+          {
+            dismissButtonStyle: 'cancel',
+            ephemeralWebSession: false,
+            preferredBarTintColor: '#111827',
+            preferredControlTintColor: '#F8FAFC',
+            showTitle: true,
+            toolbarColor: '#111827',
+            navigationBarColor: '#020617',
+            enableUrlBarHiding: true,
+            enableDefaultShare: false,
+            forceCloseOnRedirection: true,
+          }
+        );
+
+        if (result.type === 'success') {
+          await finishOidcRedirectSignIn(result.url);
+        } else {
+          setAuthStatus('Google redirect sign-in cancelled.');
+          appendLog(`Google redirect browser closed: ${result.type}`);
+        }
+      },
+      (error) => {
+        setAuthStatus(
+          `Google redirect sign-in failed: ${describeError(error)}`
+        );
       }
     );
   };
@@ -1976,10 +2148,6 @@ export default function App() {
     );
   };
 
-  const authAction =
-    authStage === 'email' ? requestEmailCode : completeEmailCode;
-  const authActionLabel = authStage === 'email' ? 'Send code' : 'Verify code';
-
   const sessionDetails = useMemo(
     () => [
       {
@@ -2045,37 +2213,51 @@ export default function App() {
                 <Card title="Sign-In">
                   <Text style={styles.status}>{authStatus}</Text>
                   {authStage === 'email' ? (
-                    <Field
-                      keyboardType="email-address"
-                      label="Email"
-                      onChangeText={setEmail}
-                      value={email}
-                    />
-                  ) : (
-                    <Field
-                      keyboardType="number-pad"
-                      label="Code"
-                      onChangeText={setCode}
-                      value={code}
-                    />
-                  )}
-                  <View style={styles.buttonRow}>
-                    {authStage === 'code' ? (
+                    <>
+                      <Field
+                        keyboardType="email-address"
+                        label="Email"
+                        onChangeText={setEmail}
+                        value={email}
+                      />
                       <DemoButton
-                        disabled={isBusy}
-                        label="Cancel"
-                        onPress={cancelCodeStep}
-                        style={styles.rowButton}
+                        disabled={isBusy || !sdkReady}
+                        label="Send code"
+                        onPress={requestEmailCode}
+                      />
+                      <AuthMethodSeparator />
+                      <DemoButton
+                        disabled={isBusy || !sdkReady}
+                        label="Sign in with Google"
+                        onPress={startGoogleRedirectSignIn}
                         variant="outline"
                       />
-                    ) : null}
-                    <DemoButton
-                      disabled={isBusy}
-                      label={authActionLabel}
-                      onPress={authAction}
-                      style={styles.rowButton}
-                    />
-                  </View>
+                    </>
+                  ) : (
+                    <>
+                      <Field
+                        keyboardType="number-pad"
+                        label="Code"
+                        onChangeText={setCode}
+                        value={code}
+                      />
+                      <View style={styles.buttonRow}>
+                        <DemoButton
+                          disabled={isBusy}
+                          label="Cancel"
+                          onPress={cancelCodeStep}
+                          style={styles.rowButton}
+                          variant="outline"
+                        />
+                        <DemoButton
+                          disabled={isBusy}
+                          label="Verify code"
+                          onPress={completeEmailCode}
+                          style={styles.rowButton}
+                        />
+                      </View>
+                    </>
+                  )}
                 </Card>
               ) : (
                 <>
@@ -2324,6 +2506,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginTop: 8,
+  },
+  authMethodSeparator: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  authMethodSeparatorLine: {
+    backgroundColor: '#334155',
+    flex: 1,
+    height: 1,
+  },
+  authMethodSeparatorText: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
   card: {
     backgroundColor: '#111827',
