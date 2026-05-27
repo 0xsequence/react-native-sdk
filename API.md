@@ -248,6 +248,8 @@ sendTransaction({
   data?: string | null;
   mode?: 'native' | 'relayer';
   selectFeeOption?: OmsFeeOptionSelector | null;
+  waitForStatus?: boolean;
+  statusPolling?: OmsTransactionStatusPollingOptions;
 }): Promise<OmsSendTransactionResponse>
 
 callContract({
@@ -257,6 +259,8 @@ callContract({
   args?: { type: string; value: unknown }[] | null;
   mode?: 'native' | 'relayer';
   selectFeeOption?: OmsFeeOptionSelector | null;
+  waitForStatus?: boolean;
+  statusPolling?: OmsTransactionStatusPollingOptions;
 }): Promise<OmsSendTransactionResponse>
 
 getTransactionStatus(txnId: string): Promise<OmsTransactionStatus>
@@ -273,10 +277,22 @@ type OmsTransactionStatus = {
   status: string;
   txnHash: string | null;
 };
+
+type OmsTransactionStatusPollingOptions = {
+  timeoutMs?: number;
+  intervalMs?: number;
+  fastIntervalMs?: number;
+  fastPollCount?: number;
+};
 ```
 
 `value` is a raw base-unit integer string. Use `parseUnits` for display-value
 conversion before sending.
+
+By default, transaction methods poll WaaS after execute until status resolves
+or the default timeout is reached. Pass `waitForStatus: false` to return
+immediately after execute, or pass `statusPolling` to tune the post-execute
+polling timeout, normal interval, fast interval, and fast-poll count.
 
 ## Fee Selection
 
@@ -308,9 +324,13 @@ Returning `null` is only valid for sponsored transactions.
 ```ts
 getTokenBalances({
   chainId: string;
-  contractAddress: string;
+  contractAddress?: string;
   walletAddress: string;
   includeMetadata?: boolean;
+  page?: {
+    page?: number;
+    pageSize?: number;
+  };
 }): Promise<OmsTokenBalancesResult>
 
 getNativeTokenBalance({
@@ -330,7 +350,17 @@ type OmsTokenBalance = {
   blockNumber?: number | null;
   chainId?: number | null;
 };
+
+type OmsTokenBalancesPage = {
+  page: number;
+  pageSize: number;
+  more: boolean;
+};
 ```
+
+Omit `contractAddress` to query balances across token contracts. Pass `page`
+to request a later page or a custom page size. When `page` is undefined, the
+request defaults to page `0` with up to `40` entries.
 
 ## Wallet ID Token
 

@@ -19,8 +19,10 @@ import com.omsclient.kotlin_sdk.models.Page
 import com.omsclient.kotlin_sdk.models.SendTransactionRequest
 import com.omsclient.kotlin_sdk.models.TokenBalance
 import com.omsclient.kotlin_sdk.models.TokenBalancesPage
+import com.omsclient.kotlin_sdk.models.TokenBalancesPageRequest
 import com.omsclient.kotlin_sdk.models.TokenBalancesResult
 import com.omsclient.kotlin_sdk.models.TransactionMode
+import com.omsclient.kotlin_sdk.models.TransactionStatusPollingOptions
 import com.omsclient.kotlin_sdk.models.TransactionStatusResponse
 import com.omsclient.kotlin_sdk.models.Wallet
 import com.omsclient.kotlin_sdk.models.WalletType
@@ -307,6 +309,11 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
     data: String?,
     mode: String?,
     feeOptionSelectorId: String?,
+    waitForStatus: Boolean,
+    statusPollingTimeoutMs: String?,
+    statusPollingIntervalMs: String?,
+    statusPollingFastIntervalMs: String?,
+    statusPollingFastPollCount: String?,
     promise: Promise
   ) {
     launch(promise) {
@@ -319,7 +326,14 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
           data = data,
           mode = mode.toTransactionMode()
         ),
-        selectFeeOption = feeOptionSelector(feeOptionSelectorId)
+        selectFeeOption = feeOptionSelector(feeOptionSelectorId),
+        waitForStatus = waitForStatus,
+        statusPolling = statusPollingOptions(
+          timeoutMs = statusPollingTimeoutMs,
+          intervalMs = statusPollingIntervalMs,
+          fastIntervalMs = statusPollingFastIntervalMs,
+          fastPollCount = statusPollingFastPollCount
+        )
       )
 
       sendTransactionResponseMap(result)
@@ -333,6 +347,11 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
     argsJson: String?,
     mode: String?,
     feeOptionSelectorId: String?,
+    waitForStatus: Boolean,
+    statusPollingTimeoutMs: String?,
+    statusPollingIntervalMs: String?,
+    statusPollingFastIntervalMs: String?,
+    statusPollingFastPollCount: String?,
     promise: Promise
   ) {
     launch(promise) {
@@ -343,7 +362,14 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
         method = method,
         args = argsJson.toAbiArgs(),
         mode = mode.toTransactionMode(),
-        selectFeeOption = feeOptionSelector(feeOptionSelectorId)
+        selectFeeOption = feeOptionSelector(feeOptionSelectorId),
+        waitForStatus = waitForStatus,
+        statusPolling = statusPollingOptions(
+          timeoutMs = statusPollingTimeoutMs,
+          intervalMs = statusPollingIntervalMs,
+          fastIntervalMs = statusPollingFastIntervalMs,
+          fastPollCount = statusPollingFastPollCount
+        )
       )
 
       sendTransactionResponseMap(result)
@@ -380,9 +406,11 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
 
   override fun getTokenBalances(
     chainId: String,
-    contractAddress: String,
+    contractAddress: String?,
     walletAddress: String,
     includeMetadata: Boolean,
+    page: String?,
+    pageSize: String?,
     promise: Promise
   ) {
     launch(promise) {
@@ -392,7 +420,11 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
           network = activeClient.requireNetwork(chainId),
           contractAddress = contractAddress,
           walletAddress = walletAddress,
-          includeMetadata = includeMetadata
+          includeMetadata = includeMetadata,
+          page = TokenBalancesPageRequest(
+            page = page.toIntOrNullParam("page") ?: 0,
+            pageSize = pageSize.toIntOrNullParam("pageSize") ?: 40
+          )
         )
       )
     }
@@ -742,6 +774,30 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
 
   private fun String?.toUIntOrNullParam(name: String): UInt? =
     this?.toUIntOrNull() ?: this?.let { error("$name must be an unsigned integer") }
+
+  private fun String?.toIntOrNullParam(name: String): Int? =
+    this?.toIntOrNull()?.takeIf { it >= 0 } ?: this?.let { error("$name must be a non-negative integer") }
+
+  private fun String?.toLongOrNullParam(name: String): Long? =
+    this?.toLongOrNull()?.takeIf { it >= 0 } ?: this?.let { error("$name must be a non-negative integer") }
+
+  private fun statusPollingOptions(
+    timeoutMs: String?,
+    intervalMs: String?,
+    fastIntervalMs: String?,
+    fastPollCount: String?
+  ): TransactionStatusPollingOptions? {
+    if (timeoutMs == null && intervalMs == null && fastIntervalMs == null && fastPollCount == null) {
+      return null
+    }
+
+    return TransactionStatusPollingOptions(
+      fastPollIntervalMillis = fastIntervalMs.toLongOrNullParam("statusPolling.fastIntervalMs") ?: 400L,
+      fastPollCount = fastPollCount.toIntOrNullParam("statusPolling.fastPollCount") ?: 5,
+      pollIntervalMillis = intervalMs.toLongOrNullParam("statusPolling.intervalMs") ?: 2_000L,
+      timeoutMillis = timeoutMs.toLongOrNullParam("statusPolling.timeoutMs") ?: 60_000L
+    )
+  }
 
   private fun String?.toJsonObjectMap(name: String): Map<String, kotlinx.serialization.json.JsonElement>? {
     val value = this ?: return null

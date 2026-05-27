@@ -65,6 +65,7 @@ export type {
   OmsTokenBalancesPage,
   OmsTokenBalancesResult,
   OmsTransactionMode,
+  OmsTransactionStatusPollingOptions,
   OmsTransactionStatus,
   OmsWallet,
   OmsWalletActivationResult,

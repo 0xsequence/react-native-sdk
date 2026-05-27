@@ -205,7 +205,12 @@ export interface Spec extends TurboModule {
     value: string,
     data: string | null,
     mode: string | null,
-    feeOptionSelectorId: string | null
+    feeOptionSelectorId: string | null,
+    waitForStatus: boolean,
+    statusPollingTimeoutMs: string | null,
+    statusPollingIntervalMs: string | null,
+    statusPollingFastIntervalMs: string | null,
+    statusPollingFastPollCount: string | null
   ): Promise<OmsSendTransactionResponse>;
   callContract(
     chainId: string,
@@ -213,7 +218,12 @@ export interface Spec extends TurboModule {
     method: string,
     argsJson: string | null,
     mode: string | null,
-    feeOptionSelectorId: string | null
+    feeOptionSelectorId: string | null,
+    waitForStatus: boolean,
+    statusPollingTimeoutMs: string | null,
+    statusPollingIntervalMs: string | null,
+    statusPollingFastIntervalMs: string | null,
+    statusPollingFastPollCount: string | null
   ): Promise<OmsSendTransactionResponse>;
   respondToFeeOptionSelection(
     requestId: string,
@@ -223,9 +233,11 @@ export interface Spec extends TurboModule {
   getTransactionStatus(txnId: string): Promise<OmsTransactionStatus>;
   getTokenBalances(
     chainId: string,
-    contractAddress: string,
+    contractAddress: string | null,
     walletAddress: string,
-    includeMetadata: boolean
+    includeMetadata: boolean,
+    page: string | null,
+    pageSize: string | null
   ): Promise<OmsTokenBalancesResult>;
   getNativeTokenBalance(
     chainId: string,
