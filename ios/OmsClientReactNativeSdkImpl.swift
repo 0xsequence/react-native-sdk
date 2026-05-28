@@ -17,9 +17,9 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
     feeOptionSelectionRequestEmitter = emitter
   }
 
-  @objc(configureWithProjectAccessKey:walletApiUrl:apiRpcUrl:indexerUrlTemplate:projectId:resolve:reject:)
+  @objc(configureWithPublishableKey:walletApiUrl:apiRpcUrl:indexerUrlTemplate:projectId:resolve:reject:)
   public func configure(
-    projectAccessKey: String,
+    publishableKey: String,
     walletApiUrl: String?,
     apiRpcUrl: String?,
     indexerUrlTemplate: String?,
@@ -35,11 +35,11 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
 
     clearPendingWalletSelections()
     tokenBalancesIndexer = OmsBridgeTokenBalancesIndexer(
-      projectAccessKey: projectAccessKey,
+      publishableKey: publishableKey,
       indexerUrlTemplate: environment.indexerUrlTemplate
     )
     client = OMSClient(
-      projectAccessKey: projectAccessKey,
+      projectAccessKey: publishableKey,
       projectId: projectId,
       environment: environment
     )
@@ -1449,11 +1449,11 @@ private final class PromiseCallbacks: @unchecked Sendable {
 }
 
 private final class OmsBridgeTokenBalancesIndexer: @unchecked Sendable {
-  private let projectAccessKey: String
+  private let publishableKey: String
   private let indexerUrlTemplate: String
 
-  init(projectAccessKey: String, indexerUrlTemplate: String) {
-    self.projectAccessKey = projectAccessKey
+  init(publishableKey: String, indexerUrlTemplate: String) {
+    self.publishableKey = publishableKey
     self.indexerUrlTemplate = indexerUrlTemplate
   }
 
@@ -1486,7 +1486,7 @@ private final class OmsBridgeTokenBalancesIndexer: @unchecked Sendable {
     urlRequest.httpMethod = "POST"
     urlRequest.httpBody = bodyData
     urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    urlRequest.setValue(projectAccessKey, forHTTPHeaderField: "X-Access-Key")
+    urlRequest.setValue(publishableKey, forHTTPHeaderField: "X-Access-Key")
 
     let (data, response) = try await URLSession.shared.data(for: urlRequest)
     guard let httpResponse = response as? HTTPURLResponse else {

@@ -16,7 +16,7 @@ iOS resolves `oms-client-swift-sdk` `0.1.0-alpha.1`.
 
 ```ts
 configure({
-  projectAccessKey: string;
+  publishableKey: string;
   projectId: string;
   environment?: {
     walletApiUrl?: string;
@@ -27,7 +27,7 @@ configure({
 ```
 
 Call `configure` before using wallet, signing, transaction, balance, or access
-APIs. `projectAccessKey` is sent to the native SDKs as the OMS access key, and
+APIs. `publishableKey` is sent to the native SDKs as the OMS publishable key, and
 `projectId` is used for wallet request signing scope and session storage scope.
 
 ## Session

@@ -45,7 +45,7 @@ export type OmsClientEnvironment = {
 };
 
 export type OmsClientConfig = {
-  projectAccessKey: string;
+  publishableKey: string;
   projectId: string;
   environment?: OmsClientEnvironment;
 };

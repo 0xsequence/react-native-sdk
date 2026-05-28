@@ -237,7 +237,7 @@ async function withFeeOptionSelector<T>(
 
 export function configure(config: OmsClientConfig): Promise<void> {
   return OmsClientReactNativeSdk.configure(
-    config.projectAccessKey,
+    config.publishableKey,
     config.environment?.walletApiUrl ?? null,
     config.environment?.apiRpcUrl ?? null,
     config.environment?.indexerUrlTemplate ?? null,

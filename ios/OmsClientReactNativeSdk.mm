@@ -27,7 +27,7 @@
   return self;
 }
 
-- (void)configure:(NSString *)projectAccessKey
+- (void)configure:(NSString *)publishableKey
      walletApiUrl:(nullable NSString *)walletApiUrl
         apiRpcUrl:(nullable NSString *)apiRpcUrl
 indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
@@ -35,13 +35,13 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
           resolve:(RCTPromiseResolveBlock)resolve
            reject:(RCTPromiseRejectBlock)reject
 {
-  [_impl configureWithProjectAccessKey:projectAccessKey
-                          walletApiUrl:walletApiUrl
-                             apiRpcUrl:apiRpcUrl
-                    indexerUrlTemplate:indexerUrlTemplate
-                             projectId:projectId
-                               resolve:resolve
-                                reject:reject];
+  [_impl configureWithPublishableKey:publishableKey
+                         walletApiUrl:walletApiUrl
+                            apiRpcUrl:apiRpcUrl
+                   indexerUrlTemplate:indexerUrlTemplate
+                            projectId:projectId
+                              resolve:resolve
+                               reject:reject];
 }
 
 - (void)getWalletAddress:(RCTPromiseResolveBlock)resolve

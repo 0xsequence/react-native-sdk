@@ -58,7 +58,7 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
   private var client: OMSClient? = null
 
   override fun configure(
-    projectAccessKey: String,
+    publishableKey: String,
     walletApiUrl: String?,
     apiRpcUrl: String?,
     indexerUrlTemplate: String?,
@@ -69,7 +69,7 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
       pendingWalletSelections.clear()
       client = OMSClient(
         context = reactApplicationContext,
-        publicApiKey = projectAccessKey,
+        publicApiKey = publishableKey,
         projectId = projectId,
         environment = OMSClientEnvironment(
           walletApiUrl ?: OMSClientEnvironment.walletApiUrlDefault,

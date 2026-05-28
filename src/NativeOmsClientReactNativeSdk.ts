@@ -149,7 +149,7 @@ export type OmsListAccessResponse = {
 export interface Spec extends TurboModule {
   readonly onFeeOptionSelectionRequest: CodegenTypes.EventEmitter<OmsFeeOptionSelectionRequest>;
   configure(
-    projectAccessKey: string,
+    publishableKey: string,
     walletApiUrl: string | null,
     apiRpcUrl: string | null,
     indexerUrlTemplate: string | null,
