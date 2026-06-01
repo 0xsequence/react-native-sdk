@@ -27,5 +27,11 @@ jobs:
       - name: Lint files
         run: yarn lint
 
+      - name: Install Expo example dependencies
+        run: npm --prefix examples/expo-example ci
+
       - name: Typecheck files
         run: yarn typecheck
+
+      - name: Typecheck Expo example
+        run: npm --prefix examples/expo-example run typecheck
