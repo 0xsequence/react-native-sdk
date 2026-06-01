@@ -58,6 +58,12 @@ function stringifyOptionalJson(
   return stringifyRequiredJson(value, 'value');
 }
 
+function stringifyOptionalNumber(
+  value: number | null | undefined
+): string | null {
+  return value == null ? null : String(value);
+}
+
 function hasOwnProperty(value: object, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(value, key);
 }
@@ -231,7 +237,7 @@ async function withFeeOptionSelector<T>(
 
 export function configure(config: OmsClientConfig): Promise<void> {
   return OmsClientReactNativeSdk.configure(
-    config.projectAccessKey,
+    config.publishableKey,
     config.environment?.walletApiUrl ?? null,
     config.environment?.apiRpcUrl ?? null,
     config.environment?.indexerUrlTemplate ?? null,
@@ -348,7 +354,12 @@ export async function sendTransaction(
       params.value,
       params.data ?? null,
       params.mode ?? null,
-      selectorId
+      selectorId,
+      params.waitForStatus ?? true,
+      stringifyOptionalNumber(params.statusPolling?.timeoutMs),
+      stringifyOptionalNumber(params.statusPolling?.intervalMs),
+      stringifyOptionalNumber(params.statusPolling?.fastIntervalMs),
+      stringifyOptionalNumber(params.statusPolling?.fastPollCount)
     )
   );
 }
@@ -363,7 +374,12 @@ export async function callContract(
       params.method,
       stringifyOptionalJson(params.args),
       params.mode ?? null,
-      selectorId
+      selectorId,
+      params.waitForStatus ?? true,
+      stringifyOptionalNumber(params.statusPolling?.timeoutMs),
+      stringifyOptionalNumber(params.statusPolling?.intervalMs),
+      stringifyOptionalNumber(params.statusPolling?.fastIntervalMs),
+      stringifyOptionalNumber(params.statusPolling?.fastPollCount)
     )
   );
 }
@@ -379,9 +395,11 @@ export function getTokenBalances(
 ): Promise<OmsTokenBalancesResult> {
   return OmsClientReactNativeSdk.getTokenBalances(
     params.chainId,
-    params.contractAddress,
+    params.contractAddress ?? null,
     params.walletAddress,
-    params.includeMetadata ?? false
+    params.includeMetadata ?? false,
+    params.page?.page == null ? null : String(params.page.page),
+    params.page?.pageSize == null ? null : String(params.page.pageSize)
   );
 }
 

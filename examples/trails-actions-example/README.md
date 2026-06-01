@@ -8,6 +8,7 @@ and keeps Trails-specific code inside this app.
 
 ## Examples
 
+- Sign in with email OTP or Google OIDC redirect auth.
 - Swap POL to USDC on Polygon.
 - Deposit USDC into a Polygon earn market.
 - Swap POL to USDC and deposit the resulting USDC in one transaction.

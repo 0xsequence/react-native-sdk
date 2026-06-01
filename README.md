@@ -26,7 +26,7 @@ import {
 } from 'oms-client-react-native-sdk';
 
 await configure({
-  projectAccessKey: '<project-access-key>',
+  publishableKey: '<publishable-key>',
   projectId: '<project-id>',
 });
 

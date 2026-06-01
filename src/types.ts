@@ -45,7 +45,7 @@ export type OmsClientEnvironment = {
 };
 
 export type OmsClientConfig = {
-  projectAccessKey: string;
+  publishableKey: string;
   projectId: string;
   environment?: OmsClientEnvironment;
 };
@@ -57,6 +57,8 @@ export type SendTransactionParams = {
   data?: string | null;
   mode?: OmsTransactionMode;
   selectFeeOption?: OmsFeeOptionSelector | null;
+  waitForStatus?: boolean;
+  statusPolling?: OmsTransactionStatusPollingOptions;
 };
 
 export type OmsTransactionMode = 'native' | 'relayer';
@@ -178,6 +180,13 @@ export type CallContractArg = {
   value: unknown;
 };
 
+export type OmsTransactionStatusPollingOptions = {
+  timeoutMs?: number;
+  intervalMs?: number;
+  fastIntervalMs?: number;
+  fastPollCount?: number;
+};
+
 export type CallContractParams = {
   chainId: string;
   contractAddress: string;
@@ -185,13 +194,19 @@ export type CallContractParams = {
   args?: CallContractArg[] | null;
   mode?: OmsTransactionMode;
   selectFeeOption?: OmsFeeOptionSelector | null;
+  waitForStatus?: boolean;
+  statusPolling?: OmsTransactionStatusPollingOptions;
 };
 
 export type GetTokenBalancesParams = {
   chainId: string;
-  contractAddress: string;
+  contractAddress?: string;
   walletAddress: string;
   includeMetadata?: boolean;
+  page?: {
+    page?: number;
+    pageSize?: number;
+  };
 };
 
 export type GetNativeTokenBalanceParams = {

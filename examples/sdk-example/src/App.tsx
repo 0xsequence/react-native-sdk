@@ -38,7 +38,7 @@ import {
   type OmsWalletActivationResult,
 } from 'oms-client-react-native-sdk';
 
-const DEMO_PROJECT_ACCESS_KEY = 'AQAAAAAAAAK2JvvZhWqZ51riasWBftkrVXE';
+const DEMO_PUBLISHABLE_KEY = 'AQAAAAAAAAK2JvvZhWqZ51riasWBftkrVXE';
 const DEMO_PROJECT_ID = 'proj_014kg56dc0a75';
 const DEMO_OIDC_REDIRECT_URI = 'omsclientkotlindemo://auth/callback';
 const DEMO_ENVIRONMENT = {
@@ -475,7 +475,7 @@ export default function App() {
     async function bootstrap() {
       await runAction('Initializing SDK', async () => {
         await configure({
-          projectAccessKey: DEMO_PROJECT_ACCESS_KEY,
+          publishableKey: DEMO_PUBLISHABLE_KEY,
           projectId: DEMO_PROJECT_ID,
           environment: DEMO_ENVIRONMENT,
         });

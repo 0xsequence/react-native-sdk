@@ -27,7 +27,7 @@
   return self;
 }
 
-- (void)configure:(NSString *)projectAccessKey
+- (void)configure:(NSString *)publishableKey
      walletApiUrl:(nullable NSString *)walletApiUrl
         apiRpcUrl:(nullable NSString *)apiRpcUrl
 indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
@@ -35,13 +35,13 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
           resolve:(RCTPromiseResolveBlock)resolve
            reject:(RCTPromiseRejectBlock)reject
 {
-  [_impl configureWithProjectAccessKey:projectAccessKey
-                          walletApiUrl:walletApiUrl
-                             apiRpcUrl:apiRpcUrl
-                    indexerUrlTemplate:indexerUrlTemplate
-                             projectId:projectId
-                               resolve:resolve
-                                reject:reject];
+  [_impl configureWithPublishableKey:publishableKey
+                         walletApiUrl:walletApiUrl
+                            apiRpcUrl:apiRpcUrl
+                   indexerUrlTemplate:indexerUrlTemplate
+                            projectId:projectId
+                              resolve:resolve
+                               reject:reject];
 }
 
 - (void)getWalletAddress:(RCTPromiseResolveBlock)resolve
@@ -204,6 +204,11 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
                    data:(nullable NSString *)data
                    mode:(nullable NSString *)mode
     feeOptionSelectorId:(nullable NSString *)feeOptionSelectorId
+          waitForStatus:(BOOL)waitForStatus
+ statusPollingTimeoutMs:(nullable NSString *)statusPollingTimeoutMs
+statusPollingIntervalMs:(nullable NSString *)statusPollingIntervalMs
+statusPollingFastIntervalMs:(nullable NSString *)statusPollingFastIntervalMs
+statusPollingFastPollCount:(nullable NSString *)statusPollingFastPollCount
                 resolve:(RCTPromiseResolveBlock)resolve
                  reject:(RCTPromiseRejectBlock)reject
 {
@@ -213,6 +218,11 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
                                data:data
                                mode:mode
                 feeOptionSelectorId:feeOptionSelectorId
+                      waitForStatus:waitForStatus
+             statusPollingTimeoutMs:statusPollingTimeoutMs
+            statusPollingIntervalMs:statusPollingIntervalMs
+        statusPollingFastIntervalMs:statusPollingFastIntervalMs
+        statusPollingFastPollCount:statusPollingFastPollCount
                             resolve:resolve
                              reject:reject];
 }
@@ -223,6 +233,11 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
             argsJson:(nullable NSString *)argsJson
                 mode:(nullable NSString *)mode
  feeOptionSelectorId:(nullable NSString *)feeOptionSelectorId
+       waitForStatus:(BOOL)waitForStatus
+statusPollingTimeoutMs:(nullable NSString *)statusPollingTimeoutMs
+statusPollingIntervalMs:(nullable NSString *)statusPollingIntervalMs
+statusPollingFastIntervalMs:(nullable NSString *)statusPollingFastIntervalMs
+statusPollingFastPollCount:(nullable NSString *)statusPollingFastPollCount
              resolve:(RCTPromiseResolveBlock)resolve
               reject:(RCTPromiseRejectBlock)reject
 {
@@ -232,6 +247,11 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
                         argsJson:argsJson
                             mode:mode
              feeOptionSelectorId:feeOptionSelectorId
+                   waitForStatus:waitForStatus
+          statusPollingTimeoutMs:statusPollingTimeoutMs
+         statusPollingIntervalMs:statusPollingIntervalMs
+     statusPollingFastIntervalMs:statusPollingFastIntervalMs
+     statusPollingFastPollCount:statusPollingFastPollCount
                          resolve:resolve
                           reject:reject];
 }
@@ -257,9 +277,11 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
 }
 
 - (void)getTokenBalances:(NSString *)chainId
-         contractAddress:(NSString *)contractAddress
+         contractAddress:(nullable NSString *)contractAddress
            walletAddress:(NSString *)walletAddress
          includeMetadata:(BOOL)includeMetadata
+                    page:(nullable NSString *)page
+                pageSize:(nullable NSString *)pageSize
                  resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject
 {
@@ -267,6 +289,8 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
                       contractAddress:contractAddress
                         walletAddress:walletAddress
                       includeMetadata:includeMetadata
+                                page:page
+                            pageSize:pageSize
                               resolve:resolve
                                reject:reject];
 }
