@@ -31,7 +31,7 @@
             <data
                 android:host="auth"
                 android:pathPrefix="/callback"
-                android:scheme="omsclientkotlindemo" />
+                android:scheme="omsclientrndemo" />
         </intent-filter>
       </activity>
     </application>
