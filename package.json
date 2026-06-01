@@ -46,6 +46,9 @@
     "example": "yarn workspace oms-client-react-native-sdk-example",
     "sdk-example": "yarn workspace oms-client-react-native-sdk-example",
     "trails-actions-example": "yarn workspace oms-client-react-native-sdk-trails-actions-example",
+    "expo-example": "cd examples/expo-example && npm start",
+    "expo-example:android": "cd examples/expo-example && npm run android",
+    "expo-example:ios": "cd examples/expo-example && npm run ios",
     "clean": "del-cli android/build examples/sdk-example/android/build examples/sdk-example/android/app/build examples/sdk-example/ios/build examples/trails-actions-example/android/build examples/trails-actions-example/android/app/build examples/trails-actions-example/ios/build lib",
     "prepare": "bob build",
     "typecheck": "tsc",
@@ -90,7 +93,8 @@
     "@0xtrails/wallet": "0.16.0"
   },
   "workspaces": [
-    "examples/*"
+    "examples/*",
+    "!examples/expo-example"
   ],
   "packageManager": "yarn@4.11.0",
   "react-native-builder-bob": {
