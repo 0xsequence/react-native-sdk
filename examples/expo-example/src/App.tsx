@@ -782,6 +782,7 @@ export default function App() {
               <View style={styles.headerText}>
                 <Text style={styles.title}>Auth Demo</Text>
                 <Text style={styles.subtitle}>OMS Client React Native SDK</Text>
+                <Text style={styles.subtitle}>Expo example</Text>
               </View>
               <DemoButton
                 disabled={isBusy || !isSignedIn}
