@@ -9,6 +9,9 @@
 .vscode/
 jsconfig.json
 
+# Codex
+.codex/
+
 # Xcode
 #
 build/
