@@ -51,7 +51,7 @@
     "expo-example:ios": "cd examples/expo-example && npm run ios",
     "clean": "del-cli android/build examples/sdk-example/android/build examples/sdk-example/android/app/build examples/sdk-example/ios/build examples/trails-actions-example/android/build examples/trails-actions-example/android/app/build examples/trails-actions-example/ios/build lib",
     "prepare": "bob build",
-    "typecheck": "tsc",
+    "typecheck": "npm --prefix examples/expo-example ci && tsc && npm --prefix examples/expo-example run typecheck",
     "lint": "eslint \"**/*.{js,ts,tsx}\""
   },
   "keywords": [
