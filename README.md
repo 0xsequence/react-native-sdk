@@ -1,11 +1,11 @@
-# oms-client-react-native-sdk
+# @0xsequence/oms-react-native-sdk
 
 React Native SDK for the OMS platform.
 
 ## Installation
 
 ```sh
-npm install oms-client-react-native-sdk
+npm install @0xsequence/oms-react-native-sdk
 ```
 
 ## Usage
@@ -23,7 +23,7 @@ import {
   signMessage,
   startEmailAuth,
   startOidcRedirectAuth,
-} from 'oms-client-react-native-sdk';
+} from '@0xsequence/oms-react-native-sdk';
 
 await configure({
   publishableKey: '<publishable-key>',
@@ -140,8 +140,8 @@ The React Native wrapper itself is distributed through npm. React Native
 autolinking consumes the wrapper podspec and Android project from
 `node_modules`.
 
-Example apps should depend on `oms-client-react-native-sdk`, not directly on the
-underlying native SDKs.
+Example apps should depend on `@0xsequence/oms-react-native-sdk`, not directly
+on the underlying native SDKs.
 
 ## Consumer Requirements
 
@@ -173,7 +173,7 @@ Before publishing a new release, update `package.json` with the target npm
 version and make sure that exact version has not already been published:
 
 ```sh
-npm view oms-client-react-native-sdk@<version> version
+npm view @0xsequence/oms-react-native-sdk@<version> version
 ```
 
 An npm 404 means that version is available. If npm prints a version, choose a

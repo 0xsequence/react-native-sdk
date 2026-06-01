@@ -33,7 +33,7 @@ import type {
 
 function unsupported(): never {
   throw new Error(
-    "'oms-client-react-native-sdk' is only supported on native platforms."
+    "'@0xsequence/oms-react-native-sdk' is only supported on native platforms."
   );
 }
 
