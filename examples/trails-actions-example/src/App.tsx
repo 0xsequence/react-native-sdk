@@ -58,7 +58,7 @@ import {
   type OmsClientSessionState,
   type OmsNetwork,
   type OmsSendTransactionResponse,
-} from 'oms-client-react-native-sdk';
+} from '@0xsequence/oms-react-native-sdk';
 import {
   encodeFunctionData,
   formatUnits,
