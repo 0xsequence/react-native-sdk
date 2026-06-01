@@ -58,7 +58,7 @@ import {
   type OmsClientSessionState,
   type OmsNetwork,
   type OmsSendTransactionResponse,
-} from 'oms-client-react-native-sdk';
+} from '@0xsequence/oms-react-native-sdk';
 import {
   encodeFunctionData,
   formatUnits,
@@ -129,7 +129,7 @@ type DemoButtonProps = {
 
 const DEMO_PUBLISHABLE_KEY = 'AQAAAAAAAAK2JvvZhWqZ51riasWBftkrVXE';
 const DEMO_PROJECT_ID = 'proj_014kg56dc0a75';
-const DEMO_OIDC_REDIRECT_URI = 'omsclientkotlindemo://auth/callback';
+const DEMO_OIDC_REDIRECT_URI = 'omsclientrndemo://auth/callback';
 const DEMO_ENVIRONMENT = {
   apiRpcUrl: 'https://dev-api.sequence.app/rpc/API',
   indexerUrlTemplate: 'https://dev-{value}-indexer.sequence.app/rpc/Indexer/',

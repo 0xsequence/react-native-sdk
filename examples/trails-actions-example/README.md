@@ -3,9 +3,6 @@
 React Native demo app for using the OMS Client React Native SDK wallet flow with
 Trails action resolution.
 
-The demo keeps wallet auth and transaction sending in `oms-client-react-native-sdk`
-and keeps Trails-specific code inside this app.
-
 ## Examples
 
 - Sign in with email OTP or Google OIDC redirect auth.

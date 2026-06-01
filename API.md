@@ -1,12 +1,12 @@
 # Public API
 
 This document describes the public TypeScript API for external consumers of
-`oms-client-react-native-sdk`.
+`@0xsequence/oms-react-native-sdk`.
 
 ## Installation
 
 ```sh
-npm install oms-client-react-native-sdk
+npm install @0xsequence/oms-react-native-sdk
 ```
 
 Android resolves `io.github.0xsequence:oms-client-kotlin-sdk:0.1.0-alpha.1`.
