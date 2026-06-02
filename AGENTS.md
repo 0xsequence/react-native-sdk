@@ -133,11 +133,12 @@ plan for when automated tests are added.
 ## CI/CD
 
 Two workflows in `.github/workflows/`:
-- **`ci.yml`** — runs on push to `master`: lint, typecheck, library build, Android build, iOS build.
+- **`ci.yml`** — runs on pull requests, workflow dispatch, and pushes to `master`: lint, typecheck,
+  library build, Android build, iOS build.
 - **`quick-checks.yml`** — runs on push to non-master branches: lint + typecheck only.
 
-Pull requests get `quick-checks.yml` only; native builds run after merge. This means CI is not a
-full gate on PRs — validate native builds locally before merging if the native layer changed.
+Pull requests run full CI, including native builds. If the native layer changed, make sure the
+Android and iOS PR checks pass before merging; validate locally when you need faster feedback.
 
 ## Common Pitfalls
 

@@ -30,9 +30,9 @@ npm --prefix examples/expo-example run typecheck
 yarn prepare
 ```
 
-Native builds (Android + iOS) run automatically in CI on push to `master`. If you changed the
-native layer (anything in `android/`, `ios/`, or the `.podspec`), trigger a manual workflow run or
-validate the build locally before merging.
+Native builds (Android + iOS) run automatically in CI for pull requests and pushes to `master`. If
+you changed the native layer (anything in `android/`, `ios/`, or the `.podspec`), make sure the
+Android and iOS CI checks pass before merging; validate locally when you need faster feedback.
 
 ---
 

@@ -47,7 +47,8 @@ cd examples/expo-example && npm install && npm start
 1. `yarn lint && yarn typecheck && yarn prepare` must pass cleanly.
 2. Update `API.md` if you changed public exports in `src/index.tsx`.
 3. Update `TESTING.md` if you added or changed test commands.
-4. If you changed the native layer (`android/`, `ios/`, `.podspec`), note it in the PR — full native builds only run on CI after merge to `master`.
+4. If you changed the native layer (`android/`, `ios/`, `.podspec`), note it in the PR and make
+   sure the Android and iOS CI checks pass before merging.
 5. PR title must follow [Conventional Commits](https://www.conventionalcommits.org), e.g. `fix(auth): handle expired OTP correctly`.
 
 ## Publishing (alpha)
