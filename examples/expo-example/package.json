@@ -1,0 +1,32 @@
+{
+  "name": "oms-client-react-native-sdk-expo-example",
+  "version": "0.0.1",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "prebuild": "expo prebuild",
+    "prebuild:clean": "expo prebuild --clean",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@0xsequence/oms-react-native-sdk": "0.1.0-alpha.1",
+    "expo": "~56.0.8",
+    "expo-build-properties": "~56.0.16",
+    "expo-dev-client": "~56.0.18",
+    "expo-web-browser": "~56.0.5",
+    "react": "19.2.3",
+    "react-native": "0.85.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@types/react": "^19.2.0",
+    "typescript": "^6.0.2"
+  },
+  "engines": {
+    "node": ">=22.11.0"
+  },
+  "packageManager": "npm@10.9.7"
+}

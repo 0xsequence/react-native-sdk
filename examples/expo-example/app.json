@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "OMS Expo Example",
+    "slug": "oms-expo-example",
+    "version": "1.0.0",
+    "scheme": "omsclientrndemo",
+    "orientation": "portrait",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sequence.oms.expoexample"
+    },
+    "android": {
+      "package": "com.sequence.oms.expoexample"
+    },
+    "plugins": [
+      "expo-web-browser",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ]
+    ]
+  }
+}

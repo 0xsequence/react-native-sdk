@@ -154,6 +154,16 @@ on the underlying native SDKs.
 - OIDC redirect auth requires the consuming app to configure its own URL scheme
   or app links.
 
+## Examples
+
+- `examples/sdk-example` is the bare React Native SDK demo.
+- `examples/trails-actions-example` is the bare React Native demo for OMS wallet
+  flow with Trails action resolution.
+- `examples/expo-example` is a standalone Expo development-build demo that uses
+  `expo-web-browser` and the published npm package. It is intentionally
+  excluded from the root Yarn workspace so it is not linked to the local SDK
+  source.
+
 ## License
 
 MIT
