@@ -84,10 +84,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@0xtrails/api@npm:0.16.0":
-  version: 0.16.0
-  resolution: "@0xtrails/api@npm:0.16.0"
-  checksum: 10c0/ac4f33aca737bda4a5407b191a9144738f9ffa7321e23092b7ef5dfba4be1bffd106922dbfa90031644818deb2a9c11cfcc71f45090a993f28338d5ec0ecb0c1
+"@0xtrails/api@npm:0.16.1":
+  version: 0.16.1
+  resolution: "@0xtrails/api@npm:0.16.1"
+  checksum: 10c0/bb4440c7be26e4c3421c3e79eb722f7d4817dc784ed7f6d71d735aac7cc4faa65410fd85cb5d25eff11ba062ea4360cee53153aa550069e87db412589002b8ec
   languageName: node
   linkType: hard
 
@@ -10272,7 +10272,7 @@ __metadata:
   dependencies:
     0xtrails: "npm:0.16.0"
     "@0xsequence/oms-react-native-sdk": "workspace:*"
-    "@0xtrails/api": "npm:0.16.0"
+    "@0xtrails/api": "npm:0.16.1"
     "@babel/core": "npm:^7.25.2"
     "@babel/plugin-transform-export-namespace-from": "npm:^7.27.1"
     "@babel/preset-env": "npm:^7.25.3"
