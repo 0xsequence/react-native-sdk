@@ -5,15 +5,15 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
-"0xtrails@npm:0.16.0":
-  version: 0.16.0
-  resolution: "0xtrails@npm:0.16.0"
+"0xtrails@npm:0.16.1":
+  version: 0.16.1
+  resolution: "0xtrails@npm:0.16.1"
   dependencies:
     "@0xsequence/indexer": "npm:^3.0.4"
     "@0xsequence/metadata": "npm:^3.0.4"
     "@0xsequence/wallet-primitives": "npm:3.0.0-beta.19"
-    "@0xtrails/api": "npm:0.16.0"
-    "@0xtrails/wallet": "npm:0.16.0"
+    "@0xtrails/api": "npm:0.16.1"
+    "@0xtrails/wallet": "npm:0.16.1"
     "@databeat/tracker": "npm:0.9.3"
     "@emotion/is-prop-valid": "npm:1.4.0"
     "@meshconnect/web-link-sdk": "npm:3.7.1"
@@ -30,7 +30,7 @@ __metadata:
     react: ^18.0.0 || ^19.0.0
     react-dom: ^18.0.0 || ^19.0.0
     viem: ^2.41.0
-  checksum: 10c0/ba22b6f09df75078360952eb2738fd4b23f7dda9cdc5d44544d3e3f28e1209b0da0a62a46cdf9d98bcdc09678aeb41e01fc7d770ad4d6cbf59e8899871eb5a4c
+  checksum: 10c0/93665e4a291622066d4263a30319e6031be948e7f9b554d8ec35ec5791a652635e5a48b0d2d7a83ecf46ddb5b5da4a5c275b747c705770948b00023eca59c0e6
   languageName: node
   linkType: hard
 
@@ -10270,7 +10270,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "oms-client-react-native-sdk-trails-actions-example@workspace:examples/trails-actions-example"
   dependencies:
-    0xtrails: "npm:0.16.0"
+    0xtrails: "npm:0.16.1"
     "@0xsequence/oms-react-native-sdk": "workspace:*"
     "@0xtrails/api": "npm:0.16.0"
     "@babel/core": "npm:^7.25.2"
