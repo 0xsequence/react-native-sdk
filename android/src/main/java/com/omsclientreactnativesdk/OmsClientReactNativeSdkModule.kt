@@ -3,10 +3,13 @@ package com.omsclientreactnativesdk
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.WritableArray
 import com.facebook.react.bridge.WritableMap
 import com.omsclient.kotlin_sdk.Network
 import com.omsclient.kotlin_sdk.OMSClient
 import com.omsclient.kotlin_sdk.OMSClientSessionState
+import com.omsclient.kotlin_sdk.OmsSdkErrorCode
+import com.omsclient.kotlin_sdk.OmsSdkException
 import com.omsclient.kotlin_sdk.models.AbiArg
 import com.omsclient.kotlin_sdk.models.CredentialInfo
 import com.omsclient.kotlin_sdk.models.FeeOption
@@ -21,6 +24,9 @@ import com.omsclient.kotlin_sdk.models.TokenBalance
 import com.omsclient.kotlin_sdk.models.TokenBalancesPage
 import com.omsclient.kotlin_sdk.models.TokenBalancesPageRequest
 import com.omsclient.kotlin_sdk.models.TokenBalancesResult
+import com.omsclient.kotlin_sdk.models.TokenContractInfo
+import com.omsclient.kotlin_sdk.models.TokenMetadata
+import com.omsclient.kotlin_sdk.models.TokenMetadataAsset
 import com.omsclient.kotlin_sdk.models.TransactionMode
 import com.omsclient.kotlin_sdk.models.TransactionStatusPollingOptions
 import com.omsclient.kotlin_sdk.models.TransactionStatusResponse
@@ -33,6 +39,7 @@ import com.omsclient.kotlin_sdk.wallet.OidcRedirectAuthResult
 import com.omsclient.kotlin_sdk.wallet.PendingWalletSelection
 import com.omsclient.kotlin_sdk.wallet.WalletSelectionBehavior
 import com.omsclient.kotlin_sdk.wallet.WalletSelectionResult
+import com.omsclient.kotlin_sdk.wallet.WalletClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -41,7 +48,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -55,6 +66,7 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
   private val pendingFeeOptionSelections = ConcurrentHashMap<String, CompletableDeferred<FeeOptionSelection?>>()
   private val pendingWalletSelections = ConcurrentHashMap<String, PendingWalletSelection>()
+  private var sessionExpiredUnsubscribe: (() -> Unit)? = null
   private var client: OMSClient? = null
 
   override fun configure(
@@ -67,9 +79,10 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
   ) {
     try {
       pendingWalletSelections.clear()
+      sessionExpiredUnsubscribe?.invoke()
       client = OMSClient(
         context = reactApplicationContext,
-        publicApiKey = publishableKey,
+        publishableKey = publishableKey,
         projectId = projectId,
         environment = OMSClientEnvironment(
           walletApiUrl ?: OMSClientEnvironment.walletApiUrlDefault,
@@ -77,6 +90,14 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
           indexerUrlTemplate ?: OMSClientEnvironment.indexerUrlTemplateDefault
         )
       )
+      sessionExpiredUnsubscribe = client?.wallet?.onSessionExpired { event ->
+        emitOnSessionExpired(
+          Arguments.createMap().apply {
+            putMap("session", sessionMap(event.session))
+            putString("expiredAt", event.expiredAt.toString())
+          }
+        )
+      }
       promise.resolve(null)
     } catch (throwable: Throwable) {
       reject(promise, throwable)
@@ -118,6 +139,7 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
     code: String,
     walletSelection: String?,
     walletType: String?,
+    sessionLifetimeSeconds: String?,
     promise: Promise
   ) {
     launch(promise) {
@@ -125,7 +147,8 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
         requireClient().wallet.completeEmailAuth(
           code = code,
           walletSelection = walletSelection.toWalletSelectionBehavior(),
-          walletType = walletType.toWalletType()
+          walletType = walletType.toWalletType(),
+          sessionLifetimeSeconds = sessionLifetimeSeconds.toSessionLifetimeSeconds()
         )
       )
     }
@@ -137,6 +160,7 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
     audience: String,
     walletSelection: String?,
     walletType: String?,
+    sessionLifetimeSeconds: String?,
     promise: Promise
   ) {
     launch(promise) {
@@ -146,7 +170,8 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
           issuer = issuer,
           audience = audience,
           walletSelection = walletSelection.toWalletSelectionBehavior(),
-          walletType = walletType.toWalletType()
+          walletType = walletType.toWalletType(),
+          sessionLifetimeSeconds = sessionLifetimeSeconds.toSessionLifetimeSeconds()
         )
       )
     }
@@ -158,6 +183,7 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
     walletType: String?,
     relayRedirectUri: String?,
     authorizeParamsJson: String?,
+    loginHint: String?,
     promise: Promise
   ) {
     launch(promise) {
@@ -166,7 +192,8 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
         redirectUri = redirectUri,
         walletType = walletType.toWalletType(),
         relayRedirectUri = relayRedirectUri,
-        authorizeParams = authorizeParamsJson.toStringMap("authorizeParams") ?: emptyMap()
+        authorizeParams = authorizeParamsJson.toStringMap("authorizeParams") ?: emptyMap(),
+        loginHint = loginHint
       )
       Arguments.createMap().apply {
         putString("authorizationUrl", result.authorizationUrl)
@@ -179,13 +206,15 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
   override fun handleOidcRedirectCallback(
     callbackUrl: String?,
     walletSelection: String?,
+    sessionLifetimeSeconds: String?,
     promise: Promise
   ) {
     launch(promise) {
       when (
         val result = requireClient().wallet.handleOidcRedirectCallback(
           callbackUrl = callbackUrl,
-          walletSelection = walletSelection.toWalletSelectionBehavior()
+          walletSelection = walletSelection.toWalletSelectionBehavior(),
+          sessionLifetimeSeconds = sessionLifetimeSeconds.toSessionLifetimeSeconds()
         )
       ) {
         is OidcRedirectAuthResult.Completed ->
@@ -510,6 +539,8 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
   }
 
   override fun invalidate() {
+    sessionExpiredUnsubscribe?.invoke()
+    sessionExpiredUnsubscribe = null
     scope.cancel()
     super.invalidate()
   }
@@ -668,9 +699,88 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
       putNullableString("accountAddress", balance.accountAddress)
       putNullableString("tokenId", balance.tokenId)
       putNullableString("balance", balance.balance)
+      putNullableString("balanceUSD", balance.balanceUSD)
+      putNullableString("priceUSD", balance.priceUSD)
+      putNullableString("priceUpdatedAt", balance.priceUpdatedAt)
       putNullableString("blockHash", balance.blockHash)
       balance.blockNumber?.let { putDouble("blockNumber", it.toDouble()) }
       balance.chainId?.let { putDouble("chainId", it.toDouble()) }
+      putNullableString("uniqueCollectibles", balance.uniqueCollectibles)
+      balance.isSummary?.let { putBoolean("isSummary", it) } ?: putNull("isSummary")
+      balance.contractInfo?.let { putMap("contractInfo", tokenContractInfoMap(it)) } ?: putNull("contractInfo")
+      balance.tokenMetadata?.let { putMap("tokenMetadata", tokenMetadataMap(it)) } ?: putNull("tokenMetadata")
+    }
+
+  private fun tokenContractInfoMap(info: TokenContractInfo): WritableMap =
+    Arguments.createMap().apply {
+      info.chainId?.let { putDouble("chainId", it.toDouble()) } ?: putNull("chainId")
+      putNullableString("address", info.address)
+      putNullableString("source", info.source)
+      putNullableString("name", info.name)
+      putNullableString("type", info.type)
+      putNullableString("symbol", info.symbol)
+      info.decimals?.let { putDouble("decimals", it.toDouble()) } ?: putNull("decimals")
+      putNullableString("logoURI", info.logoURI)
+      info.deployed?.let { putBoolean("deployed", it) } ?: putNull("deployed")
+      putNullableString("bytecodeHash", info.bytecodeHash)
+      info.extensions?.let { putMap("extensions", jsonObjectMap(it)) } ?: putNull("extensions")
+      putNullableString("updatedAt", info.updatedAt)
+      putNullableString("queuedAt", info.queuedAt)
+      putNullableString("status", info.status)
+    }
+
+  private fun tokenMetadataMap(metadata: TokenMetadata): WritableMap =
+    Arguments.createMap().apply {
+      metadata.chainId?.let { putDouble("chainId", it.toDouble()) } ?: putNull("chainId")
+      putNullableString("contractAddress", metadata.contractAddress)
+      putNullableString("tokenId", metadata.tokenId)
+      putNullableString("source", metadata.source)
+      putNullableString("name", metadata.name)
+      putNullableString("description", metadata.description)
+      putNullableString("image", metadata.image)
+      putNullableString("video", metadata.video)
+      putNullableString("audio", metadata.audio)
+      metadata.properties?.let { putMap("properties", jsonObjectMap(it)) } ?: putNull("properties")
+      metadata.attributes?.let {
+        putArray(
+          "attributes",
+          Arguments.createArray().apply {
+            it.forEach { attribute -> pushMap(jsonObjectMap(attribute)) }
+          }
+        )
+      } ?: putNull("attributes")
+      putNullableString("imageData", metadata.imageData)
+      putNullableString("externalUrl", metadata.externalUrl)
+      putNullableString("backgroundColor", metadata.backgroundColor)
+      putNullableString("animationUrl", metadata.animationUrl)
+      metadata.decimals?.let { putDouble("decimals", it.toDouble()) } ?: putNull("decimals")
+      putNullableString("updatedAt", metadata.updatedAt)
+      metadata.assets?.let {
+        putArray(
+          "assets",
+          Arguments.createArray().apply {
+            it.forEach { asset -> pushMap(tokenMetadataAssetMap(asset)) }
+          }
+        )
+      } ?: putNull("assets")
+      putNullableString("status", metadata.status)
+      putNullableString("queuedAt", metadata.queuedAt)
+      putNullableString("lastFetched", metadata.lastFetched)
+    }
+
+  private fun tokenMetadataAssetMap(asset: TokenMetadataAsset): WritableMap =
+    Arguments.createMap().apply {
+      asset.id?.let { putDouble("id", it.toDouble()) } ?: putNull("id")
+      asset.collectionId?.let { putDouble("collectionId", it.toDouble()) } ?: putNull("collectionId")
+      putNullableString("tokenId", asset.tokenId)
+      putNullableString("url", asset.url)
+      putNullableString("metadataField", asset.metadataField)
+      putNullableString("name", asset.name)
+      asset.filesize?.let { putDouble("filesize", it.toDouble()) } ?: putNull("filesize")
+      putNullableString("mimeType", asset.mimeType)
+      asset.width?.let { putDouble("width", it.toDouble()) } ?: putNull("width")
+      asset.height?.let { putDouble("height", it.toDouble()) } ?: putNull("height")
+      putNullableString("updatedAt", asset.updatedAt)
     }
 
   private fun transactionStatusMap(result: TransactionStatusResponse): WritableMap =
@@ -781,6 +891,9 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
   private fun String?.toLongOrNullParam(name: String): Long? =
     this?.toLongOrNull()?.takeIf { it >= 0 } ?: this?.let { error("$name must be a non-negative integer") }
 
+  private fun String?.toSessionLifetimeSeconds(): Long =
+    this?.toLongOrNullParam("sessionLifetimeSeconds") ?: WalletClient.DEFAULT_SESSION_LIFETIME_SECONDS
+
   private fun statusPollingOptions(
     timeoutMs: String?,
     intervalMs: String?,
@@ -799,7 +912,7 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
     )
   }
 
-  private fun String?.toJsonObjectMap(name: String): Map<String, kotlinx.serialization.json.JsonElement>? {
+  private fun String?.toJsonObjectMap(name: String): Map<String, JsonElement>? {
     val value = this ?: return null
     val element = json.parseToJsonElement(value)
     return (element as? JsonObject)?.toMap() ?: error("$name must be a JSON object")
@@ -847,8 +960,89 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  private fun jsonObjectMap(value: Map<String, JsonElement>): WritableMap =
+    Arguments.createMap().apply {
+      value.forEach { (key, element) -> putJsonElement(key, element) }
+    }
+
+  private fun jsonArray(value: Iterable<JsonElement>): WritableArray =
+    Arguments.createArray().apply {
+      value.forEach { element -> pushJsonElement(element) }
+    }
+
+  private fun WritableMap.putJsonElement(key: String, element: JsonElement) {
+    when (element) {
+      JsonNull -> putNull(key)
+      is JsonObject -> putMap(key, jsonObjectMap(element))
+      is JsonArray -> putArray(key, jsonArray(element))
+      is JsonPrimitive -> putJsonPrimitive(key, element)
+    }
+  }
+
+  private fun WritableArray.pushJsonElement(element: JsonElement) {
+    when (element) {
+      JsonNull -> pushNull()
+      is JsonObject -> pushMap(jsonObjectMap(element))
+      is JsonArray -> pushArray(jsonArray(element))
+      is JsonPrimitive -> pushJsonPrimitive(element)
+    }
+  }
+
+  private fun WritableMap.putJsonPrimitive(key: String, value: JsonPrimitive) {
+    if (value.isString) {
+      putString(key, value.content)
+      return
+    }
+    value.content.toBooleanStrictOrNull()?.let {
+      putBoolean(key, it)
+      return
+    }
+    value.content.toDoubleOrNull()?.let {
+      putDouble(key, it)
+      return
+    }
+    putString(key, value.content)
+  }
+
+  private fun WritableArray.pushJsonPrimitive(value: JsonPrimitive) {
+    if (value.isString) {
+      pushString(value.content)
+      return
+    }
+    value.content.toBooleanStrictOrNull()?.let {
+      pushBoolean(it)
+      return
+    }
+    value.content.toDoubleOrNull()?.let {
+      pushDouble(it)
+      return
+    }
+    pushString(value.content)
+  }
+
   private fun reject(promise: Promise, throwable: Throwable) {
-    promise.reject("oms_client_error", throwable.message, throwable)
+    val omsError = throwable as? OmsSdkException
+    if (omsError == null) {
+      promise.reject("oms_client_error", throwable.message, throwable)
+      return
+    }
+
+    val code = omsError.code.bridgeCode()
+    promise.reject(code, omsError.message, throwable, omsError.userInfoMap(code))
+  }
+
+  private fun OmsSdkException.userInfoMap(code: String): WritableMap =
+    Arguments.createMap().apply {
+      putString("code", code)
+      putNullableString("operation", operation?.id)
+      status?.let { putDouble("status", it.toDouble()) } ?: putNull("status")
+      putNullableString("txnId", txnId)
+      putBoolean("retryable", retryable)
+    }
+
+  private fun OmsSdkErrorCode.bridgeCode(): String {
+    val words = name.replace(Regex("([a-z])([A-Z])"), "$1_$2")
+    return "OMS_${words.uppercase()}"
   }
 
   companion object {

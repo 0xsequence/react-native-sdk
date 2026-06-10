@@ -4,7 +4,7 @@ How testing works in this repo. `AGENTS.md` points here so agents know how to ve
 
 ## Current state
 
-**No automated test suite exists yet.** The repo is in early alpha (`0.1.0-alpha.1`). Until a test
+**No automated test suite exists yet.** The repo is in early alpha. Until a test
 runner is set up, verification is manual (see checklist below).
 
 When tests are added, this file should be updated with the runner, locations, and commands.

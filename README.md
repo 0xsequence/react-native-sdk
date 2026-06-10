@@ -105,11 +105,12 @@ transactions.
 ```ts
 const raw = parseUnits('12.34', 6); // "12340000"
 const formatted = formatUnits(raw, 6); // "12.34"
-const rounded = parseUnits('1.235', 2, { roundingMode: 'nearest' }); // "124"
+const rounded = parseUnits('1.235', 2); // "124"
 ```
 
-By default `parseUnits` rejects fractional precision beyond `decimals`.
-Pass `{ roundingMode: 'nearest' }` when you want Kotlin-compatible rounding.
+By default `parseUnits` rounds fractional precision beyond `decimals` to the
+nearest base unit, matching the native SDKs. Pass `{ roundingMode: 'reject' }`
+to fail on non-zero excess precision.
 
 ## API Reference
 
@@ -133,8 +134,8 @@ See [API.md](./API.md) for the public API surface and TypeScript shapes.
 ## Native SDK Dependencies
 
 The React Native SDK owns its native SDK dependencies. Android resolves
-`io.github.0xsequence:oms-client-kotlin-sdk:0.1.0-alpha.1` from Maven, and
-iOS resolves `oms-client-swift-sdk` `0.1.0-alpha.1` from CocoaPods.
+`io.github.0xsequence:oms-client-kotlin-sdk:0.1.0-alpha.2` from Maven, and
+iOS resolves `oms-client-swift-sdk` `0.1.0-alpha.2` from CocoaPods.
 
 The React Native wrapper itself is distributed through npm. React Native
 autolinking consumes the wrapper podspec and Android project from

@@ -1,6 +1,7 @@
 import type { EventSubscription } from 'react-native';
 import OmsClientReactNativeSdk from './NativeOmsClientReactNativeSdk';
 import type {
+  OmsClientSessionExpiredEvent as OmsNativeClientSessionExpiredEvent,
   OmsFeeOptionSelectionRequest,
   OmsNativeCompleteAuthResult,
   OmsNativeOidcRedirectAuthResult,
@@ -18,6 +19,7 @@ import type {
   ListAccessPagesParams,
   ListAccessParams,
   OmsClientConfig,
+  OmsClientSessionExpiredEvent,
   OmsClientSessionState,
   OmsCompleteAuthResult,
   OmsCredentialInfo,
@@ -253,6 +255,14 @@ export function getSession(): Promise<OmsClientSessionState> {
   return OmsClientReactNativeSdk.getSession() as Promise<OmsClientSessionState>;
 }
 
+export function onSessionExpired(
+  listener: (event: OmsClientSessionExpiredEvent) => void
+): EventSubscription {
+  return OmsClientReactNativeSdk.onSessionExpired(
+    listener as (event: OmsNativeClientSessionExpiredEvent) => void
+  );
+}
+
 export function getSupportedNetworks(): Promise<OmsNetwork[]> {
   return OmsClientReactNativeSdk.getSupportedNetworks();
 }
@@ -268,7 +278,8 @@ export async function completeEmailAuth(
     await OmsClientReactNativeSdk.completeEmailAuth(
       params.code,
       params.walletSelection ?? null,
-      params.walletType ?? null
+      params.walletType ?? null,
+      stringifyOptionalNumber(params.sessionLifetimeSeconds)
     )
   );
 }
@@ -282,7 +293,8 @@ export async function signInWithOidcIdToken(
       params.issuer,
       params.audience,
       params.walletSelection ?? null,
-      params.walletType ?? null
+      params.walletType ?? null,
+      stringifyOptionalNumber(params.sessionLifetimeSeconds)
     )
   );
 }
@@ -295,7 +307,8 @@ export function startOidcRedirectAuth(
     params.redirectUri,
     params.walletType ?? null,
     resolveRelayRedirectUri(params),
-    stringifyOptionalJson(params.authorizeParams)
+    stringifyOptionalJson(params.authorizeParams),
+    params.loginHint ?? null
   );
 }
 
@@ -305,7 +318,8 @@ export async function handleOidcRedirectCallback(
   return hydrateOidcRedirectAuthResult(
     await OmsClientReactNativeSdk.handleOidcRedirectCallback(
       params.callbackUrl ?? null,
-      params.walletSelection ?? null
+      params.walletSelection ?? null,
+      stringifyOptionalNumber(params.sessionLifetimeSeconds)
     )
   );
 }

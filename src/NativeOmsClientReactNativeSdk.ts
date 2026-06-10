@@ -72,9 +72,71 @@ export type OmsTokenBalance = {
   accountAddress: string | null;
   tokenId: string | null;
   balance: string | null;
+  balanceUSD?: string | null;
+  priceUSD?: string | null;
+  priceUpdatedAt?: string | null;
   blockHash: string | null;
   blockNumber?: number | null;
   chainId?: number | null;
+  uniqueCollectibles?: string | null;
+  isSummary?: boolean | null;
+  contractInfo?: OmsTokenContractInfo | null;
+  tokenMetadata?: OmsTokenMetadata | null;
+};
+
+export type OmsTokenContractInfo = {
+  chainId?: number | null;
+  address?: string | null;
+  source?: string | null;
+  name?: string | null;
+  type?: string | null;
+  symbol?: string | null;
+  decimals?: number | null;
+  logoURI?: string | null;
+  deployed?: boolean | null;
+  bytecodeHash?: string | null;
+  extensions?: CodegenTypes.UnsafeObject | null;
+  updatedAt?: string | null;
+  queuedAt?: string | null;
+  status?: string | null;
+};
+
+export type OmsTokenMetadataAsset = {
+  id?: number | null;
+  collectionId?: number | null;
+  tokenId?: string | null;
+  url?: string | null;
+  metadataField?: string | null;
+  name?: string | null;
+  filesize?: number | null;
+  mimeType?: string | null;
+  width?: number | null;
+  height?: number | null;
+  updatedAt?: string | null;
+};
+
+export type OmsTokenMetadata = {
+  chainId?: number | null;
+  contractAddress?: string | null;
+  tokenId?: string | null;
+  source?: string | null;
+  name?: string | null;
+  description?: string | null;
+  image?: string | null;
+  video?: string | null;
+  audio?: string | null;
+  properties?: CodegenTypes.UnsafeObject | null;
+  attributes?: CodegenTypes.UnsafeObject[] | null;
+  imageData?: string | null;
+  externalUrl?: string | null;
+  backgroundColor?: string | null;
+  animationUrl?: string | null;
+  decimals?: number | null;
+  updatedAt?: string | null;
+  assets?: OmsTokenMetadataAsset[] | null;
+  status?: string | null;
+  queuedAt?: string | null;
+  lastFetched?: string | null;
 };
 
 export type OmsTokenBalancesResult = {
@@ -136,6 +198,11 @@ export type OmsCredentialInfo = {
   isCaller: boolean;
 };
 
+export type OmsClientSessionExpiredEvent = {
+  session: OmsClientSessionState;
+  expiredAt: string;
+};
+
 export type OmsAccessPage = {
   limit: number | null;
   cursor: string | null;
@@ -148,6 +215,7 @@ export type OmsListAccessResponse = {
 
 export interface Spec extends TurboModule {
   readonly onFeeOptionSelectionRequest: CodegenTypes.EventEmitter<OmsFeeOptionSelectionRequest>;
+  readonly onSessionExpired: CodegenTypes.EventEmitter<OmsClientSessionExpiredEvent>;
   configure(
     publishableKey: string,
     walletApiUrl: string | null,
@@ -162,25 +230,29 @@ export interface Spec extends TurboModule {
   completeEmailAuth(
     code: string,
     walletSelection: string | null,
-    walletType: string | null
+    walletType: string | null,
+    sessionLifetimeSeconds: string | null
   ): Promise<OmsNativeCompleteAuthResult>;
   signInWithOidcIdToken(
     idToken: string,
     issuer: string,
     audience: string,
     walletSelection: string | null,
-    walletType: string | null
+    walletType: string | null,
+    sessionLifetimeSeconds: string | null
   ): Promise<OmsNativeCompleteAuthResult>;
   startOidcRedirectAuth(
     providerJson: string,
     redirectUri: string,
     walletType: string | null,
     relayRedirectUri: string | null,
-    authorizeParamsJson: string | null
+    authorizeParamsJson: string | null,
+    loginHint: string | null
   ): Promise<OmsStartOidcRedirectAuthResult>;
   handleOidcRedirectCallback(
     callbackUrl: string | null,
-    walletSelection: string | null
+    walletSelection: string | null,
+    sessionLifetimeSeconds: string | null
   ): Promise<OmsNativeOidcRedirectAuthResult>;
   listWallets(): Promise<OmsWallet[]>;
   useWallet(walletId: string): Promise<OmsWalletActivationResult>;
