@@ -4,10 +4,11 @@ How testing works in this repo. `AGENTS.md` points here so agents know how to ve
 
 ## Current state
 
-**No automated test suite exists yet.** The repo is in early alpha. Until a test
-runner is set up, verification is manual (see checklist below).
+The repo has a focused unit test suite for JavaScript bridge behavior. The suite uses Node's
+built-in test runner against the generated CommonJS package output, so `yarn test` runs
+`yarn prepare` first and then executes `test/*.test.js`.
 
-When tests are added, this file should be updated with the runner, locations, and commands.
+Native device/simulator verification is still manual unless called out by a specific change.
 
 ---
 
@@ -21,6 +22,9 @@ yarn lint
 
 # TypeScript type-check (library)
 yarn typecheck
+
+# Unit tests
+yarn test
 
 # TypeScript type-check (Expo example)
 npm --prefix examples/expo-example ci
@@ -36,14 +40,14 @@ Android and iOS CI checks pass before merging; validate locally when you need fa
 
 ---
 
-## Planned test setup
+## Test setup
 
-When automated tests are introduced, the intended split is:
-
-- **Unit tests** — pure TypeScript functions in `src/` (e.g. `formatUnits`, `parseUnits`,
-  `oidcProviders`). No native bridge, no device. Target runner: Jest or Vitest.
-  - Location: `src/__tests__/` or co-located `*.test.ts` files.
-  - Command (proposed): `yarn test`
+- **Unit tests** — JavaScript bridge and pure TypeScript behavior in `src/`.
+  - Runner: Node's built-in `node:test`.
+  - Location: `test/*.test.js`.
+  - Command: `yarn test`.
+  - Current native bridge tests mock `lib/commonjs/NativeOmsClientReactNativeSdk.js` after
+    `yarn prepare`, then import `lib/commonjs/client.native.js`.
 
 - **Integration tests** — tests that exercise the native bridge on a real device or simulator.
   These require a connected device/emulator and valid OMS credentials. Not expected to run in
@@ -51,9 +55,10 @@ When automated tests are introduced, the intended split is:
 
 ---
 
-## Conventions (for when tests are added)
+## Conventions
 
-- Name unit test files `*.test.ts` (co-located next to source) or place them in `src/__tests__/`.
+- Name unit test files `*.test.js` under `test/` unless the project adopts a TypeScript-aware
+  test runner later.
 - Every bug fix should include a regression test.
 - Every new exported function should have at least one happy-path unit test.
 - Keep unit tests free of native-bridge calls — mock `NativeOmsClientReactNativeSdk` at the module
@@ -69,5 +74,5 @@ When automated tests are introduced, the intended split is:
 | Typecheck (library)         | `yarn typecheck`                             |
 | Typecheck (Expo example)    | `npm --prefix examples/expo-example run typecheck` |
 | Build library               | `yarn prepare`                               |
-| Run unit tests *(planned)*  | `yarn test`                                  |
-| Full CI equivalent          | `yarn lint && yarn typecheck && yarn prepare` |
+| Run unit tests              | `yarn test`                                  |
+| Full CI equivalent          | `yarn lint && yarn typecheck && yarn test`   |

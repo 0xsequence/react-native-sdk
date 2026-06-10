@@ -1,0 +1,412 @@
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const test = require('node:test');
+
+const rootDir = path.resolve(__dirname, '..');
+const clientModulePath = path.join(rootDir, 'lib/commonjs/client.native.js');
+const nativeModulePath = path.join(
+  rootDir,
+  'lib/commonjs/NativeOmsClientReactNativeSdk.js'
+);
+
+const config = {
+  publishableKey: 'test-publishable-key',
+  projectId: 'test-project',
+};
+
+function wallet(id = 'wallet-1') {
+  return {
+    id,
+    type: 'ethereum',
+    address: `0x${id.replace(/\D/g, '').padStart(40, '0')}`,
+    reference: null,
+  };
+}
+
+function credential(id = 'credential-1') {
+  return {
+    credentialId: id,
+    expiresAt: '2026-06-17T00:00:00.000Z',
+    isCaller: true,
+  };
+}
+
+function walletSelectedResult() {
+  const selectedWallet = wallet();
+  return {
+    type: 'walletSelected',
+    walletAddress: selectedWallet.address,
+    wallet: selectedWallet,
+    wallets: [selectedWallet],
+    credential: credential(),
+  };
+}
+
+function pendingWalletSelectionResult(id = 'pending-1') {
+  const pendingWallet = wallet();
+  return {
+    type: 'walletSelection',
+    walletAddress: null,
+    wallet: null,
+    wallets: [pendingWallet],
+    credential: credential(),
+    pendingSelection: {
+      id,
+      walletType: 'ethereum',
+      wallets: [pendingWallet],
+      credential: credential(),
+    },
+  };
+}
+
+function walletActivationResult(id = 'wallet-2') {
+  const activatedWallet = wallet(id);
+  return {
+    walletAddress: activatedWallet.address,
+    wallet: activatedWallet,
+  };
+}
+
+function sessionExpiredEvent(id = 'expired') {
+  return {
+    session: {
+      walletAddress: `0x${id.replace(/\D/g, '').padStart(40, '1')}`,
+      expiresAt: '2026-06-10T00:00:00.000Z',
+      loginType: 'Email',
+      sessionEmail: `${id}@example.com`,
+    },
+    expiredAt: '2026-06-10T00:00:00.000Z',
+  };
+}
+
+function makeRecorder(calls, name, implementation) {
+  calls[name] = [];
+  return (...args) => {
+    calls[name].push(args);
+    return implementation(...args);
+  };
+}
+
+function loadClient(overrides = {}) {
+  const clientModuleId = require.resolve(clientModulePath);
+  const nativeModuleId = require.resolve(nativeModulePath);
+  delete require.cache[clientModuleId];
+  delete require.cache[nativeModuleId];
+
+  const calls = {};
+  const native = {};
+  native.onSessionExpired = makeRecorder(
+    calls,
+    'onSessionExpired',
+    (listener) => {
+      native.sessionExpiredListener = listener;
+      return {
+        remove() {
+          native.sessionExpiredListener = null;
+        },
+      };
+    }
+  );
+  native.configure = makeRecorder(
+    calls,
+    'configure',
+    overrides.configure ?? (async () => undefined)
+  );
+  native.startEmailAuth = makeRecorder(
+    calls,
+    'startEmailAuth',
+    overrides.startEmailAuth ?? (async () => undefined)
+  );
+  native.completeEmailAuth = makeRecorder(
+    calls,
+    'completeEmailAuth',
+    overrides.completeEmailAuth ?? (async () => walletSelectedResult())
+  );
+  native.signInWithOidcIdToken = makeRecorder(
+    calls,
+    'signInWithOidcIdToken',
+    overrides.signInWithOidcIdToken ?? (async () => walletSelectedResult())
+  );
+  native.startOidcRedirectAuth = makeRecorder(
+    calls,
+    'startOidcRedirectAuth',
+    overrides.startOidcRedirectAuth ??
+      (async () => ({
+        authorizationUrl: 'https://auth.example.com',
+        state: 'state',
+        challenge: 'challenge',
+      }))
+  );
+  native.handleOidcRedirectCallback = makeRecorder(
+    calls,
+    'handleOidcRedirectCallback',
+    overrides.handleOidcRedirectCallback ??
+      (async () => ({ type: 'completed', wallet: wallet() }))
+  );
+  native.useWallet = makeRecorder(
+    calls,
+    'useWallet',
+    overrides.useWallet ?? (async () => walletActivationResult())
+  );
+  native.createWallet = makeRecorder(
+    calls,
+    'createWallet',
+    overrides.createWallet ?? (async () => walletActivationResult())
+  );
+  native.selectWalletForPendingSelection = makeRecorder(
+    calls,
+    'selectWalletForPendingSelection',
+    overrides.selectWalletForPendingSelection ??
+      (async () => walletActivationResult())
+  );
+  native.createAndSelectWalletForPendingSelection = makeRecorder(
+    calls,
+    'createAndSelectWalletForPendingSelection',
+    overrides.createAndSelectWalletForPendingSelection ??
+      (async () => walletActivationResult())
+  );
+  native.signOut = makeRecorder(
+    calls,
+    'signOut',
+    overrides.signOut ?? (async () => undefined)
+  );
+
+  require.cache[nativeModuleId] = {
+    id: nativeModuleId,
+    filename: nativeModuleId,
+    loaded: true,
+    exports: {
+      __esModule: true,
+      default: native,
+    },
+  };
+
+  return {
+    calls,
+    client: require(clientModuleId),
+    native,
+  };
+}
+
+async function configure(client) {
+  await client.configure(config);
+}
+
+function emitSessionExpired(native, event) {
+  assert.equal(typeof native.sessionExpiredListener, 'function');
+  native.sessionExpiredListener(event);
+}
+
+function subscribe(client) {
+  const events = [];
+  const subscription = client.onSessionExpired((event) => {
+    events.push(event);
+  });
+  return { events, subscription };
+}
+
+async function expectReplayCleared(action) {
+  const { client, native } = loadClient();
+  const staleEvent = sessionExpiredEvent('stale');
+  await configure(client);
+  emitSessionExpired(native, staleEvent);
+
+  await action(client, native);
+
+  const { events } = subscribe(client);
+  assert.deepEqual(events, []);
+}
+
+test('replays native session expiry to late JS subscribers and fans out future events', async () => {
+  const firstEvent = sessionExpiredEvent('first');
+  const secondEvent = sessionExpiredEvent('second');
+  const thirdEvent = sessionExpiredEvent('third');
+
+  let native;
+  const loaded = loadClient({
+    configure: async () => {
+      emitSessionExpired(native, firstEvent);
+    },
+  });
+  native = loaded.native;
+
+  await configure(loaded.client);
+  assert.equal(loaded.calls.onSessionExpired.length, 1);
+
+  const firstSubscriber = subscribe(loaded.client);
+  assert.deepEqual(firstSubscriber.events, [firstEvent]);
+
+  const secondSubscriber = subscribe(loaded.client);
+  assert.deepEqual(secondSubscriber.events, [firstEvent]);
+  assert.equal(loaded.calls.onSessionExpired.length, 1);
+
+  emitSessionExpired(native, secondEvent);
+  assert.deepEqual(firstSubscriber.events, [firstEvent, secondEvent]);
+  assert.deepEqual(secondSubscriber.events, [firstEvent, secondEvent]);
+
+  firstSubscriber.subscription.remove();
+  emitSessionExpired(native, thirdEvent);
+
+  assert.deepEqual(firstSubscriber.events, [firstEvent, secondEvent]);
+  assert.deepEqual(secondSubscriber.events, [
+    firstEvent,
+    secondEvent,
+    thirdEvent,
+  ]);
+});
+
+test('clears cached session expiry when auth or session state is reset', async () => {
+  await expectReplayCleared((client) => configure(client));
+  await expectReplayCleared((client) =>
+    client.startEmailAuth('user@example.com')
+  );
+  await expectReplayCleared((client) =>
+    client.startOidcRedirectAuth({
+      provider: { id: 'google' },
+      redirectUri: 'example://auth',
+    })
+  );
+  await expectReplayCleared((client) =>
+    client.signInWithOidcIdToken({
+      idToken: 'id-token',
+      issuer: 'https://issuer.example.com',
+      audience: 'audience',
+    })
+  );
+  await expectReplayCleared((client) =>
+    client.completeEmailAuth({ code: '123456' })
+  );
+  await expectReplayCleared((client) =>
+    client.handleOidcRedirectCallback({
+      callbackUrl: 'example://auth?code=abc',
+    })
+  );
+  await expectReplayCleared((client) => client.useWallet('wallet-1'));
+  await expectReplayCleared((client) => client.createWallet());
+  await expectReplayCleared((client) => client.signOut());
+});
+
+test('clears cached session expiry when pending wallet selection activates a wallet', async () => {
+  for (const selectionAction of ['selectWallet', 'createAndSelectWallet']) {
+    const { client, native } = loadClient({
+      completeEmailAuth: async () => pendingWalletSelectionResult(),
+    });
+    await configure(client);
+
+    const result = await client.completeEmailAuth({
+      code: '123456',
+      walletSelection: 'manual',
+    });
+    const staleEvent = sessionExpiredEvent(selectionAction);
+    emitSessionExpired(native, staleEvent);
+
+    if (selectionAction === 'selectWallet') {
+      await result.pendingSelection.selectWallet('wallet-1');
+    } else {
+      await result.pendingSelection.createAndSelectWallet('reference');
+    }
+
+    const { events } = subscribe(client);
+    assert.deepEqual(events, []);
+  }
+});
+
+test('does not clear cached session expiry for ignored OIDC redirect callbacks', async () => {
+  for (const type of ['notOidcRedirectCallback', 'noPendingAuth']) {
+    const { client, native } = loadClient({
+      handleOidcRedirectCallback: async () => ({ type }),
+    });
+    const staleEvent = sessionExpiredEvent(type);
+    await configure(client);
+    emitSessionExpired(native, staleEvent);
+
+    assert.deepEqual(await client.handleOidcRedirectCallback(), { type });
+
+    const { events } = subscribe(client);
+    assert.deepEqual(events, [staleEvent]);
+  }
+});
+
+test('passes auth session lifetime and login hint parameters to native', async () => {
+  const { calls, client } = loadClient();
+
+  await client.completeEmailAuth({
+    code: '123456',
+    walletSelection: 'manual',
+    walletType: 'ethereum',
+    sessionLifetimeSeconds: 3600,
+  });
+  await client.completeEmailAuth({ code: '654321' });
+
+  assert.deepEqual(calls.completeEmailAuth[0], [
+    '123456',
+    'manual',
+    'ethereum',
+    '3600',
+  ]);
+  assert.deepEqual(calls.completeEmailAuth[1], ['654321', null, null, null]);
+
+  await client.signInWithOidcIdToken({
+    idToken: 'id-token',
+    issuer: 'https://issuer.example.com',
+    audience: 'audience',
+    walletSelection: 'automatic',
+    walletType: 'ethereum',
+    sessionLifetimeSeconds: 7200,
+  });
+  assert.deepEqual(calls.signInWithOidcIdToken[0], [
+    'id-token',
+    'https://issuer.example.com',
+    'audience',
+    'automatic',
+    'ethereum',
+    '7200',
+  ]);
+
+  await client.handleOidcRedirectCallback({
+    callbackUrl: 'example://auth?code=abc',
+    walletSelection: 'manual',
+    sessionLifetimeSeconds: 1800,
+  });
+  await client.handleOidcRedirectCallback();
+  assert.deepEqual(calls.handleOidcRedirectCallback[0], [
+    'example://auth?code=abc',
+    'manual',
+    '1800',
+  ]);
+  assert.deepEqual(calls.handleOidcRedirectCallback[1], [null, null, null]);
+
+  const provider = {
+    id: 'google',
+    relayRedirectUri: 'https://relay.example.com/callback',
+  };
+  await client.startOidcRedirectAuth({
+    provider,
+    redirectUri: 'example://auth',
+    walletType: 'ethereum',
+    authorizeParams: { prompt: 'select_account' },
+    loginHint: 'user@example.com',
+  });
+  await client.startOidcRedirectAuth({
+    provider,
+    redirectUri: 'example://auth',
+    relayRedirectUri: null,
+  });
+
+  assert.deepEqual(calls.startOidcRedirectAuth[0], [
+    JSON.stringify(provider),
+    'example://auth',
+    'ethereum',
+    'https://relay.example.com/callback',
+    JSON.stringify({ prompt: 'select_account' }),
+    'user@example.com',
+  ]);
+  assert.deepEqual(calls.startOidcRedirectAuth[1], [
+    JSON.stringify(provider),
+    'example://auth',
+    null,
+    null,
+    null,
+    null,
+  ]);
+});
