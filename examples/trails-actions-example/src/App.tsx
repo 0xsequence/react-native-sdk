@@ -51,10 +51,12 @@ import {
   getTokenBalances,
   handleOidcRedirectCallback,
   OidcProviders,
+  onSessionExpired,
   sendTransaction,
   signOut,
   startEmailAuth,
   startOidcRedirectAuth,
+  type OmsClientSessionExpiredEvent,
   type OmsClientSessionState,
   type OmsNetwork,
   type OmsSendTransactionResponse,
@@ -651,6 +653,13 @@ function requireText(value: string, label: string): string {
   return trimmed;
 }
 
+function expiredSessionEmail(
+  event: OmsClientSessionExpiredEvent | null
+): string | null {
+  const email = event?.session.sessionEmail?.trim();
+  return email ? email : null;
+}
+
 function requireWalletAddress(address: string | null): `0x${string}` {
   if (!address?.startsWith('0x')) {
     throw new Error('Sign in before preparing a Trails action.');
@@ -1222,6 +1231,8 @@ export default function App() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [authStatus, setAuthStatus] = useState('Waiting for sign-in.');
+  const [expiredSessionEvent, setExpiredSessionEvent] =
+    useState<OmsClientSessionExpiredEvent | null>(null);
   const [swapPolAmount, setSwapPolAmount] = useState(DEFAULT_SWAP_POL_AMOUNT);
   const [depositUsdcAmount, setDepositUsdcAmount] = useState(
     DEFAULT_DEPOSIT_USDC_AMOUNT
@@ -1288,6 +1299,7 @@ export default function App() {
     const nextSession = await getSession();
     setSession(nextSession);
     if (nextSession.walletAddress) {
+      setExpiredSessionEvent(null);
       setAuthStatus('Restored persisted wallet session');
       setSwapStatus('Swap status: ready to prepare.');
       setDepositStatus('Deposit status: ready to prepare.');
@@ -1295,6 +1307,35 @@ export default function App() {
     }
     return nextSession;
   }, []);
+
+  const clearExpiredSessionState = useCallback(() => {
+    setExpiredSessionEvent(null);
+  }, []);
+
+  const handleSessionExpired = useCallback(
+    (event: OmsClientSessionExpiredEvent) => {
+      const emailHint = expiredSessionEmail(event);
+
+      setExpiredSessionEvent(event);
+      setSession(SIGNED_OUT_SESSION);
+      setAuthStage('email');
+      setCode('');
+      setAuthStatus(
+        emailHint
+          ? `Wallet session expired. Sign in again as ${emailHint}.`
+          : 'Wallet session expired. Sign in again.'
+      );
+      if (emailHint) {
+        setEmail(emailHint);
+      }
+      setBrowserUrl(null);
+      resetActionState();
+      appendLog(
+        `Wallet session expired at ${event.expiredAt}: wallet=${event.session.walletAddress ?? 'none'} email=${event.session.sessionEmail ?? 'none'}`
+      );
+    },
+    [appendLog, resetActionState]
+  );
 
   const runAction = useCallback(
     async (
@@ -1652,6 +1693,8 @@ export default function App() {
   useEffect(() => {
     if (!sdkReady) return undefined;
 
+    const sessionExpiredSubscription = onSessionExpired(handleSessionExpired);
+
     const handleRedirectUrl = (url: string) => {
       if (!isDemoOidcRedirectUrl(url)) return;
 
@@ -1680,8 +1723,17 @@ export default function App() {
         appendLog(`!! ${describeError(error)}`);
       });
 
-    return () => subscription.remove();
-  }, [appendLog, finishOidcRedirectSignIn, runAction, sdkReady]);
+    return () => {
+      sessionExpiredSubscription.remove();
+      subscription.remove();
+    };
+  }, [
+    appendLog,
+    finishOidcRedirectSignIn,
+    handleSessionExpired,
+    runAction,
+    sdkReady,
+  ]);
 
   const walletAddress = session.walletAddress;
   const isSignedIn = walletAddress != null;
@@ -1731,12 +1783,17 @@ export default function App() {
     runAction(
       'Start email sign-in',
       async () => {
-        const normalizedEmail = requireText(email, 'Email');
+        const normalizedEmail = email.trim();
+        const emailForSignIn =
+          normalizedEmail || expiredSessionEmail(expiredSessionEvent);
+        if (!emailForSignIn) {
+          throw new Error('Email is required');
+        }
         setAuthStatus('Requesting email code...');
-        await startEmailAuth(normalizedEmail);
+        await startEmailAuth(emailForSignIn);
         setEmail('');
         setAuthStage('code');
-        setAuthStatus(`Code requested for ${normalizedEmail}`);
+        setAuthStatus(`Code requested for ${emailForSignIn}`);
       },
       (error) => {
         setAuthStatus(`Sign-in error: ${describeError(error)}`);
@@ -1754,6 +1811,7 @@ export default function App() {
         const started = await startOidcRedirectAuth({
           provider: OidcProviders.google(),
           redirectUri: DEMO_OIDC_REDIRECT_URI,
+          loginHint: expiredSessionEmail(expiredSessionEvent),
         });
         appendLog(`Google redirect auth started: state=${started.state}`);
 
@@ -1801,6 +1859,7 @@ export default function App() {
         setAuthStatus('Verifying code...');
         await completeEmailAuth({ code: requireText(code, 'Code') });
         const nextSession = await refreshSession();
+        clearExpiredSessionState();
         setCode('');
         setAuthStage('email');
         setAuthStatus('Email login complete');
@@ -1817,6 +1876,7 @@ export default function App() {
   const cancelCodeStep = () => {
     runAction('Cancel email sign-in', async () => {
       await signOut();
+      clearExpiredSessionState();
       setAuthStage('email');
       setCode('');
       setAuthStatus('Email sign-in cancelled.');
@@ -1828,6 +1888,7 @@ export default function App() {
   const logout = () => {
     runAction('Sign out', async () => {
       await signOut();
+      clearExpiredSessionState();
       setSession(SIGNED_OUT_SESSION);
       setAuthStage('email');
       setCode('');
@@ -2212,6 +2273,30 @@ export default function App() {
               {!isSignedIn ? (
                 <Card title="Sign-In">
                   <Text style={styles.status}>{authStatus}</Text>
+                  {expiredSessionEvent ? (
+                    <View style={styles.sessionDetails}>
+                      <SessionDetail
+                        label="Expired"
+                        value={formatSessionExpiration(
+                          expiredSessionEvent.expiredAt
+                        )}
+                      />
+                      <SessionDetail
+                        label="Wallet"
+                        value={
+                          expiredSessionEvent.session.walletAddress ??
+                          'Unavailable'
+                        }
+                      />
+                      <SessionDetail
+                        label="Email"
+                        value={
+                          expiredSessionEvent.session.sessionEmail ??
+                          'Unavailable'
+                        }
+                      />
+                    </View>
+                  ) : null}
                   {authStage === 'email' ? (
                     <>
                       <Field
@@ -2693,6 +2778,9 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 52,
     paddingBottom: 36,
+  },
+  sessionDetails: {
+    gap: 8,
   },
   sessionDetailLabel: {
     color: '#94A3B8',
