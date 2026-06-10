@@ -8,7 +8,7 @@ sending. It uses `expo-web-browser` for redirect auth and depends on the
 published npm package:
 
 ```json
-"@0xsequence/oms-react-native-sdk": "0.1.0-alpha.1"
+"@0xsequence/oms-react-native-sdk": "0.1.0-alpha.2"
 ```
 
 This example is intentionally excluded from the root Yarn workspace. It is not
