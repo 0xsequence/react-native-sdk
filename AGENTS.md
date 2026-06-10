@@ -128,7 +128,7 @@ plan for when automated tests are added.
   first; leave full native builds to CI.
 - The `resolutions` block in `package.json` pins `0xtrails` / `@0xtrails/*` — update all three
   entries together when bumping the trails version.
-- Pre-release versions use the `0.x.y-alpha.N` scheme. Publishing steps are in `README.md`.
+- Pre-release versions use the `0.x.y-alpha.N` scheme. Publishing steps are in `PUBLISHING.md`.
 
 ## CI/CD
 

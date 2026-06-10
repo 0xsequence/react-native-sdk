@@ -53,8 +53,8 @@ cd examples/expo-example && npm install && npm start
 
 ## Publishing (alpha)
 
-Publishing steps are documented in `README.md` under the alpha publishing section. Only maintainers
-with npm publish access should publish.
+Publishing steps are documented in `PUBLISHING.md`. Only maintainers with npm publish access should
+publish.
 
 ## Signed commits
 

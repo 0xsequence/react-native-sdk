@@ -165,6 +165,10 @@ on the underlying native SDKs.
   excluded from the root Yarn workspace so it is not linked to the local SDK
   source.
 
+## Publishing
+
+See [PUBLISHING.md](./PUBLISHING.md) for the release process.
+
 ## License
 
 MIT
@@ -172,36 +176,3 @@ MIT
 ---
 
 Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)
-
-## Publishing (for `alpha`)
-
-Publish from a clean worktree. The Android and iOS native SDK dependencies are
-resolved from Maven Central and CocoaPods by Gradle and CocoaPods; the React
-Native wrapper podspec is shipped in the npm package and consumed from
-`node_modules` by React Native autolinking.
-
-Before publishing a new release, update `package.json` with the target npm
-version and make sure that exact version has not already been published:
-
-```sh
-npm view @0xsequence/oms-react-native-sdk@<version> version
-```
-
-An npm 404 means that version is available. If npm prints a version, choose a
-new version before publishing.
-
-Then verify and publish:
-
-```sh
-git status --short
-yarn typecheck
-yarn lint
-yarn prepare
-yarn sdk-example build:android
-yarn sdk-example build:ios
-yarn npm publish --dry-run --access public --tag alpha
-yarn npm publish --access public --tag alpha
-```
-
-The dry-run should include `lib`, `src`, `android`, `ios`, and
-`OmsClientReactNativeSdk.podspec`.
