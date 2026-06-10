@@ -10,6 +10,7 @@ import type {
   ListAccessPagesParams,
   ListAccessParams,
   OmsClientConfig,
+  OmsClientSessionExpiredEvent,
   OmsClientSessionState,
   OmsCompleteAuthResult,
   OmsCredentialInfo,
@@ -30,6 +31,7 @@ import type {
   VerifyMessageSignatureParams,
   VerifyTypedDataSignatureParams,
 } from './types';
+import type { EventSubscription } from 'react-native';
 
 function unsupported(): never {
   throw new Error(
@@ -46,6 +48,12 @@ export function getWalletAddress(): Promise<string | null> {
 }
 
 export function getSession(): Promise<OmsClientSessionState> {
+  unsupported();
+}
+
+export function onSessionExpired(
+  _listener: (event: OmsClientSessionExpiredEvent) => void
+): EventSubscription {
   unsupported();
 }
 

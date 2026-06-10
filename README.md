@@ -105,11 +105,12 @@ transactions.
 ```ts
 const raw = parseUnits('12.34', 6); // "12340000"
 const formatted = formatUnits(raw, 6); // "12.34"
-const rounded = parseUnits('1.235', 2, { roundingMode: 'nearest' }); // "124"
+const rounded = parseUnits('1.235', 2); // "124"
 ```
 
-By default `parseUnits` rejects fractional precision beyond `decimals`.
-Pass `{ roundingMode: 'nearest' }` when you want Kotlin-compatible rounding.
+By default `parseUnits` rounds fractional precision beyond `decimals` to the
+nearest base unit, matching the native SDKs. Pass `{ roundingMode: 'reject' }`
+to fail on non-zero excess precision.
 
 ## API Reference
 
@@ -133,8 +134,8 @@ See [API.md](./API.md) for the public API surface and TypeScript shapes.
 ## Native SDK Dependencies
 
 The React Native SDK owns its native SDK dependencies. Android resolves
-`io.github.0xsequence:oms-client-kotlin-sdk:0.1.0-alpha.1` from Maven, and
-iOS resolves `oms-client-swift-sdk` `0.1.0-alpha.1` from CocoaPods.
+`io.github.0xsequence:oms-client-kotlin-sdk:0.1.0-alpha.2` from Maven, and
+iOS resolves `oms-client-swift-sdk` `0.1.0-alpha.2` from CocoaPods.
 
 The React Native wrapper itself is distributed through npm. React Native
 autolinking consumes the wrapper podspec and Android project from
@@ -164,6 +165,10 @@ on the underlying native SDKs.
   excluded from the root Yarn workspace so it is not linked to the local SDK
   source.
 
+## Publishing
+
+See [PUBLISHING.md](./PUBLISHING.md) for the release process.
+
 ## License
 
 MIT
@@ -171,36 +176,3 @@ MIT
 ---
 
 Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)
-
-## Publishing (for `alpha`)
-
-Publish from a clean worktree. The Android and iOS native SDK dependencies are
-resolved from Maven Central and CocoaPods by Gradle and CocoaPods; the React
-Native wrapper podspec is shipped in the npm package and consumed from
-`node_modules` by React Native autolinking.
-
-Before publishing a new release, update `package.json` with the target npm
-version and make sure that exact version has not already been published:
-
-```sh
-npm view @0xsequence/oms-react-native-sdk@<version> version
-```
-
-An npm 404 means that version is available. If npm prints a version, choose a
-new version before publishing.
-
-Then verify and publish:
-
-```sh
-git status --short
-yarn typecheck
-yarn lint
-yarn prepare
-yarn sdk-example build:android
-yarn sdk-example build:ios
-yarn npm publish --dry-run --access public --tag alpha
-yarn npm publish --access public --tag alpha
-```
-
-The dry-run should include `lib`, `src`, `android`, `ios`, and
-`OmsClientReactNativeSdk.podspec`.

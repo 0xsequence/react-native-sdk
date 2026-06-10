@@ -20,6 +20,9 @@ export type {
   OmsTokenBalance,
   OmsTokenBalancesPage,
   OmsTokenBalancesResult,
+  OmsTokenContractInfo,
+  OmsTokenMetadata,
+  OmsTokenMetadataAsset,
   OmsTransactionStatus,
   OmsWallet,
   OmsWalletActivationResult,
@@ -36,6 +39,11 @@ export type OmsClientSessionState = {
   expiresAt: string | null;
   loginType: OmsClientSessionLoginType | null;
   sessionEmail: string | null;
+};
+
+export type OmsClientSessionExpiredEvent = {
+  session: OmsClientSessionState;
+  expiredAt: string;
 };
 
 export type OmsClientEnvironment = {
@@ -126,6 +134,7 @@ export type CompleteEmailAuthParams = {
   code: string;
   walletSelection?: OmsWalletSelectionBehavior;
   walletType?: OmsWalletType;
+  sessionLifetimeSeconds?: number | null;
 };
 
 export type SignInWithOidcIdTokenParams = {
@@ -134,6 +143,7 @@ export type SignInWithOidcIdTokenParams = {
   audience: string;
   walletSelection?: OmsWalletSelectionBehavior;
   walletType?: OmsWalletType;
+  sessionLifetimeSeconds?: number | null;
 };
 
 export type OidcProviderConfig = {
@@ -158,11 +168,13 @@ export type StartOidcRedirectAuthParams = {
   walletType?: OmsWalletType;
   relayRedirectUri?: string | null;
   authorizeParams?: Record<string, string> | null;
+  loginHint?: string | null;
 };
 
 export type HandleOidcRedirectCallbackParams = {
   callbackUrl?: string | null;
   walletSelection?: OmsWalletSelectionBehavior;
+  sessionLifetimeSeconds?: number | null;
 };
 
 export type CreateWalletParams = {

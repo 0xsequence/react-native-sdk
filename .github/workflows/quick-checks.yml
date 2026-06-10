@@ -33,5 +33,8 @@ jobs:
       - name: Typecheck files
         run: yarn typecheck
 
+      - name: Run unit tests
+        run: yarn test
+
       - name: Typecheck Expo example
         run: npm --prefix examples/expo-example run typecheck

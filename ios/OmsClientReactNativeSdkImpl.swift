@@ -5,16 +5,22 @@ import React
 @objc(OmsClientReactNativeSdkImpl)
 public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
   private var client: OMSClient?
-  private var tokenBalancesIndexer: OmsBridgeTokenBalancesIndexer?
   private var feeOptionSelectionRequestEmitter: ((NSDictionary) -> Void)?
+  private var sessionExpiredEventEmitter: ((NSDictionary) -> Void)?
   private var pendingFeeOptionSelections: [String: CheckedContinuation<FeeOptionSelection?, Error>] = [:]
   private let pendingFeeOptionSelectionsLock = NSLock()
   private var pendingWalletSelections: [String: PendingWalletSelection] = [:]
   private let pendingWalletSelectionsLock = NSLock()
+  private static let defaultSessionLifetimeSeconds: UInt32 = 604_800
 
   @objc(setFeeOptionSelectionRequestEmitter:)
   public func setFeeOptionSelectionRequestEmitter(_ emitter: @escaping (NSDictionary) -> Void) {
     feeOptionSelectionRequestEmitter = emitter
+  }
+
+  @objc(setSessionExpiredEventEmitter:)
+  public func setSessionExpiredEventEmitter(_ emitter: @escaping (NSDictionary) -> Void) {
+    sessionExpiredEventEmitter = emitter
   }
 
   @objc(configureWithPublishableKey:walletApiUrl:apiRpcUrl:indexerUrlTemplate:projectId:resolve:reject:)
@@ -34,15 +40,17 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
     )
 
     clearPendingWalletSelections()
-    tokenBalancesIndexer = OmsBridgeTokenBalancesIndexer(
-      publishableKey: publishableKey,
-      indexerUrlTemplate: environment.indexerUrlTemplate
-    )
     client = OMSClient(
-      projectAccessKey: publishableKey,
+      publishableKey: publishableKey,
       projectId: projectId,
       environment: environment
     )
+    client?.wallet.onSessionExpired = { [weak self] event in
+      guard let self else {
+        return
+      }
+      self.sessionExpiredEventEmitter?(self.sessionExpiredEventDictionary(event) as NSDictionary)
+    }
     resolve(nil)
   }
 
@@ -86,11 +94,12 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
     }
   }
 
-  @objc(completeEmailAuthWithCode:walletSelection:walletType:resolve:reject:)
+  @objc(completeEmailAuthWithCode:walletSelection:walletType:sessionLifetimeSeconds:resolve:reject:)
   public func completeEmailAuth(
     code: String,
     walletSelection: String?,
     walletType: String?,
+    sessionLifetimeSeconds: String?,
     resolve: @escaping RCTPromiseResolveBlock,
     reject: @escaping RCTPromiseRejectBlock
   ) {
@@ -98,19 +107,21 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
       let result = try await client.wallet.completeEmailAuth(
         code: code,
         walletSelection: try self.walletSelectionBehavior(walletSelection),
-        walletType: try self.walletType(walletType)
+        walletType: try self.walletType(walletType),
+        sessionLifetimeSeconds: try self.sessionLifetimeSeconds(sessionLifetimeSeconds)
       )
       return try self.completeAuthResultDictionary(result)
     }
   }
 
-  @objc(signInWithOidcIdTokenWithIdToken:issuer:audience:walletSelection:walletType:resolve:reject:)
+  @objc(signInWithOidcIdTokenWithIdToken:issuer:audience:walletSelection:walletType:sessionLifetimeSeconds:resolve:reject:)
   public func signInWithOidcIdToken(
     idToken: String,
     issuer: String,
     audience: String,
     walletSelection: String?,
     walletType: String?,
+    sessionLifetimeSeconds: String?,
     resolve: @escaping RCTPromiseResolveBlock,
     reject: @escaping RCTPromiseRejectBlock
   ) {
@@ -120,19 +131,21 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
         issuer: issuer,
         audience: audience,
         walletType: try self.walletType(walletType),
-        walletSelection: try self.walletSelectionBehavior(walletSelection)
+        walletSelection: try self.walletSelectionBehavior(walletSelection),
+        sessionLifetimeSeconds: try self.sessionLifetimeSeconds(sessionLifetimeSeconds)
       )
       return try self.completeAuthResultDictionary(result)
     }
   }
 
-  @objc(startOidcRedirectAuthWithProviderJson:redirectUri:walletType:relayRedirectUri:authorizeParamsJson:resolve:reject:)
+  @objc(startOidcRedirectAuthWithProviderJson:redirectUri:walletType:relayRedirectUri:authorizeParamsJson:loginHint:resolve:reject:)
   public func startOidcRedirectAuth(
     providerJson: String,
     redirectUri: String,
     walletType: String?,
     relayRedirectUri: String?,
     authorizeParamsJson: String?,
+    loginHint: String?,
     resolve: @escaping RCTPromiseResolveBlock,
     reject: @escaping RCTPromiseRejectBlock
   ) {
@@ -142,6 +155,7 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
         redirectUri: redirectUri,
         walletType: try self.walletType(walletType),
         relayRedirectUri: relayRedirectUri,
+        loginHint: loginHint,
         authorizeParams: try self.decodeStringMap(authorizeParamsJson, name: "authorizeParams") ?? [:]
       )
       return [
@@ -152,17 +166,19 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
     }
   }
 
-  @objc(handleOidcRedirectCallbackWithCallbackUrl:walletSelection:resolve:reject:)
+  @objc(handleOidcRedirectCallbackWithCallbackUrl:walletSelection:sessionLifetimeSeconds:resolve:reject:)
   public func handleOidcRedirectCallback(
     callbackUrl: String?,
     walletSelection: String?,
+    sessionLifetimeSeconds: String?,
     resolve: @escaping RCTPromiseResolveBlock,
     reject: @escaping RCTPromiseRejectBlock
   ) {
     run(resolve: resolve, reject: reject) { client in
       let result = try await client.wallet.handleOidcRedirectCallback(
         callbackUrl,
-        walletSelection: try self.walletSelectionBehavior(walletSelection)
+        walletSelection: try self.walletSelectionBehavior(walletSelection),
+        sessionLifetimeSeconds: try self.sessionLifetimeSeconds(sessionLifetimeSeconds)
       )
       switch result {
       case .completed(let wallet):
@@ -476,26 +492,16 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
   ) {
     run(resolve: resolve, reject: reject) { client in
       let network = try self.requireNetwork(client, chainId: chainId)
-      let result: TokenBalancesResult
-
-      if let contractAddress, page == nil, pageSize == nil {
-        result = try await client.indexer.getTokenBalances(
-          network: network,
-          contractAddress: contractAddress,
-          walletAddress: walletAddress,
-          includeMetadata: includeMetadata
+      let result = try await client.indexer.getTokenBalances(
+        network: network,
+        contractAddress: contractAddress,
+        walletAddress: walletAddress,
+        includeMetadata: includeMetadata,
+        page: TokenBalancesPageRequest(
+          page: try self.uint32(page, name: "page").map { Int($0) },
+          pageSize: try self.uint32(pageSize, name: "pageSize").map { Int($0) }
         )
-      } else {
-        result = try await self.getTokenBalancesFromIndexer(
-          network: network,
-          contractAddress: contractAddress,
-          walletAddress: walletAddress,
-          includeMetadata: includeMetadata,
-          page: page,
-          pageSize: pageSize
-        )
-      }
-
+      )
       return self.tokenBalancesResultDictionary(result)
     }
   }
@@ -976,9 +982,13 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
   }
 
   private func signedWalletClient(_ client: OMSClient) throws -> WaasWalletClient {
+    // The Swift SDK does not expose waitForStatus/statusPolling knobs yet.
+    // Keep RN's API stable by reusing the SDK's signed WaaS client for the
+    // bridge-owned prepare/execute/polling path.
     let mirror = Mirror(reflecting: client.wallet)
     for child in mirror.children {
-      if child.label == "signedClient", let signedClient = child.value as? WaasWalletClient {
+      if (child.label == "signedClient" || child.label == "_signedClient"),
+         let signedClient = child.value as? WaasWalletClient {
         return signedClient
       }
     }
@@ -1046,28 +1056,6 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
       result.removeLast()
     }
     return result
-  }
-
-  private func getTokenBalancesFromIndexer(
-    network: Network,
-    contractAddress: String?,
-    walletAddress: String,
-    includeMetadata: Bool,
-    page: String?,
-    pageSize: String?
-  ) async throws -> TokenBalancesResult {
-    guard let tokenBalancesIndexer else {
-      throw makeError("Call configure before using the OMS client")
-    }
-
-    return try await tokenBalancesIndexer.getTokenBalances(
-      network: network,
-      contractAddress: contractAddress,
-      walletAddress: walletAddress,
-      includeMetadata: includeMetadata,
-      page: Int(try uint32(page, name: "page") ?? 0),
-      pageSize: Int(try uint32(pageSize, name: "pageSize") ?? 40)
-    )
   }
 
   private func requireActiveWalletAddress(_ client: OMSClient) throws -> String {
@@ -1163,6 +1151,13 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
     ]
   }
 
+  private func sessionExpiredEventDictionary(_ event: SessionExpiredEvent) -> [String: Any] {
+    [
+      "session": sessionDictionary(event.session),
+      "expiredAt": iso8601String(event.expiredAt)
+    ]
+  }
+
   private func sessionLoginTypeString(_ loginType: SessionLoginType) -> String {
     switch loginType {
     case .email:
@@ -1218,10 +1213,78 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
     dictionary["accountAddress"] = balance.accountAddress ?? NSNull()
     dictionary["tokenId"] = balance.tokenId ?? NSNull()
     dictionary["balance"] = balance.balance ?? NSNull()
+    dictionary["balanceUSD"] = balance.balanceUSD ?? NSNull()
+    dictionary["priceUSD"] = balance.priceUSD ?? NSNull()
+    dictionary["priceUpdatedAt"] = balance.priceUpdatedAt ?? NSNull()
     dictionary["blockHash"] = balance.blockHash ?? NSNull()
     dictionary["blockNumber"] = balance.blockNumber.map(NSNumber.init(value:)) ?? NSNull()
     dictionary["chainId"] = balance.chainId.map(NSNumber.init(value:)) ?? NSNull()
+    dictionary["uniqueCollectibles"] = balance.uniqueCollectibles ?? NSNull()
+    dictionary["isSummary"] = balance.isSummary.map(NSNumber.init(value:)) ?? NSNull()
+    dictionary["contractInfo"] = balance.contractInfo.map(tokenContractInfoDictionary) ?? NSNull()
+    dictionary["tokenMetadata"] = balance.tokenMetadata.map(tokenMetadataDictionary) ?? NSNull()
     return dictionary
+  }
+
+  private func tokenContractInfoDictionary(_ info: TokenContractInfo) -> [String: Any] {
+    [
+      "chainId": info.chainId.map(NSNumber.init(value:)) ?? NSNull(),
+      "address": info.address ?? NSNull(),
+      "source": info.source ?? NSNull(),
+      "name": info.name ?? NSNull(),
+      "type": info.type ?? NSNull(),
+      "symbol": info.symbol ?? NSNull(),
+      "decimals": info.decimals.map(NSNumber.init(value:)) ?? NSNull(),
+      "logoURI": info.logoURI ?? NSNull(),
+      "deployed": info.deployed.map(NSNumber.init(value:)) ?? NSNull(),
+      "bytecodeHash": info.bytecodeHash ?? NSNull(),
+      "extensions": info.extensions.map(webRPCJSONObject) ?? NSNull(),
+      "updatedAt": info.updatedAt ?? NSNull(),
+      "queuedAt": info.queuedAt ?? NSNull(),
+      "status": info.status ?? NSNull()
+    ]
+  }
+
+  private func tokenMetadataDictionary(_ metadata: TokenMetadata) -> [String: Any] {
+    [
+      "chainId": metadata.chainId.map(NSNumber.init(value:)) ?? NSNull(),
+      "contractAddress": metadata.contractAddress ?? NSNull(),
+      "tokenId": metadata.tokenId ?? NSNull(),
+      "source": metadata.source ?? NSNull(),
+      "name": metadata.name ?? NSNull(),
+      "description": metadata.description ?? NSNull(),
+      "image": metadata.image ?? NSNull(),
+      "video": metadata.video ?? NSNull(),
+      "audio": metadata.audio ?? NSNull(),
+      "properties": metadata.properties.map(webRPCJSONObject) ?? NSNull(),
+      "attributes": metadata.attributes?.map(webRPCJSONObject) ?? NSNull(),
+      "imageData": metadata.imageData ?? NSNull(),
+      "externalUrl": metadata.externalUrl ?? NSNull(),
+      "backgroundColor": metadata.backgroundColor ?? NSNull(),
+      "animationUrl": metadata.animationUrl ?? NSNull(),
+      "decimals": metadata.decimals.map(NSNumber.init(value:)) ?? NSNull(),
+      "updatedAt": metadata.updatedAt ?? NSNull(),
+      "assets": metadata.assets?.map(tokenMetadataAssetDictionary) ?? NSNull(),
+      "status": metadata.status ?? NSNull(),
+      "queuedAt": metadata.queuedAt ?? NSNull(),
+      "lastFetched": metadata.lastFetched ?? NSNull()
+    ]
+  }
+
+  private func tokenMetadataAssetDictionary(_ asset: TokenMetadataAsset) -> [String: Any] {
+    [
+      "id": asset.id.map(NSNumber.init(value:)) ?? NSNull(),
+      "collectionId": asset.collectionId.map(NSNumber.init(value:)) ?? NSNull(),
+      "tokenId": asset.tokenId ?? NSNull(),
+      "url": asset.url ?? NSNull(),
+      "metadataField": asset.metadataField ?? NSNull(),
+      "name": asset.name ?? NSNull(),
+      "filesize": asset.filesize.map(NSNumber.init(value:)) ?? NSNull(),
+      "mimeType": asset.mimeType ?? NSNull(),
+      "width": asset.width.map(NSNumber.init(value:)) ?? NSNull(),
+      "height": asset.height.map(NSNumber.init(value:)) ?? NSNull(),
+      "updatedAt": asset.updatedAt ?? NSNull()
+    ]
   }
 
   private func transactionStatusDictionary(_ result: TransactionStatusResponse) -> [String: Any] {
@@ -1340,6 +1403,15 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
     return parsed
   }
 
+  private func sessionLifetimeSeconds(_ value: String?) throws -> UInt32 {
+    let parsed = try uint32(value, name: "sessionLifetimeSeconds")
+      ?? Self.defaultSessionLifetimeSeconds
+    guard parsed > 0 else {
+      throw makeError("sessionLifetimeSeconds must be a positive whole number")
+    }
+    return parsed
+  }
+
   private func statusPollingOptions(
     timeoutMs: String?,
     intervalMs: String?,
@@ -1413,6 +1485,31 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
     return try JSONDecoder().decode([AbiArg].self, from: data)
   }
 
+  private func webRPCJSONObject(_ value: [String: WebRPCJSONValue]) -> [String: Any] {
+    value.mapValues(webRPCJSONValue)
+  }
+
+  private func webRPCJSONValue(_ value: WebRPCJSONValue) -> Any {
+    switch value {
+    case .object(let object):
+      return webRPCJSONObject(object)
+    case .array(let array):
+      return array.map(webRPCJSONValue)
+    case .string(let string):
+      return string
+    case .integer(let integer):
+      return NSNumber(value: integer)
+    case .unsignedInteger(let unsignedInteger):
+      return NSNumber(value: unsignedInteger)
+    case .number(let number):
+      return NSNumber(value: number)
+    case .bool(let bool):
+      return NSNumber(value: bool)
+    case .null:
+      return NSNull()
+    }
+  }
+
   private func makeError(_ message: String) -> NSError {
     NSError(
       domain: "OmsClientReactNativeSdk",
@@ -1422,6 +1519,30 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
   }
 
   private func rejectError(_ reject: RCTPromiseRejectBlock, _ error: Error) {
+    if let omsError = error as? OmsSdkError {
+      let code = omsError.code.rawValue
+      var userInfo: [String: Any] = [
+        NSLocalizedDescriptionKey: omsError.localizedDescription,
+        "code": code,
+        "retryable": omsError.retryable
+      ]
+      if let operation = omsError.operation {
+        userInfo["operation"] = operation.rawValue
+      }
+      if let status = omsError.status {
+        userInfo["status"] = NSNumber(value: status)
+      }
+      if let txnId = omsError.txnId {
+        userInfo["txnId"] = txnId
+      }
+      reject(
+        code,
+        omsError.localizedDescription,
+        NSError(domain: "OmsClientReactNativeSdk", code: 1, userInfo: userInfo)
+      )
+      return
+    }
+
     let nsError = error as NSError
     reject("oms_client_error", nsError.localizedDescription, nsError)
   }
@@ -1446,89 +1567,6 @@ private final class PromiseCallbacks: @unchecked Sendable {
     self.resolve = resolve
     self.reject = reject
   }
-}
-
-private final class OmsBridgeTokenBalancesIndexer: @unchecked Sendable {
-  private let publishableKey: String
-  private let indexerUrlTemplate: String
-
-  init(publishableKey: String, indexerUrlTemplate: String) {
-    self.publishableKey = publishableKey
-    self.indexerUrlTemplate = indexerUrlTemplate
-  }
-
-  func getTokenBalances(
-    network: Network,
-    contractAddress: String?,
-    walletAddress: String,
-    includeMetadata: Bool,
-    page: Int,
-    pageSize: Int
-  ) async throws -> TokenBalancesResult {
-    let request = TokenBalancesRequestBody(
-      page: TokenBalancesRequestPage(page: page, pageSize: pageSize, more: false),
-      contractAddress: contractAddress,
-      accountAddress: walletAddress,
-      includeMetadata: includeMetadata
-    )
-    let bodyData = try JSONEncoder().encode(request)
-
-    let baseUrl = indexerUrlTemplate.replacingOccurrences(
-      of: "{value}",
-      with: network.name
-    )
-    let separator = baseUrl.hasSuffix("/") ? "" : "/"
-    guard let url = URL(string: "\(baseUrl)\(separator)GetTokenBalances") else {
-      throw makeError("Invalid indexer URL")
-    }
-
-    var urlRequest = URLRequest(url: url)
-    urlRequest.httpMethod = "POST"
-    urlRequest.httpBody = bodyData
-    urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    urlRequest.setValue(publishableKey, forHTTPHeaderField: "X-Access-Key")
-
-    let (data, response) = try await URLSession.shared.data(for: urlRequest)
-    guard let httpResponse = response as? HTTPURLResponse else {
-      throw makeError("Indexer response was not an HTTP response")
-    }
-    guard (200..<300).contains(httpResponse.statusCode) else {
-      throw makeError("Token balances request failed with \(httpResponse.statusCode)")
-    }
-
-    let payload = try JSONDecoder().decode(TokenBalancesResponseBody.self, from: data)
-    return TokenBalancesResult(
-      status: httpResponse.statusCode,
-      page: payload.page,
-      balances: payload.balances ?? []
-    )
-  }
-
-  private func makeError(_ message: String) -> NSError {
-    NSError(
-      domain: "OmsClientReactNativeSdk",
-      code: 1,
-      userInfo: [NSLocalizedDescriptionKey: message]
-    )
-  }
-}
-
-private struct TokenBalancesRequestPage: Encodable {
-  let page: Int
-  let pageSize: Int
-  let more: Bool
-}
-
-private struct TokenBalancesRequestBody: Encodable {
-  let page: TokenBalancesRequestPage
-  let contractAddress: String?
-  let accountAddress: String
-  let includeMetadata: Bool
-}
-
-private struct TokenBalancesResponseBody: Decodable {
-  let page: TokenBalancesPage?
-  let balances: [TokenBalance]?
 }
 
 private struct OmsBridgeTransactionStatusPollingOptions: Sendable {

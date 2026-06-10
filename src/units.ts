@@ -45,9 +45,8 @@ export type ParseUnitsRoundingMode = 'reject' | 'nearest';
 
 export type ParseUnitsOptions = {
   /**
-   * `reject` matches Swift and common JS parseUnits behavior.
-   * `nearest` matches the Kotlin SDK helper by rounding over-precision to the
-   * nearest base unit.
+   * `nearest` matches the native SDK helpers by rounding over-precision to the
+   * nearest base unit. Use `reject` to fail on non-zero excess precision.
    */
   roundingMode?: ParseUnitsRoundingMode;
 };
@@ -55,7 +54,7 @@ export type ParseUnitsOptions = {
 function resolveRoundingMode(
   options: ParseUnitsOptions
 ): ParseUnitsRoundingMode {
-  const mode = options.roundingMode ?? 'reject';
+  const mode = options.roundingMode ?? 'nearest';
   if (mode !== 'reject' && mode !== 'nearest') {
     throw new Error(`Unsupported parseUnits rounding mode: ${String(mode)}`);
   }

@@ -9,8 +9,8 @@ This document describes the public TypeScript API for external consumers of
 npm install @0xsequence/oms-react-native-sdk
 ```
 
-Android resolves `io.github.0xsequence:oms-client-kotlin-sdk:0.1.0-alpha.1`.
-iOS resolves `oms-client-swift-sdk` `0.1.0-alpha.1`.
+Android resolves `io.github.0xsequence:oms-client-kotlin-sdk:0.1.0-alpha.2`.
+iOS resolves `oms-client-swift-sdk` `0.1.0-alpha.2`.
 
 ## Configure
 
@@ -35,6 +35,9 @@ APIs. `publishableKey` is sent to the native SDKs as the OMS publishable key, an
 ```ts
 getWalletAddress(): Promise<string | null>
 getSession(): Promise<OmsClientSessionState>
+onSessionExpired(
+  listener: (event: OmsClientSessionExpiredEvent) => void
+): EventSubscription
 signOut(): Promise<void>
 ```
 
@@ -45,10 +48,17 @@ type OmsClientSessionState = {
   loginType: 'Email' | 'GoogleAuth' | 'Oidc' | null;
   sessionEmail: string | null;
 };
+
+type OmsClientSessionExpiredEvent = {
+  session: OmsClientSessionState;
+  expiredAt: string;
+};
 ```
 
 `getSession` reports completed wallet-session metadata only. Pending OTP,
 redirect verifier state, and signer details are native SDK internals.
+`onSessionExpired` emits when the native wallet session expires; use the expired
+session snapshot to route users back to sign-in or prefill re-authentication UI.
 
 ## Email Auth
 
@@ -59,6 +69,7 @@ completeEmailAuth({
   code: string;
   walletSelection?: 'automatic' | 'manual';
   walletType?: 'ethereum';
+  sessionLifetimeSeconds?: number | null;
 }): Promise<OmsCompleteAuthResult>
 ```
 
@@ -71,6 +82,7 @@ signInWithOidcIdToken({
   audience: string;
   walletSelection?: 'automatic' | 'manual';
   walletType?: 'ethereum';
+  sessionLifetimeSeconds?: number | null;
 }): Promise<OmsCompleteAuthResult>
 ```
 
@@ -104,6 +116,7 @@ startOidcRedirectAuth({
   walletType?: 'ethereum';
   relayRedirectUri?: string | null;
   authorizeParams?: Record<string, string> | null;
+  loginHint?: string | null;
 }): Promise<{
   authorizationUrl: string;
   state: string;
@@ -113,6 +126,7 @@ startOidcRedirectAuth({
 handleOidcRedirectCallback({
   callbackUrl?: string | null;
   walletSelection?: 'automatic' | 'manual';
+  sessionLifetimeSeconds?: number | null;
 }): Promise<OmsOidcRedirectAuthResult>
 ```
 
@@ -122,6 +136,9 @@ pass the resulting app-link URL to `handleOidcRedirectCallback`.
 
 When `relayRedirectUri` is omitted, the provider default is used. Pass
 `relayRedirectUri: null` to explicitly use the app `redirectUri` directly.
+For Google OIDC providers, `loginHint` is sent as OAuth `login_hint`; if omitted,
+the native SDKs may reuse the previous session email during re-authentication.
+Auth completion methods default to a one-week session lifetime.
 
 ## Auth Results
 
@@ -346,9 +363,16 @@ type OmsTokenBalance = {
   accountAddress: string | null;
   tokenId: string | null;
   balance: string | null;
+  balanceUSD?: string | null;
+  priceUSD?: string | null;
+  priceUpdatedAt?: string | null;
   blockHash: string | null;
   blockNumber?: number | null;
   chainId?: number | null;
+  uniqueCollectibles?: string | null;
+  isSummary?: boolean | null;
+  contractInfo?: OmsTokenContractInfo | null;
+  tokenMetadata?: OmsTokenMetadata | null;
 };
 
 type OmsTokenBalancesPage = {
@@ -356,11 +380,67 @@ type OmsTokenBalancesPage = {
   pageSize: number;
   more: boolean;
 };
+
+type OmsTokenContractInfo = {
+  chainId?: number | null;
+  address?: string | null;
+  source?: string | null;
+  name?: string | null;
+  type?: string | null;
+  symbol?: string | null;
+  decimals?: number | null;
+  logoURI?: string | null;
+  deployed?: boolean | null;
+  bytecodeHash?: string | null;
+  extensions?: object | null;
+  updatedAt?: string | null;
+  queuedAt?: string | null;
+  status?: string | null;
+};
+
+type OmsTokenMetadata = {
+  chainId?: number | null;
+  contractAddress?: string | null;
+  tokenId?: string | null;
+  source?: string | null;
+  name?: string | null;
+  description?: string | null;
+  image?: string | null;
+  video?: string | null;
+  audio?: string | null;
+  properties?: object | null;
+  attributes?: object[] | null;
+  imageData?: string | null;
+  externalUrl?: string | null;
+  backgroundColor?: string | null;
+  animationUrl?: string | null;
+  decimals?: number | null;
+  updatedAt?: string | null;
+  assets?: OmsTokenMetadataAsset[] | null;
+  status?: string | null;
+  queuedAt?: string | null;
+  lastFetched?: string | null;
+};
+
+type OmsTokenMetadataAsset = {
+  id?: number | null;
+  collectionId?: number | null;
+  tokenId?: string | null;
+  url?: string | null;
+  metadataField?: string | null;
+  name?: string | null;
+  filesize?: number | null;
+  mimeType?: string | null;
+  width?: number | null;
+  height?: number | null;
+  updatedAt?: string | null;
+};
 ```
 
 Omit `contractAddress` to query balances across token contracts. Pass `page`
 to request a later page or a custom page size. When `page` is undefined, the
 request defaults to page `0` with up to `40` entries.
+Pass `includeMetadata: true` to request `contractInfo` and `tokenMetadata`.
 
 ## Wallet ID Token
 
@@ -416,7 +496,6 @@ parseUnits(
 formatUnits(value: string | bigint, decimals?: number): string
 ```
 
-`parseUnits` defaults to `roundingMode: 'reject'`, matching Swift and common
-JavaScript parseUnits behavior. Use `roundingMode: 'nearest'` to match the
-Kotlin SDK helper, which rounds fractional precision beyond `decimals` to the
-nearest base unit.
+`parseUnits` defaults to `roundingMode: 'nearest'`, matching the native SDK
+helpers by rounding fractional precision beyond `decimals` to the nearest base
+unit. Use `roundingMode: 'reject'` to fail on non-zero excess precision.

@@ -1,6 +1,7 @@
 import type { EventSubscription } from 'react-native';
 import OmsClientReactNativeSdk from './NativeOmsClientReactNativeSdk';
 import type {
+  OmsClientSessionExpiredEvent as OmsNativeClientSessionExpiredEvent,
   OmsFeeOptionSelectionRequest,
   OmsNativeCompleteAuthResult,
   OmsNativeOidcRedirectAuthResult,
@@ -18,6 +19,7 @@ import type {
   ListAccessPagesParams,
   ListAccessParams,
   OmsClientConfig,
+  OmsClientSessionExpiredEvent,
   OmsClientSessionState,
   OmsCompleteAuthResult,
   OmsCredentialInfo,
@@ -84,17 +86,23 @@ function hydratePendingWalletSelection(
     ...pendingSelection,
     walletType:
       pendingSelection.walletType as OmsPendingWalletSelection['walletType'],
-    selectWallet(walletId: string) {
-      return OmsClientReactNativeSdk.selectWalletForPendingSelection(
-        pendingSelection.id,
-        walletId
-      );
+    async selectWallet(walletId: string) {
+      const result =
+        await OmsClientReactNativeSdk.selectWalletForPendingSelection(
+          pendingSelection.id,
+          walletId
+        );
+      resetSessionExpiredReplay();
+      return result;
     },
-    createAndSelectWallet(reference?: string | null) {
-      return OmsClientReactNativeSdk.createAndSelectWalletForPendingSelection(
-        pendingSelection.id,
-        reference ?? null
-      );
+    async createAndSelectWallet(reference?: string | null) {
+      const result =
+        await OmsClientReactNativeSdk.createAndSelectWalletForPendingSelection(
+          pendingSelection.id,
+          reference ?? null
+        );
+      resetSessionExpiredReplay();
+      return result;
     },
   };
 }
@@ -176,12 +184,35 @@ function hydrateOidcRedirectAuthResult(
 let nextFeeOptionSelectorId = 0;
 let feeOptionSelectionSubscription: EventSubscription | null = null;
 const feeOptionSelectors = new Map<string, OmsFeeOptionSelector>();
+let sessionExpiredSubscription: EventSubscription | null = null;
+let latestSessionExpiredEvent: OmsClientSessionExpiredEvent | null = null;
+const sessionExpiredListeners = new Set<
+  (event: OmsClientSessionExpiredEvent) => void
+>();
 
 function ensureFeeOptionSelectionListener() {
   feeOptionSelectionSubscription ??=
     OmsClientReactNativeSdk.onFeeOptionSelectionRequest(
       handleFeeOptionSelectionRequest
     );
+}
+
+function resetSessionExpiredReplay() {
+  latestSessionExpiredEvent = null;
+}
+
+function handleNativeSessionExpired(event: OmsNativeClientSessionExpiredEvent) {
+  const sessionExpiredEvent = event as OmsClientSessionExpiredEvent;
+  latestSessionExpiredEvent = sessionExpiredEvent;
+  for (const listener of Array.from(sessionExpiredListeners)) {
+    listener(sessionExpiredEvent);
+  }
+}
+
+function ensureSessionExpiredListener() {
+  sessionExpiredSubscription ??= OmsClientReactNativeSdk.onSessionExpired(
+    handleNativeSessionExpired
+  );
 }
 
 function errorMessage(error: unknown): string {
@@ -236,6 +267,8 @@ async function withFeeOptionSelector<T>(
 }
 
 export function configure(config: OmsClientConfig): Promise<void> {
+  resetSessionExpiredReplay();
+  ensureSessionExpiredListener();
   return OmsClientReactNativeSdk.configure(
     config.publishableKey,
     config.environment?.walletApiUrl ?? null,
@@ -253,36 +286,59 @@ export function getSession(): Promise<OmsClientSessionState> {
   return OmsClientReactNativeSdk.getSession() as Promise<OmsClientSessionState>;
 }
 
+export function onSessionExpired(
+  listener: (event: OmsClientSessionExpiredEvent) => void
+): EventSubscription {
+  ensureSessionExpiredListener();
+  sessionExpiredListeners.add(listener);
+
+  if (latestSessionExpiredEvent != null) {
+    listener(latestSessionExpiredEvent);
+  }
+
+  return {
+    remove() {
+      sessionExpiredListeners.delete(listener);
+    },
+  };
+}
+
 export function getSupportedNetworks(): Promise<OmsNetwork[]> {
   return OmsClientReactNativeSdk.getSupportedNetworks();
 }
 
 export function startEmailAuth(email: string): Promise<void> {
+  resetSessionExpiredReplay();
   return OmsClientReactNativeSdk.startEmailAuth(email);
 }
 
 export async function completeEmailAuth(
   params: CompleteEmailAuthParams
 ): Promise<OmsCompleteAuthResult> {
-  return hydrateCompleteAuthResult(
+  const result = hydrateCompleteAuthResult(
     await OmsClientReactNativeSdk.completeEmailAuth(
       params.code,
       params.walletSelection ?? null,
-      params.walletType ?? null
+      params.walletType ?? null,
+      stringifyOptionalNumber(params.sessionLifetimeSeconds)
     )
   );
+  resetSessionExpiredReplay();
+  return result;
 }
 
 export async function signInWithOidcIdToken(
   params: SignInWithOidcIdTokenParams
 ): Promise<OmsCompleteAuthResult> {
+  resetSessionExpiredReplay();
   return hydrateCompleteAuthResult(
     await OmsClientReactNativeSdk.signInWithOidcIdToken(
       params.idToken,
       params.issuer,
       params.audience,
       params.walletSelection ?? null,
-      params.walletType ?? null
+      params.walletType ?? null,
+      stringifyOptionalNumber(params.sessionLifetimeSeconds)
     )
   );
 }
@@ -290,24 +346,34 @@ export async function signInWithOidcIdToken(
 export function startOidcRedirectAuth(
   params: StartOidcRedirectAuthParams
 ): Promise<OmsStartOidcRedirectAuthResult> {
+  resetSessionExpiredReplay();
   return OmsClientReactNativeSdk.startOidcRedirectAuth(
     stringifyRequiredJson(params.provider, 'provider'),
     params.redirectUri,
     params.walletType ?? null,
     resolveRelayRedirectUri(params),
-    stringifyOptionalJson(params.authorizeParams)
+    stringifyOptionalJson(params.authorizeParams),
+    params.loginHint ?? null
   );
 }
 
 export async function handleOidcRedirectCallback(
   params: HandleOidcRedirectCallbackParams = {}
 ): Promise<OmsOidcRedirectAuthResult> {
-  return hydrateOidcRedirectAuthResult(
+  const result = hydrateOidcRedirectAuthResult(
     await OmsClientReactNativeSdk.handleOidcRedirectCallback(
       params.callbackUrl ?? null,
-      params.walletSelection ?? null
+      params.walletSelection ?? null,
+      stringifyOptionalNumber(params.sessionLifetimeSeconds)
     )
   );
+  if (
+    result.type !== 'notOidcRedirectCallback' &&
+    result.type !== 'noPendingAuth'
+  ) {
+    resetSessionExpiredReplay();
+  }
+  return result;
 }
 
 export function listWallets(): Promise<OmsWallet[]> {
@@ -317,19 +383,25 @@ export function listWallets(): Promise<OmsWallet[]> {
 export function useWallet(
   walletId: string
 ): Promise<OmsWalletActivationResult> {
-  return OmsClientReactNativeSdk.useWallet(walletId);
+  return OmsClientReactNativeSdk.useWallet(walletId).then((result) => {
+    resetSessionExpiredReplay();
+    return result;
+  });
 }
 
-export function createWallet(
+export async function createWallet(
   params: CreateWalletParams = {}
 ): Promise<OmsWalletActivationResult> {
-  return OmsClientReactNativeSdk.createWallet(
+  const result = await OmsClientReactNativeSdk.createWallet(
     params.walletType ?? null,
     params.reference ?? null
   );
+  resetSessionExpiredReplay();
+  return result;
 }
 
 export function signOut(): Promise<void> {
+  resetSessionExpiredReplay();
   return OmsClientReactNativeSdk.signOut();
 }
 

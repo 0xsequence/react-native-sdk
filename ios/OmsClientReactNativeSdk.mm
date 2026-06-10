@@ -23,6 +23,12 @@
         [strongSelf emitOnFeeOptionSelectionRequest:payload];
       }
     }];
+    [_impl setSessionExpiredEventEmitter:^(NSDictionary *payload) {
+      OmsClientReactNativeSdk *strongSelf = weakSelf;
+      if (strongSelf) {
+        [strongSelf emitOnSessionExpired:payload];
+      }
+    }];
   }
   return self;
 }
@@ -72,12 +78,14 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
 - (void)completeEmailAuth:(NSString *)code
           walletSelection:(nullable NSString *)walletSelection
                walletType:(nullable NSString *)walletType
+   sessionLifetimeSeconds:(nullable NSString *)sessionLifetimeSeconds
                   resolve:(RCTPromiseResolveBlock)resolve
                    reject:(RCTPromiseRejectBlock)reject
 {
   [_impl completeEmailAuthWithCode:code
                     walletSelection:walletSelection
                          walletType:walletType
+              sessionLifetimeSeconds:sessionLifetimeSeconds
                             resolve:resolve
                              reject:reject];
 }
@@ -87,6 +95,7 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
                      audience:(NSString *)audience
               walletSelection:(nullable NSString *)walletSelection
                     walletType:(nullable NSString *)walletType
+        sessionLifetimeSeconds:(nullable NSString *)sessionLifetimeSeconds
                       resolve:(RCTPromiseResolveBlock)resolve
                        reject:(RCTPromiseRejectBlock)reject
 {
@@ -95,6 +104,7 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
                                  audience:audience
                           walletSelection:walletSelection
                                 walletType:walletType
+                    sessionLifetimeSeconds:sessionLifetimeSeconds
                                   resolve:resolve
                                    reject:reject];
 }
@@ -104,6 +114,7 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
                    walletType:(nullable NSString *)walletType
              relayRedirectUri:(nullable NSString *)relayRedirectUri
           authorizeParamsJson:(nullable NSString *)authorizeParamsJson
+                    loginHint:(nullable NSString *)loginHint
                       resolve:(RCTPromiseResolveBlock)resolve
                        reject:(RCTPromiseRejectBlock)reject
 {
@@ -112,17 +123,20 @@ indexerUrlTemplate:(nullable NSString *)indexerUrlTemplate
                                     walletType:walletType
                               relayRedirectUri:relayRedirectUri
                            authorizeParamsJson:authorizeParamsJson
+                                      loginHint:loginHint
                                        resolve:resolve
                                         reject:reject];
 }
 
 - (void)handleOidcRedirectCallback:(nullable NSString *)callbackUrl
                    walletSelection:(nullable NSString *)walletSelection
+             sessionLifetimeSeconds:(nullable NSString *)sessionLifetimeSeconds
                             resolve:(RCTPromiseResolveBlock)resolve
                              reject:(RCTPromiseRejectBlock)reject
 {
   [_impl handleOidcRedirectCallbackWithCallbackUrl:callbackUrl
                                    walletSelection:walletSelection
+                            sessionLifetimeSeconds:sessionLifetimeSeconds
                                            resolve:resolve
                                             reject:reject];
 }
