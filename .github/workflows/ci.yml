@@ -150,6 +150,12 @@ jobs:
         with:
           xcode-version: ${{ env.XCODE_VERSION }}
 
+      - name: Setup Ruby
+        if: env.turbo_cache_hit != '1'
+        uses: ruby/setup-ruby@9eb537ca036ebaed86729dcb9309076e4c5c3b74 # v1
+        with:
+          ruby-version: '3.4.9'
+
       - name: Install cocoapods
         if: env.turbo_cache_hit != '1'
         run: |
