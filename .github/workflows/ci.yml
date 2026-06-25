@@ -57,6 +57,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      ANDROID_NDK_VERSION: 27.1.12297006
       TURBO_CACHE_DIR: .turbo/android
 
     steps:
@@ -93,6 +94,16 @@ jobs:
         if: env.turbo_cache_hit != '1'
         run: |
           /bin/bash -c "yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null"
+          for attempt in 1 2 3; do
+            if "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$ANDROID_NDK_VERSION"; then
+              exit 0
+            fi
+
+            rm -rf "$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION" "$ANDROID_HOME/.temp"
+            sleep 10
+          done
+
+          exit 1
 
 
       - name: Cache Gradle
