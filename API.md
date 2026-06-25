@@ -9,9 +9,6 @@ This document describes the public TypeScript API for
 npm install @0xsequence/oms-react-native-sdk
 ```
 
-Android resolves `io.github.0xsequence:oms-client-kotlin-sdk:0.1.0-alpha.3`.
-iOS resolves `oms-client-swift-sdk` `0.1.0-alpha.3`.
-
 ## Client
 
 ```ts
@@ -23,17 +20,14 @@ const oms = new OMSClient({
 ```
 
 ```ts
+new OMSClient(config: OmsClientConfig)
+
 type OmsClientConfig = {
   publishableKey: string;
 };
-
-class OMSClient {
-  constructor(config: OmsClientConfig);
-  wallet: OMSWalletClient;
-  indexer: OMSIndexerClient;
-  supportedNetworks: OmsNetwork[];
-}
 ```
+
+`OMSClient` exposes `wallet`, `indexer`, and `supportedNetworks`.
 
 ## Wallet
 
@@ -46,7 +40,7 @@ oms.wallet.getWalletAddress(): Promise<string | null>
 oms.wallet.getSession(): Promise<OmsClientSessionState>
 oms.wallet.onSessionExpired(
   listener: (event: OmsClientSessionExpiredEvent) => void
-): EventSubscription
+): { remove(): void }
 oms.wallet.signOut(): Promise<void>
 ```
 
@@ -441,8 +435,8 @@ type OmsTransactionTransfer = {
 };
 ```
 
-Pass `networks` for explicit chain selection. If omitted, the native SDK uses
-`networkType`, which defaults to `MAINNETS`.
+Pass `networks` for explicit chain selection. If omitted, `networkType`
+defaults to `MAINNETS`.
 
 ## Networks
 
@@ -492,8 +486,8 @@ type OmsTokenBalancesPage = {
 };
 ```
 
-`OmsTokenContractInfo`, `OmsTokenMetadata`, and `OmsTokenMetadataAsset` mirror
-the native SDK token metadata objects.
+The SDK also exports `OmsTokenContractInfo`, `OmsTokenMetadata`, and
+`OmsTokenMetadataAsset` for metadata returned in these fields.
 
 ## Formatting Helpers
 
