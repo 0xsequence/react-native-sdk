@@ -1,6 +1,6 @@
 {
   "name": "@0xsequence/oms-react-native-sdk",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "description": "React Native SDK for the OMS platform.",
   "homepage": "https://github.com/0xsequence/react-native-sdk",
   "main": "./lib/commonjs/index.js",

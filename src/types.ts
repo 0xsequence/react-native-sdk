@@ -2,6 +2,9 @@ import type {
   OmsCredentialInfo,
   OmsFeeOptionSelection,
   OmsFeeOptionWithBalance,
+  OmsNetwork,
+  OmsTokenBalance,
+  OmsTokenBalancesPage,
   OmsWallet,
   OmsWalletActivationResult,
 } from './NativeOmsClientReactNativeSdk';
@@ -19,11 +22,13 @@ export type {
   OmsStartOidcRedirectAuthResult,
   OmsTokenBalance,
   OmsTokenBalancesPage,
-  OmsTokenBalancesResult,
   OmsTokenContractInfo,
   OmsTokenMetadata,
   OmsTokenMetadataAsset,
+  OmsTransaction,
+  OmsTransactionHistoryResult,
   OmsTransactionStatus,
+  OmsTransactionTransfer,
   OmsWallet,
   OmsWalletActivationResult,
 } from './NativeOmsClientReactNativeSdk';
@@ -46,16 +51,8 @@ export type OmsClientSessionExpiredEvent = {
   expiredAt: string;
 };
 
-export type OmsClientEnvironment = {
-  walletApiUrl?: string;
-  apiRpcUrl?: string;
-  indexerUrlTemplate?: string;
-};
-
 export type OmsClientConfig = {
   publishableKey: string;
-  projectId: string;
-  environment?: OmsClientEnvironment;
 };
 
 export type SendTransactionParams = {
@@ -210,20 +207,54 @@ export type CallContractParams = {
   statusPolling?: OmsTransactionStatusPollingOptions;
 };
 
-export type GetTokenBalancesParams = {
-  chainId: string;
-  contractAddress?: string;
-  walletAddress: string;
-  includeMetadata?: boolean;
-  page?: {
-    page?: number;
-    pageSize?: number;
-  };
+export type OmsIndexerNetworkType = 'MAINNETS' | 'TESTNETS' | 'ALL';
+
+export type OmsContractVerificationStatus = 'VERIFIED' | 'UNVERIFIED' | 'ALL';
+
+export type OmsMetadataOptions = {
+  verifiedOnly?: boolean;
+  unverifiedOnly?: boolean;
+  includeContracts?: string[];
 };
 
-export type GetNativeTokenBalanceParams = {
-  chainId: string;
+export type OmsTokenBalancesPageRequest = {
+  page?: number;
+  pageSize?: number;
+};
+
+export type OmsBalancesResult = {
+  status: number;
+  page?: OmsTokenBalancesPage | null;
+  nativeBalances: OmsTokenBalance[];
+  balances: OmsTokenBalance[];
+};
+
+export type GetBalancesParams = {
   walletAddress: string;
+  networks?: OmsNetwork[];
+  networkType?: OmsIndexerNetworkType;
+  contractAddresses?: string[];
+  includeMetadata?: boolean;
+  omitPrices?: boolean | null;
+  tokenIds?: string[];
+  contractStatus?: OmsContractVerificationStatus | null;
+  page?: OmsTokenBalancesPageRequest;
+};
+
+export type GetTransactionHistoryParams = {
+  walletAddress: string;
+  networks?: OmsNetwork[];
+  networkType?: OmsIndexerNetworkType;
+  contractAddresses?: string[];
+  transactionHashes?: string[];
+  metaTransactionIds?: string[];
+  fromBlock?: number | null;
+  toBlock?: number | null;
+  tokenId?: string | null;
+  includeMetadata?: boolean;
+  omitPrices?: boolean | null;
+  metadataOptions?: OmsMetadataOptions | null;
+  page?: OmsTokenBalancesPageRequest;
 };
 
 export type VerifyMessageSignatureParams = {

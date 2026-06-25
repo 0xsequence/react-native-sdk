@@ -11,7 +11,6 @@ const nativeModulePath = path.join(
 
 const config = {
   publishableKey: 'test-publishable-key',
-  projectId: 'test-project',
 };
 
 function wallet(id = 'wallet-1') {
@@ -107,10 +106,33 @@ function loadClient(overrides = {}) {
       };
     }
   );
-  native.configure = makeRecorder(
+  native.onFeeOptionSelectionRequest = makeRecorder(
     calls,
-    'configure',
-    overrides.configure ?? (async () => undefined)
+    'onFeeOptionSelectionRequest',
+    (listener) => {
+      native.feeOptionSelectionListener = listener;
+      return {
+        remove() {
+          native.feeOptionSelectionListener = null;
+        },
+      };
+    }
+  );
+  native.createClient = makeRecorder(
+    calls,
+    'createClient',
+    overrides.createClient ?? (async () => undefined)
+  );
+  native.getSession = makeRecorder(
+    calls,
+    'getSession',
+    overrides.getSession ??
+      (async () => ({
+        walletAddress: null,
+        expiresAt: null,
+        loginType: null,
+        sessionEmail: null,
+      }))
   );
   native.startEmailAuth = makeRecorder(
     calls,
@@ -170,6 +192,28 @@ function loadClient(overrides = {}) {
     'signOut',
     overrides.signOut ?? (async () => undefined)
   );
+  native.getBalances = makeRecorder(
+    calls,
+    'getBalances',
+    overrides.getBalances ??
+      (async () => ({
+        status: 200,
+        page: null,
+        nativeBalances: [],
+        balances: [],
+      }))
+  );
+  native.getTransactionHistory = makeRecorder(
+    calls,
+    'getTransactionHistory',
+    overrides.getTransactionHistory ??
+      (async () => ({ status: 200, page: null, transactions: [] }))
+  );
+  native.respondToFeeOptionSelection = makeRecorder(
+    calls,
+    'respondToFeeOptionSelection',
+    overrides.respondToFeeOptionSelection ?? (async () => undefined)
+  );
 
   require.cache[nativeModuleId] = {
     id: nativeModuleId,
@@ -188,18 +232,18 @@ function loadClient(overrides = {}) {
   };
 }
 
-async function configure(client) {
-  await client.configure(config);
+function createOms(client) {
+  return new client.OMSClient(config);
 }
 
-function emitSessionExpired(native, event) {
+function emitSessionExpired(native, clientId, event) {
   assert.equal(typeof native.sessionExpiredListener, 'function');
-  native.sessionExpiredListener(event);
+  native.sessionExpiredListener({ clientId, ...event });
 }
 
-function subscribe(client) {
+function subscribe(oms) {
   const events = [];
-  const subscription = client.onSessionExpired((event) => {
+  const subscription = oms.wallet.onSessionExpired((event) => {
     events.push(event);
   });
   return { events, subscription };
@@ -207,106 +251,125 @@ function subscribe(client) {
 
 async function expectReplayCleared(action) {
   const { client, native } = loadClient();
+  const oms = createOms(client);
   const staleEvent = sessionExpiredEvent('stale');
-  await configure(client);
-  emitSessionExpired(native, staleEvent);
+  emitSessionExpired(native, 'oms-client-1', staleEvent);
 
-  await action(client, native);
+  await action(oms, native);
 
-  const { events } = subscribe(client);
+  const { events } = subscribe(oms);
   assert.deepEqual(events, []);
 }
 
-test('replays native session expiry to late JS subscribers and fans out future events', async () => {
+test('creates a native client and routes instance calls with its client id', async () => {
+  const { calls, client } = loadClient();
+  const oms = createOms(client);
+
+  await oms.wallet.getSession();
+
+  assert.deepEqual(calls.createClient[0], [
+    'oms-client-1',
+    'test-publishable-key',
+  ]);
+  assert.deepEqual(calls.getSession[0], ['oms-client-1']);
+  assert.equal(
+    oms.supportedNetworks.some((network) => network.chainId === '137'),
+    true
+  );
+});
+
+test('replays native session expiry only to matching client subscribers', () => {
+  const { client, native } = loadClient();
+  const firstOms = createOms(client);
+  const secondOms = createOms(client);
   const firstEvent = sessionExpiredEvent('first');
   const secondEvent = sessionExpiredEvent('second');
   const thirdEvent = sessionExpiredEvent('third');
 
-  let native;
-  const loaded = loadClient({
-    configure: async () => {
-      emitSessionExpired(native, firstEvent);
-    },
-  });
-  native = loaded.native;
+  emitSessionExpired(native, 'oms-client-1', firstEvent);
 
-  await configure(loaded.client);
-  assert.equal(loaded.calls.onSessionExpired.length, 1);
-
-  const firstSubscriber = subscribe(loaded.client);
+  const firstSubscriber = subscribe(firstOms);
+  const secondSubscriber = subscribe(secondOms);
   assert.deepEqual(firstSubscriber.events, [firstEvent]);
+  assert.deepEqual(secondSubscriber.events, []);
 
-  const secondSubscriber = subscribe(loaded.client);
-  assert.deepEqual(secondSubscriber.events, [firstEvent]);
-  assert.equal(loaded.calls.onSessionExpired.length, 1);
-
-  emitSessionExpired(native, secondEvent);
+  emitSessionExpired(native, 'oms-client-1', secondEvent);
   assert.deepEqual(firstSubscriber.events, [firstEvent, secondEvent]);
-  assert.deepEqual(secondSubscriber.events, [firstEvent, secondEvent]);
+  assert.deepEqual(secondSubscriber.events, []);
+
+  emitSessionExpired(native, 'oms-client-2', thirdEvent);
+  assert.deepEqual(secondSubscriber.events, [thirdEvent]);
 
   firstSubscriber.subscription.remove();
-  emitSessionExpired(native, thirdEvent);
-
+  emitSessionExpired(native, 'oms-client-1', thirdEvent);
   assert.deepEqual(firstSubscriber.events, [firstEvent, secondEvent]);
-  assert.deepEqual(secondSubscriber.events, [
-    firstEvent,
-    secondEvent,
-    thirdEvent,
-  ]);
 });
 
 test('clears cached session expiry when auth or session state is reset', async () => {
-  await expectReplayCleared((client) => configure(client));
-  await expectReplayCleared((client) =>
-    client.startEmailAuth('user@example.com')
+  await expectReplayCleared((oms) =>
+    oms.wallet.startEmailAuth('user@example.com')
   );
-  await expectReplayCleared((client) =>
-    client.startOidcRedirectAuth({
-      provider: { id: 'google' },
+  await expectReplayCleared((oms) =>
+    oms.wallet.startOidcRedirectAuth({
+      provider: {
+        issuer: 'issuer',
+        clientId: 'client',
+        authorizationUrl: 'url',
+      },
       redirectUri: 'example://auth',
     })
   );
-  await expectReplayCleared((client) =>
-    client.signInWithOidcIdToken({
+  await expectReplayCleared((oms) =>
+    oms.wallet.signInWithOidcIdToken({
       idToken: 'id-token',
       issuer: 'https://issuer.example.com',
       audience: 'audience',
     })
   );
-  await expectReplayCleared((client) =>
-    client.completeEmailAuth({ code: '123456' })
+  await expectReplayCleared((oms) =>
+    oms.wallet.completeEmailAuth({ code: '123456' })
   );
-  await expectReplayCleared((client) =>
-    client.handleOidcRedirectCallback({
+  await expectReplayCleared((oms) =>
+    oms.wallet.handleOidcRedirectCallback({
       callbackUrl: 'example://auth?code=abc',
     })
   );
-  await expectReplayCleared((client) => client.useWallet('wallet-1'));
-  await expectReplayCleared((client) => client.createWallet());
-  await expectReplayCleared((client) => client.signOut());
+  await expectReplayCleared((oms) => oms.wallet.useWallet('wallet-1'));
+  await expectReplayCleared((oms) => oms.wallet.createWallet());
+  await expectReplayCleared((oms) => oms.wallet.signOut());
 });
 
-test('clears cached session expiry when pending wallet selection activates a wallet', async () => {
+test('routes pending wallet selection activation with the owning client id', async () => {
   for (const selectionAction of ['selectWallet', 'createAndSelectWallet']) {
-    const { client, native } = loadClient({
+    const { calls, client, native } = loadClient({
       completeEmailAuth: async () => pendingWalletSelectionResult(),
     });
-    await configure(client);
+    const oms = createOms(client);
 
-    const result = await client.completeEmailAuth({
+    const result = await oms.wallet.completeEmailAuth({
       code: '123456',
       walletSelection: 'manual',
     });
     const staleEvent = sessionExpiredEvent(selectionAction);
-    emitSessionExpired(native, staleEvent);
+    emitSessionExpired(native, 'oms-client-1', staleEvent);
 
     if (selectionAction === 'selectWallet') {
       await result.pendingSelection.selectWallet('wallet-1');
+      assert.deepEqual(calls.selectWalletForPendingSelection[0], [
+        'oms-client-1',
+        'pending-1',
+        'wallet-1',
+      ]);
     } else {
       await result.pendingSelection.createAndSelectWallet('reference');
+      assert.deepEqual(calls.createAndSelectWalletForPendingSelection[0], [
+        'oms-client-1',
+        'pending-1',
+        'reference',
+      ]);
     }
 
-    const { events } = subscribe(client);
+    const { events } = subscribe(oms);
     assert.deepEqual(events, []);
   }
 });
@@ -316,37 +379,45 @@ test('does not clear cached session expiry for ignored OIDC redirect callbacks',
     const { client, native } = loadClient({
       handleOidcRedirectCallback: async () => ({ type }),
     });
+    const oms = createOms(client);
     const staleEvent = sessionExpiredEvent(type);
-    await configure(client);
-    emitSessionExpired(native, staleEvent);
+    emitSessionExpired(native, 'oms-client-1', staleEvent);
 
-    assert.deepEqual(await client.handleOidcRedirectCallback(), { type });
+    assert.deepEqual(await oms.wallet.handleOidcRedirectCallback(), { type });
 
-    const { events } = subscribe(client);
+    const { events } = subscribe(oms);
     assert.deepEqual(events, [staleEvent]);
   }
 });
 
 test('passes auth session lifetime and login hint parameters to native', async () => {
   const { calls, client } = loadClient();
+  const oms = createOms(client);
 
-  await client.completeEmailAuth({
+  await oms.wallet.completeEmailAuth({
     code: '123456',
     walletSelection: 'manual',
     walletType: 'ethereum',
     sessionLifetimeSeconds: 3600,
   });
-  await client.completeEmailAuth({ code: '654321' });
+  await oms.wallet.completeEmailAuth({ code: '654321' });
 
   assert.deepEqual(calls.completeEmailAuth[0], [
+    'oms-client-1',
     '123456',
     'manual',
     'ethereum',
     '3600',
   ]);
-  assert.deepEqual(calls.completeEmailAuth[1], ['654321', null, null, null]);
+  assert.deepEqual(calls.completeEmailAuth[1], [
+    'oms-client-1',
+    '654321',
+    null,
+    null,
+    null,
+  ]);
 
-  await client.signInWithOidcIdToken({
+  await oms.wallet.signInWithOidcIdToken({
     idToken: 'id-token',
     issuer: 'https://issuer.example.com',
     audience: 'audience',
@@ -355,6 +426,7 @@ test('passes auth session lifetime and login hint parameters to native', async (
     sessionLifetimeSeconds: 7200,
   });
   assert.deepEqual(calls.signInWithOidcIdToken[0], [
+    'oms-client-1',
     'id-token',
     'https://issuer.example.com',
     'audience',
@@ -363,37 +435,46 @@ test('passes auth session lifetime and login hint parameters to native', async (
     '7200',
   ]);
 
-  await client.handleOidcRedirectCallback({
+  await oms.wallet.handleOidcRedirectCallback({
     callbackUrl: 'example://auth?code=abc',
     walletSelection: 'manual',
     sessionLifetimeSeconds: 1800,
   });
-  await client.handleOidcRedirectCallback();
+  await oms.wallet.handleOidcRedirectCallback();
   assert.deepEqual(calls.handleOidcRedirectCallback[0], [
+    'oms-client-1',
     'example://auth?code=abc',
     'manual',
     '1800',
   ]);
-  assert.deepEqual(calls.handleOidcRedirectCallback[1], [null, null, null]);
+  assert.deepEqual(calls.handleOidcRedirectCallback[1], [
+    'oms-client-1',
+    null,
+    null,
+    null,
+  ]);
 
   const provider = {
-    id: 'google',
+    issuer: 'issuer',
+    clientId: 'client',
+    authorizationUrl: 'https://auth.example.com',
     relayRedirectUri: 'https://relay.example.com/callback',
   };
-  await client.startOidcRedirectAuth({
+  await oms.wallet.startOidcRedirectAuth({
     provider,
     redirectUri: 'example://auth',
     walletType: 'ethereum',
     authorizeParams: { prompt: 'select_account' },
     loginHint: 'user@example.com',
   });
-  await client.startOidcRedirectAuth({
+  await oms.wallet.startOidcRedirectAuth({
     provider,
     redirectUri: 'example://auth',
     relayRedirectUri: null,
   });
 
   assert.deepEqual(calls.startOidcRedirectAuth[0], [
+    'oms-client-1',
     JSON.stringify(provider),
     'example://auth',
     'ethereum',
@@ -402,6 +483,7 @@ test('passes auth session lifetime and login hint parameters to native', async (
     'user@example.com',
   ]);
   assert.deepEqual(calls.startOidcRedirectAuth[1], [
+    'oms-client-1',
     JSON.stringify(provider),
     'example://auth',
     null,
@@ -409,4 +491,40 @@ test('passes auth session lifetime and login hint parameters to native', async (
     null,
     null,
   ]);
+});
+
+test('serializes indexer balance and transaction history params for native', async () => {
+  const { calls, client } = loadClient();
+  const oms = createOms(client);
+  const polygon = oms.supportedNetworks.find(
+    (network) => network.chainId === '137'
+  );
+
+  await oms.indexer.getBalances({
+    walletAddress: '0xwallet',
+    networks: [polygon],
+    includeMetadata: false,
+    page: { page: 1, pageSize: 25 },
+  });
+  assert.equal(calls.getBalances[0][0], 'oms-client-1');
+  assert.deepEqual(JSON.parse(calls.getBalances[0][1]), {
+    walletAddress: '0xwallet',
+    networks: ['137'],
+    includeMetadata: false,
+    page: { page: 1, pageSize: 25 },
+  });
+
+  await oms.indexer.getTransactionHistory({
+    walletAddress: '0xwallet',
+    networks: [polygon],
+    transactionHashes: ['0xtxn'],
+    metadataOptions: { includeContracts: ['0xcontract'] },
+  });
+  assert.equal(calls.getTransactionHistory[0][0], 'oms-client-1');
+  assert.deepEqual(JSON.parse(calls.getTransactionHistory[0][1]), {
+    walletAddress: '0xwallet',
+    networks: ['137'],
+    transactionHashes: ['0xtxn'],
+    metadataOptions: { includeContracts: ['0xcontract'] },
+  });
 });
