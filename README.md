@@ -11,12 +11,7 @@ npm install @0xsequence/oms-react-native-sdk
 ## Usage
 
 ```ts
-import {
-  OMSClient,
-  OidcProviders,
-  formatUnits,
-  parseUnits,
-} from '@0xsequence/oms-react-native-sdk';
+import { OMSClient } from '@0xsequence/oms-react-native-sdk';
 
 const oms = new OMSClient({
   publishableKey: '<publishable-key>',
@@ -47,6 +42,7 @@ provider OAuth in an embedded WebView.
 
 ```ts
 import { InAppBrowser } from 'react-native-inappbrowser-reborn';
+import { OidcProviders } from '@0xsequence/oms-react-native-sdk';
 
 const started = await oms.wallet.startOidcRedirectAuth({
   provider: OidcProviders.google(),
@@ -116,6 +112,8 @@ const txResult = await oms.wallet.sendTransaction({
 ### Unit Formatting
 
 ```ts
+import { formatUnits, parseUnits } from '@0xsequence/oms-react-native-sdk';
+
 const raw = parseUnits('12.34', 6); // "12340000"
 const formatted = formatUnits(raw, 6); // "12.34"
 const rounded = parseUnits('1.235', 2); // "124"

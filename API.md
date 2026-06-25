@@ -18,16 +18,21 @@ iOS resolves `oms-client-swift-sdk` `0.1.0-alpha.3`.
 import { OMSClient } from '@0xsequence/oms-react-native-sdk';
 
 const oms = new OMSClient({
-  publishableKey: string;
+  publishableKey: '<publishable-key>',
 });
 ```
 
 ```ts
-type OMSClient = {
+type OmsClientConfig = {
+  publishableKey: string;
+};
+
+class OMSClient {
+  constructor(config: OmsClientConfig);
   wallet: OMSWalletClient;
   indexer: OMSIndexerClient;
   supportedNetworks: OmsNetwork[];
-};
+}
 ```
 
 ## Wallet
@@ -113,11 +118,13 @@ oms.wallet.startOidcRedirectAuth({
   relayRedirectUri?: string | null;
   authorizeParams?: Record<string, string> | null;
   loginHint?: string | null;
-}): Promise<{
+}): Promise<OmsStartOidcRedirectAuthResult>
+
+type OmsStartOidcRedirectAuthResult = {
   authorizationUrl: string;
   state: string;
   challenge: string;
-}>
+};
 
 oms.wallet.handleOidcRedirectCallback({
   callbackUrl?: string | null;
@@ -133,6 +140,12 @@ system auth browser, then pass the resulting app-link URL to
 ### Auth Results
 
 ```ts
+type OmsCredentialInfo = {
+  credentialId: string;
+  expiresAt: string;
+  isCaller: boolean;
+};
+
 type OmsCompleteAuthResult =
   | {
       type: 'walletSelected';
@@ -281,6 +294,23 @@ type OmsFeeOptionSelection = {
   token: string;
 };
 
+type OmsFeeToken = {
+  network: string;
+  name: string;
+  symbol: string;
+  type: string;
+  decimals: number | null;
+  logoUrl: string | null;
+  contractAddress: string | null;
+  tokenId: string | null;
+};
+
+type OmsFeeOption = {
+  token: OmsFeeToken;
+  value: string;
+  displayValue: string;
+};
+
 type OmsFeeOptionWithBalance = {
   feeOption: OmsFeeOption;
   selection: OmsFeeOptionSelection;
@@ -313,6 +343,18 @@ oms.wallet.listAccessPage({
 } = {}): Promise<OmsListAccessResponse>
 
 oms.wallet.revokeAccess(targetCredentialId: string): Promise<void>
+```
+
+```ts
+type OmsAccessPage = {
+  limit: number | null;
+  cursor: string | null;
+};
+
+type OmsListAccessResponse = {
+  credentials: OmsCredentialInfo[];
+  page: OmsAccessPage | null;
+};
 ```
 
 ## Indexer
@@ -382,6 +424,21 @@ type OmsTransaction = {
   transfers?: OmsTransactionTransfer[] | null;
   timestamp?: string | null;
 };
+
+type OmsTransactionTransfer = {
+  transferType?: string | null;
+  contractAddress?: string | null;
+  contractType?: string | null;
+  from?: string | null;
+  to?: string | null;
+  tokenIds?: string[] | null;
+  amounts?: string[] | null;
+  logIndex?: number | null;
+  amountsUSD?: string[] | null;
+  pricesUSD?: string[] | null;
+  contractInfo?: OmsTokenContractInfo | null;
+  tokenMetadata?: unknown | null;
+};
 ```
 
 Pass `networks` for explicit chain selection. If omitted, the native SDK uses
@@ -442,7 +499,13 @@ the native SDK token metadata objects.
 
 ```ts
 parseUnits(value: string, decimals?: number, options?: ParseUnitsOptions): string
-formatUnits(value: string, decimals?: number): string
+formatUnits(value: string | bigint, decimals?: number): string
+
+type ParseUnitsRoundingMode = 'reject' | 'nearest';
+
+type ParseUnitsOptions = {
+  roundingMode?: ParseUnitsRoundingMode;
+};
 ```
 
 By default `parseUnits` rounds fractional precision beyond `decimals` to the

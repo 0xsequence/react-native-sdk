@@ -6,7 +6,7 @@ Only maintainers with npm publish access should publish. Publish from `master` a
 
 ## 1. Choose The Version
 
-Pre-release versions use `0.x.y-alpha.N`, for example `0.1.0-alpha.2`.
+Pre-release versions use `0.x.y-alpha.N`, for example `0.1.0-alpha.3`.
 
 Check that the version is not already published:
 
@@ -82,6 +82,10 @@ Verify npm sees the published version:
 ```sh
 npm view @0xsequence/oms-react-native-sdk@<version> version
 ```
+
+If the release updates APIs used by the standalone Expo example, update
+`examples/expo-example` to depend on the newly published npm version after npm
+confirms it is available.
 
 If the package should become the default install later, move the npm dist-tag deliberately in a
 separate step.
