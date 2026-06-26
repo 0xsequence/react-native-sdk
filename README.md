@@ -144,7 +144,7 @@ See [API.md](./API.md) for the public API surface and TypeScript shapes.
 ## Native SDK Dependencies
 
 The React Native SDK owns its native SDK dependencies. Android resolves
-`io.github.0xsequence:oms-client-kotlin-sdk:0.1.0-alpha.3` from Maven, and iOS
+`io.github.0xsequence:oms-client-kotlin-sdk:0.1.0-alpha.4` from Maven, and iOS
 resolves `oms-client-swift-sdk` `0.1.0-alpha.3` from CocoaPods.
 
 The React Native wrapper itself is distributed through npm. React Native
@@ -159,8 +159,9 @@ on the underlying native SDKs.
 - Bare React Native apps are supported through normal React Native autolinking.
 - Expo apps must use a development build, Expo prebuild/EAS Build, or the bare
   workflow. Expo Go cannot load this SDK because it includes custom native code.
-- Android apps need `minSdk 26`, `compileSdk 34` or newer, and Java 17 compile
-  options.
+- Android apps need `minSdk 24`, `compileSdk 34` or newer, and Java 17 compile
+  options. No app-level core library desugaring or Kotlin version override is
+  required for OMS.
 - iOS apps need deployment target 15.0 or newer.
 - OIDC redirect auth requires the consuming app to configure its own URL scheme
   or app links.
@@ -171,9 +172,8 @@ on the underlying native SDKs.
 - `examples/trails-actions-example` is the bare React Native demo for OMS wallet
   flow with Trails action resolution.
 - `examples/expo-example` is a standalone Expo development-build demo that uses
-  `expo-web-browser` and the published npm package. It is intentionally
-  excluded from the root Yarn workspace so it is not linked to the local SDK
-  source. Its dependency is not updated until this SDK version is published.
+  `expo-web-browser` and the npm package. It is intentionally excluded from the
+  root Yarn workspace so it is not linked to the local SDK source.
 
 ## Publishing
 

@@ -98,7 +98,7 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
           Arguments.createMap().apply {
             putString("clientId", clientId)
             putMap("session", sessionMap(event.session))
-            putString("expiredAt", event.expiredAt.toString())
+            putString("expiredAt", event.expiredAt)
           }
         )
       }
@@ -707,7 +707,7 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
   private fun sessionMap(session: OMSClientSessionState?): WritableMap =
     Arguments.createMap().apply {
       putNullableString("walletAddress", session?.walletAddress)
-      putNullableString("expiresAt", session?.expiresAt?.toString())
+      putNullableString("expiresAt", session?.expiresAt)
       putNullableString("loginType", session?.loginType?.name)
       putNullableString("sessionEmail", session?.sessionEmail)
     }

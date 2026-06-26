@@ -9,6 +9,12 @@ This document describes the public TypeScript API for
 npm install @0xsequence/oms-react-native-sdk
 ```
 
+## Native Requirements
+
+Android apps need `minSdk` 24 or newer, `compileSdk` 34 or newer, and Java 17
+compile options. The SDK does not require app-level core library desugaring or a
+custom Kotlin version override.
+
 ## Client
 
 ```ts
