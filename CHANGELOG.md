@@ -7,6 +7,26 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.1.0-alpha.3] — 2026-06-26
+
+### Added
+- Support for Android and iOS OMS SDK `0.1.0-alpha.3`.
+- `OMSClient` class API with `wallet`, `indexer`, and synchronous `supportedNetworks`.
+- Public wallet APIs for OIDC ID-token sign-in, redirect auth, wallet selection, session state,
+  signing, transaction submission, transaction status, ID tokens, access listing, and access revoke.
+- Public indexer APIs for balances and transaction history.
+- Public unit parsing and formatting helpers.
+
+### Changed
+- Updated transaction fee selection to use the native SDK fee option selection payload.
+- Updated README and API reference for the current public TypeScript API.
+- Updated SDK and Trails examples for the alpha.3 public API.
+
+### Fixed
+- Corrected supported network metadata URLs.
+- Fixed Android fee option handling and transaction parameter bridging.
+- Aligned CI dependency setup for iOS, Android, and Claude review workflows.
+
 ## [0.1.0-alpha.2] — 2026-06-10
 
 ### Added
