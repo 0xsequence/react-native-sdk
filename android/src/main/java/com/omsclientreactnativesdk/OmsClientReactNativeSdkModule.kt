@@ -904,17 +904,16 @@ class OmsClientReactNativeSdkModule(reactContext: ReactApplicationContext) :
   private fun feeOptionWithBalanceMap(option: FeeOptionWithBalance): WritableMap =
     Arguments.createMap().apply {
       putMap("feeOption", feeOptionMap(option.feeOption))
-      putMap("selection", feeOptionSelectionMap(option.feeOption))
+      putMap("selection", feeOptionSelectionMap(option.selection))
       option.balance?.let { putMap("balance", tokenBalanceMap(it)) } ?: putNull("balance")
       putNullableString("available", option.available)
       putNullableString("availableRaw", option.availableRaw)
       option.decimals?.let { putDouble("decimals", it.toDouble()) } ?: putNull("decimals")
     }
 
-  private fun feeOptionSelectionMap(option: FeeOption): WritableMap =
+  private fun feeOptionSelectionMap(selection: FeeOptionSelection): WritableMap =
     Arguments.createMap().apply {
-      val tokenId = option.token.tokenId?.trim()?.takeIf { it.isNotEmpty() }
-      putString("token", tokenId ?: option.token.symbol)
+      putString("token", selection.token)
     }
 
   private fun feeOptionMap(option: FeeOption): WritableMap =

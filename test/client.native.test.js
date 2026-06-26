@@ -192,6 +192,16 @@ function loadClient(overrides = {}) {
     'signOut',
     overrides.signOut ?? (async () => undefined)
   );
+  native.sendTransaction = makeRecorder(
+    calls,
+    'sendTransaction',
+    overrides.sendTransaction ??
+      (async () => ({
+        txnId: 'txn-1',
+        status: 'sent',
+        txnHash: '0xtxn',
+      }))
+  );
   native.getBalances = makeRecorder(
     calls,
     'getBalances',
@@ -275,6 +285,27 @@ test('creates a native client and routes instance calls with its client id', asy
   assert.equal(
     oms.supportedNetworks.some((network) => network.chainId === '137'),
     true
+  );
+});
+
+test('exposes supported network metadata aligned with native SDKs', () => {
+  const { client } = loadClient();
+  const oms = createOms(client);
+
+  assert.equal(
+    oms.supportedNetworks.find((network) => network.chainId === '43114')
+      ?.explorerUrl,
+    'https://subnets.avax.network/c-chain'
+  );
+  assert.equal(
+    oms.supportedNetworks.find((network) => network.chainId === '43113')
+      ?.explorerUrl,
+    'https://subnets-test.avax.network/c-chain'
+  );
+  assert.equal(
+    oms.supportedNetworks.find((network) => network.chainId === '747474')
+      ?.explorerUrl,
+    'https://katanascan.com'
   );
 });
 
@@ -527,4 +558,86 @@ test('serializes indexer balance and transaction history params for native', asy
     transactionHashes: ['0xtxn'],
     metadataOptions: { includeContracts: ['0xcontract'] },
   });
+});
+
+test('round-trips fee option selection token from native request', async () => {
+  let capturedFeeOptions;
+  const feeOption = {
+    feeOption: {
+      token: {
+        network: '137',
+        name: 'Polygon',
+        symbol: 'POL',
+        type: 'native',
+        decimals: 18,
+        logoUrl: null,
+        contractAddress: null,
+        tokenId: 'fee-token-id',
+      },
+      value: '100',
+      displayValue: '0.0000000000000001',
+    },
+    selection: { token: 'canonical-selection-token' },
+    balance: null,
+    available: '1',
+    availableRaw: '1000000000000000000',
+    decimals: 18,
+  };
+  const { calls, client, native } = loadClient({
+    sendTransaction: async (
+      _clientId,
+      _chainId,
+      _to,
+      _value,
+      _data,
+      _mode,
+      feeOptionSelectorId
+    ) => {
+      assert.equal(feeOptionSelectorId, 'fee-option-selector-1');
+      assert.equal(typeof native.feeOptionSelectionListener, 'function');
+      await native.feeOptionSelectionListener({
+        selectorId: feeOptionSelectorId,
+        requestId: 'fee-request-1',
+        options: [feeOption],
+      });
+      return {
+        txnId: 'txn-1',
+        status: 'sent',
+        txnHash: '0xtxn',
+      };
+    },
+  });
+  const oms = createOms(client);
+
+  const result = await oms.wallet.sendTransaction({
+    chainId: '137',
+    to: '0xrecipient',
+    value: '0',
+    selectFeeOption: async (feeOptions) => {
+      capturedFeeOptions = feeOptions;
+      return feeOptions[0].selection;
+    },
+  });
+
+  assert.deepEqual(result, {
+    txnId: 'txn-1',
+    status: 'sent',
+    txnHash: '0xtxn',
+  });
+  assert.deepEqual(capturedFeeOptions, [feeOption]);
+  assert.deepEqual(calls.respondToFeeOptionSelection[0], [
+    'fee-request-1',
+    'canonical-selection-token',
+    null,
+  ]);
+  assert.deepEqual(calls.sendTransaction[0].slice(0, 8), [
+    'oms-client-1',
+    '137',
+    '0xrecipient',
+    '0',
+    null,
+    null,
+    'fee-option-selector-1',
+    true,
+  ]);
 });
