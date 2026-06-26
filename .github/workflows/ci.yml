@@ -57,6 +57,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      ANDROID_NDK_VERSION: 27.1.12297006
       TURBO_CACHE_DIR: .turbo/android
 
     steps:
@@ -93,6 +94,16 @@ jobs:
         if: env.turbo_cache_hit != '1'
         run: |
           /bin/bash -c "yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null"
+          for attempt in 1 2 3; do
+            if "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$ANDROID_NDK_VERSION"; then
+              exit 0
+            fi
+
+            rm -rf "$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION" "$ANDROID_HOME/.temp"
+            sleep 10
+          done
+
+          exit 1
 
 
       - name: Cache Gradle
@@ -149,6 +160,12 @@ jobs:
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
         with:
           xcode-version: ${{ env.XCODE_VERSION }}
+
+      - name: Setup Ruby
+        if: env.turbo_cache_hit != '1'
+        uses: ruby/setup-ruby@9eb537ca036ebaed86729dcb9309076e4c5c3b74 # v1
+        with:
+          ruby-version: '3.4.9'
 
       - name: Install cocoapods
         if: env.turbo_cache_hit != '1'

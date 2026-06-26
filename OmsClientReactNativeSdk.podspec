@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
   s.source_files = "ios/**/*.{h,m,mm,swift,cpp}"
   s.private_header_files = "ios/**/*.h"
   s.swift_version = "6.0"
-  s.dependency "oms-client-swift-sdk", "0.1.0-alpha.2"
+  s.dependency "oms-client-swift-sdk", "0.1.0-alpha.3"
   s.pod_target_xcconfig = {
     "DEFINES_MODULE" => "YES"
   }

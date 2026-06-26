@@ -60,10 +60,16 @@ export type OmsClientSessionState = {
   sessionEmail: string | null;
 };
 
+export type OmsClientSessionExpiredEvent = {
+  clientId: string;
+  session: OmsClientSessionState;
+  expiredAt: string;
+};
+
 export type OmsTokenBalancesPage = {
-  page: number;
-  pageSize: number;
-  more: boolean;
+  page: number | null;
+  pageSize: number | null;
+  more: boolean | null;
 };
 
 export type OmsTokenBalance = {
@@ -72,12 +78,14 @@ export type OmsTokenBalance = {
   accountAddress: string | null;
   tokenId: string | null;
   balance: string | null;
-  balanceUSD?: string | null;
-  priceUSD?: string | null;
-  priceUpdatedAt?: string | null;
   blockHash: string | null;
   blockNumber?: number | null;
   chainId?: number | null;
+  name?: string | null;
+  symbol?: string | null;
+  balanceUSD?: string | null;
+  priceUSD?: string | null;
+  priceUpdatedAt?: string | null;
   uniqueCollectibles?: string | null;
   isSummary?: boolean | null;
   contractInfo?: OmsTokenContractInfo | null;
@@ -139,10 +147,42 @@ export type OmsTokenMetadata = {
   lastFetched?: string | null;
 };
 
-export type OmsTokenBalancesResult = {
+export type OmsBalancesResult = {
   status: number;
-  page?: OmsTokenBalancesPage;
+  page?: OmsTokenBalancesPage | null;
+  nativeBalances: OmsTokenBalance[];
   balances: OmsTokenBalance[];
+};
+
+export type OmsTransactionTransfer = {
+  transferType?: string | null;
+  contractAddress?: string | null;
+  contractType?: string | null;
+  from?: string | null;
+  to?: string | null;
+  tokenIds?: string[] | null;
+  amounts?: string[] | null;
+  logIndex?: number | null;
+  amountsUSD?: string[] | null;
+  pricesUSD?: string[] | null;
+  contractInfo?: OmsTokenContractInfo | null;
+  tokenMetadata?: CodegenTypes.UnsafeObject | null;
+};
+
+export type OmsTransaction = {
+  txnHash: string | null;
+  blockNumber: number | null;
+  blockHash: string | null;
+  chainId: number | null;
+  metaTxnId?: string | null;
+  transfers?: OmsTransactionTransfer[] | null;
+  timestamp?: string | null;
+};
+
+export type OmsTransactionHistoryResult = {
+  status: number;
+  page?: OmsTokenBalancesPage | null;
+  transactions: OmsTransaction[];
 };
 
 export type OmsTransactionStatus = {
@@ -162,7 +202,7 @@ export type OmsFeeToken = {
   symbol: string;
   type: string;
   decimals: number | null;
-  logoUrl: string;
+  logoUrl: string | null;
   contractAddress: string | null;
   tokenId: string | null;
 };
@@ -198,11 +238,6 @@ export type OmsCredentialInfo = {
   isCaller: boolean;
 };
 
-export type OmsClientSessionExpiredEvent = {
-  session: OmsClientSessionState;
-  expiredAt: string;
-};
-
 export type OmsAccessPage = {
   limit: number | null;
   cursor: string | null;
@@ -216,24 +251,20 @@ export type OmsListAccessResponse = {
 export interface Spec extends TurboModule {
   readonly onFeeOptionSelectionRequest: CodegenTypes.EventEmitter<OmsFeeOptionSelectionRequest>;
   readonly onSessionExpired: CodegenTypes.EventEmitter<OmsClientSessionExpiredEvent>;
-  configure(
-    publishableKey: string,
-    walletApiUrl: string | null,
-    apiRpcUrl: string | null,
-    indexerUrlTemplate: string | null,
-    projectId: string
-  ): Promise<void>;
-  getWalletAddress(): Promise<string | null>;
-  getSession(): Promise<OmsClientSessionState>;
-  getSupportedNetworks(): Promise<OmsNetwork[]>;
-  startEmailAuth(email: string): Promise<void>;
+
+  createClient(clientId: string, publishableKey: string): Promise<void>;
+  getWalletAddress(clientId: string): Promise<string | null>;
+  getSession(clientId: string): Promise<OmsClientSessionState>;
+  startEmailAuth(clientId: string, email: string): Promise<void>;
   completeEmailAuth(
+    clientId: string,
     code: string,
     walletSelection: string | null,
     walletType: string | null,
     sessionLifetimeSeconds: string | null
   ): Promise<OmsNativeCompleteAuthResult>;
   signInWithOidcIdToken(
+    clientId: string,
     idToken: string,
     issuer: string,
     audience: string,
@@ -242,6 +273,7 @@ export interface Spec extends TurboModule {
     sessionLifetimeSeconds: string | null
   ): Promise<OmsNativeCompleteAuthResult>;
   startOidcRedirectAuth(
+    clientId: string,
     providerJson: string,
     redirectUri: string,
     walletType: string | null,
@@ -250,28 +282,44 @@ export interface Spec extends TurboModule {
     loginHint: string | null
   ): Promise<OmsStartOidcRedirectAuthResult>;
   handleOidcRedirectCallback(
+    clientId: string,
     callbackUrl: string | null,
     walletSelection: string | null,
     sessionLifetimeSeconds: string | null
   ): Promise<OmsNativeOidcRedirectAuthResult>;
-  listWallets(): Promise<OmsWallet[]>;
-  useWallet(walletId: string): Promise<OmsWalletActivationResult>;
+  listWallets(clientId: string): Promise<OmsWallet[]>;
+  useWallet(
+    clientId: string,
+    walletId: string
+  ): Promise<OmsWalletActivationResult>;
   createWallet(
+    clientId: string,
     walletType: string | null,
     reference: string | null
   ): Promise<OmsWalletActivationResult>;
   selectWalletForPendingSelection(
+    clientId: string,
     pendingSelectionId: string,
     walletId: string
   ): Promise<OmsWalletActivationResult>;
   createAndSelectWalletForPendingSelection(
+    clientId: string,
     pendingSelectionId: string,
     reference: string | null
   ): Promise<OmsWalletActivationResult>;
-  signOut(): Promise<void>;
-  signMessage(chainId: string, message: string): Promise<string>;
-  signTypedData(chainId: string, typedDataJson: string): Promise<string>;
+  signOut(clientId: string): Promise<void>;
+  signMessage(
+    clientId: string,
+    chainId: string,
+    message: string
+  ): Promise<string>;
+  signTypedData(
+    clientId: string,
+    chainId: string,
+    typedDataJson: string
+  ): Promise<string>;
   sendTransaction(
+    clientId: string,
     chainId: string,
     to: string,
     value: string,
@@ -285,6 +333,7 @@ export interface Spec extends TurboModule {
     statusPollingFastPollCount: string | null
   ): Promise<OmsSendTransactionResponse>;
   callContract(
+    clientId: string,
     chainId: string,
     contractAddress: string,
     method: string,
@@ -302,39 +351,42 @@ export interface Spec extends TurboModule {
     selectionToken: string | null,
     errorMessage: string | null
   ): Promise<void>;
-  getTransactionStatus(txnId: string): Promise<OmsTransactionStatus>;
-  getTokenBalances(
-    chainId: string,
-    contractAddress: string | null,
-    walletAddress: string,
-    includeMetadata: boolean,
-    page: string | null,
-    pageSize: string | null
-  ): Promise<OmsTokenBalancesResult>;
-  getNativeTokenBalance(
-    chainId: string,
-    walletAddress: string
-  ): Promise<OmsTokenBalance | null>;
+  getTransactionStatus(
+    clientId: string,
+    txnId: string
+  ): Promise<OmsTransactionStatus>;
+  getBalances(clientId: string, paramsJson: string): Promise<OmsBalancesResult>;
+  getTransactionHistory(
+    clientId: string,
+    paramsJson: string
+  ): Promise<OmsTransactionHistoryResult>;
   verifyMessageSignature(
+    clientId: string,
     chainId: string,
     message: string,
     signature: string
   ): Promise<boolean>;
   verifyTypedDataSignature(
+    clientId: string,
     chainId: string,
     typedDataJson: string,
     signature: string
   ): Promise<boolean>;
   getIdToken(
+    clientId: string,
     ttlSeconds: string | null,
     customClaimsJson: string | null
   ): Promise<string>;
-  listAccess(pageSize: string | null): Promise<OmsCredentialInfo[]>;
+  listAccess(
+    clientId: string,
+    pageSize: string | null
+  ): Promise<OmsCredentialInfo[]>;
   listAccessPage(
+    clientId: string,
     pageSize: string | null,
     cursor: string | null
   ): Promise<OmsListAccessResponse>;
-  revokeAccess(targetCredentialId: string): Promise<void>;
+  revokeAccess(clientId: string, targetCredentialId: string): Promise<void>;
 }
 
 export default TurboModuleRegistry.getEnforcing<Spec>(

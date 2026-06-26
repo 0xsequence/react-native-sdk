@@ -44,18 +44,8 @@ import {
   type EarnMarket,
 } from '0xtrails/actions';
 import {
-  completeEmailAuth,
-  configure,
-  getSession,
-  getSupportedNetworks,
-  getTokenBalances,
-  handleOidcRedirectCallback,
+  OMSClient,
   OidcProviders,
-  onSessionExpired,
-  sendTransaction,
-  signOut,
-  startEmailAuth,
-  startOidcRedirectAuth,
   type OmsClientSessionExpiredEvent,
   type OmsClientSessionState,
   type OmsNetwork,
@@ -129,18 +119,13 @@ type DemoButtonProps = {
   style?: ViewStyle;
 };
 
-const DEMO_PUBLISHABLE_KEY = 'AQAAAAAAAAK2JvvZhWqZ51riasWBftkrVXE';
-const DEMO_PROJECT_ID = 'proj_014kg56dc0a75';
+const DEMO_PUBLISHABLE_KEY =
+  'pk_dev_sdbx_01kqa06hyyetj_01kv5ceg4xefattzmm9fyx04ev';
 const DEMO_OIDC_REDIRECT_URI = 'omsclientrndemo://auth/callback';
-const DEMO_ENVIRONMENT = {
-  apiRpcUrl: 'https://dev-api.sequence.app/rpc/API',
-  indexerUrlTemplate: 'https://dev-{value}-indexer.sequence.app/rpc/Indexer/',
-};
 
 const TRAILS_API_URL = 'https://trails-api.sequence.app';
 const POLYGON_CHAIN_ID = '137';
 const POLYGON_CHAIN_ID_NUMBER = 137;
-const POLYGON_INDEXER_NAME = 'polygon';
 const POLYGON_USDC = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359';
 const POLYGON_WPOL = '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270';
 const PREFERRED_NETWORK_ORDER = ['137'];
@@ -820,51 +805,32 @@ function delay(ms: number): Promise<void> {
   });
 }
 
-async function getNativePolBalanceRaw(
-  walletAddress: `0x${string}`
-): Promise<string> {
-  const indexerUrl = DEMO_ENVIRONMENT.indexerUrlTemplate
-    .replace('{value}', POLYGON_INDEXER_NAME)
-    .replace(/\/+$/, '');
-  const response = await fetch(`${indexerUrl}/GetNativeTokenBalance`, {
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'X-Access-Key': DEMO_PUBLISHABLE_KEY,
-    },
-    body: JSON.stringify({
-      accountAddress: walletAddress,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Native balance request failed with ${response.status}.`);
-  }
-
-  const payload = (await response.json()) as {
-    balance?: {
-      balance?: string;
-      balanceWei?: string;
-    };
-  };
-
-  return payload.balance?.balance ?? payload.balance?.balanceWei ?? '0';
-}
-
 async function getPolygonBalances(
+  oms: OMSClient,
   walletAddress: `0x${string}`
 ): Promise<BalanceState> {
-  const [polRaw, usdcResult] = await Promise.all([
-    getNativePolBalanceRaw(walletAddress),
-    getTokenBalances({
-      chainId: POLYGON_CHAIN_ID,
-      contractAddress: POLYGON_USDC,
-      walletAddress,
-      includeMetadata: false,
-    }),
-  ]);
-  const usdcRaw = usdcResult.balances[0]?.balance ?? '0';
+  const polygonNetwork = oms.supportedNetworks.find(
+    (network) => network.chainId === POLYGON_CHAIN_ID
+  );
+  if (!polygonNetwork) {
+    throw new Error('Polygon network is not available in this project.');
+  }
+
+  const result = await oms.indexer.getBalances({
+    walletAddress,
+    networks: [polygonNetwork],
+    contractAddresses: [POLYGON_USDC],
+    includeMetadata: false,
+  });
+  const polRaw =
+    result.nativeBalances.find(
+      (balance) => String(balance.chainId) === POLYGON_CHAIN_ID
+    )?.balance ?? '0';
+  const usdcRaw =
+    result.balances.find(
+      (balance) =>
+        balance.contractAddress?.toLowerCase() === POLYGON_USDC.toLowerCase()
+    )?.balance ?? '0';
 
   return {
     pol: formatTokenAmount(polRaw, 18, 'POL'),
@@ -1223,6 +1189,10 @@ async function prepareSwapAndEarnUsdc({
 }
 
 export default function App() {
+  const oms = useMemo(
+    () => new OMSClient({ publishableKey: DEMO_PUBLISHABLE_KEY }),
+    []
+  );
   const [networks, setNetworks] = useState<OmsNetwork[]>([]);
   const [sdkReady, setSdkReady] = useState(false);
   const [session, setSession] =
@@ -1296,7 +1266,7 @@ export default function App() {
   }, []);
 
   const refreshSession = useCallback(async () => {
-    const nextSession = await getSession();
+    const nextSession = await oms.wallet.getSession();
     setSession(nextSession);
     if (nextSession.walletAddress) {
       setExpiredSessionEvent(null);
@@ -1306,7 +1276,7 @@ export default function App() {
       setEarnStatus('Swap and Deposit status: ready to prepare.');
     }
     return nextSession;
-  }, []);
+  }, [oms]);
 
   const clearExpiredSessionState = useCallback(() => {
     setExpiredSessionEvent(null);
@@ -1369,7 +1339,7 @@ export default function App() {
       handlingRedirectUrlRef.current = callbackUrl;
       try {
         setAuthStatus('Completing Google redirect sign-in...');
-        const result = await handleOidcRedirectCallback({
+        const result = await oms.wallet.handleOidcRedirectCallback({
           callbackUrl,
           walletSelection: 'automatic',
         });
@@ -1413,7 +1383,7 @@ export default function App() {
         handlingRedirectUrlRef.current = null;
       }
     },
-    [appendLog, refreshSession]
+    [appendLog, oms, refreshSession]
   );
 
   const refreshBalances = useCallback(
@@ -1427,7 +1397,7 @@ export default function App() {
       }));
 
       try {
-        const nextBalances = await getPolygonBalances(walletAddress);
+        const nextBalances = await getPolygonBalances(oms, walletAddress);
         setBalances(nextBalances);
         return nextBalances;
       } catch (error) {
@@ -1440,19 +1410,19 @@ export default function App() {
         return null;
       }
     },
-    [appendLog]
+    [appendLog, oms]
   );
 
   const readBalanceSnapshot = useCallback(
     async (walletAddress: `0x${string}`): Promise<BalanceState> => {
       try {
-        return await getPolygonBalances(walletAddress);
+        return await getPolygonBalances(oms, walletAddress);
       } catch (error) {
         appendLog(`!! Balance snapshot failed: ${describeError(error)}`);
         return balances;
       }
     },
-    [appendLog, balances]
+    [appendLog, balances, oms]
   );
 
   const refreshEarnPositions = useCallback(
@@ -1523,7 +1493,7 @@ export default function App() {
         await delay(BALANCE_POLL_INTERVAL_MS);
 
         try {
-          const nextBalances = await getPolygonBalances(walletAddress);
+          const nextBalances = await getPolygonBalances(oms, walletAddress);
           const isExpectedChange = hasExpectedBalanceChange(
             operation,
             before,
@@ -1562,7 +1532,7 @@ export default function App() {
       }));
       throw new Error(message);
     },
-    []
+    [oms]
   );
 
   const pollEarnPositionsUntilChanged = useCallback(
@@ -1654,13 +1624,7 @@ export default function App() {
 
     async function bootstrap() {
       await runAction('Initializing SDK', async () => {
-        await configure({
-          publishableKey: DEMO_PUBLISHABLE_KEY,
-          projectId: DEMO_PROJECT_ID,
-          environment: DEMO_ENVIRONMENT,
-        });
-
-        const supportedNetworks = sortNetworks(await getSupportedNetworks());
+        const supportedNetworks = sortNetworks(oms.supportedNetworks);
         if (disposed) return;
 
         setNetworks(supportedNetworks);
@@ -1688,12 +1652,13 @@ export default function App() {
     return () => {
       disposed = true;
     };
-  }, [appendLog, refreshSession, runAction]);
+  }, [appendLog, oms, refreshSession, runAction]);
 
   useEffect(() => {
     if (!sdkReady) return undefined;
 
-    const sessionExpiredSubscription = onSessionExpired(handleSessionExpired);
+    const sessionExpiredSubscription =
+      oms.wallet.onSessionExpired(handleSessionExpired);
 
     const handleRedirectUrl = (url: string) => {
       if (!isDemoOidcRedirectUrl(url)) return;
@@ -1731,6 +1696,7 @@ export default function App() {
     appendLog,
     finishOidcRedirectSignIn,
     handleSessionExpired,
+    oms.wallet,
     runAction,
     sdkReady,
   ]);
@@ -1790,7 +1756,7 @@ export default function App() {
           throw new Error('Email is required');
         }
         setAuthStatus('Requesting email code...');
-        await startEmailAuth(emailForSignIn);
+        await oms.wallet.startEmailAuth(emailForSignIn);
         setEmail('');
         setAuthStage('code');
         setAuthStatus(`Code requested for ${emailForSignIn}`);
@@ -1808,7 +1774,7 @@ export default function App() {
         setCode('');
         setAuthStage('email');
         setAuthStatus('Opening Google redirect sign-in...');
-        const started = await startOidcRedirectAuth({
+        const started = await oms.wallet.startOidcRedirectAuth({
           provider: OidcProviders.google(),
           redirectUri: DEMO_OIDC_REDIRECT_URI,
           loginHint: expiredSessionEmail(expiredSessionEvent),
@@ -1857,7 +1823,7 @@ export default function App() {
       'Complete email sign-in',
       async () => {
         setAuthStatus('Verifying code...');
-        await completeEmailAuth({ code: requireText(code, 'Code') });
+        await oms.wallet.completeEmailAuth({ code: requireText(code, 'Code') });
         const nextSession = await refreshSession();
         clearExpiredSessionState();
         setCode('');
@@ -1875,7 +1841,7 @@ export default function App() {
 
   const cancelCodeStep = () => {
     runAction('Cancel email sign-in', async () => {
-      await signOut();
+      await oms.wallet.signOut();
       clearExpiredSessionState();
       setAuthStage('email');
       setCode('');
@@ -1887,7 +1853,7 @@ export default function App() {
 
   const logout = () => {
     runAction('Sign out', async () => {
-      await signOut();
+      await oms.wallet.signOut();
       clearExpiredSessionState();
       setSession(SIGNED_OUT_SESSION);
       setAuthStage('email');
@@ -2002,7 +1968,7 @@ export default function App() {
         const before = await readBalanceSnapshot(address);
 
         setSwapStatus('Swap status: sending...');
-        const txResult = await sendTransaction({
+        const txResult = await oms.wallet.sendTransaction({
           chainId: POLYGON_CHAIN_ID,
           to: prepared.to,
           value: prepared.value,
@@ -2049,7 +2015,7 @@ export default function App() {
               ? 'transaction'
               : `transaction ${index + 1}/${prepared.transactions.length}`;
           setDepositStatus(`Deposit status: sending ${label}...`);
-          const txResult = await sendTransaction({
+          const txResult = await oms.wallet.sendTransaction({
             chainId: String(transaction.chainId),
             to: transaction.to,
             value: transaction.value.toString(),
@@ -2109,7 +2075,7 @@ export default function App() {
         const beforePositions = await readEarnPositionsSnapshot(address);
 
         setEarnStatus('Swap and Deposit status: sending...');
-        const txResult = await sendTransaction({
+        const txResult = await oms.wallet.sendTransaction({
           chainId: POLYGON_CHAIN_ID,
           to: prepared.to,
           value: prepared.value,
@@ -2172,7 +2138,7 @@ export default function App() {
               ? 'withdraw transaction'
               : `withdraw transaction ${index + 1}`;
           setEarnPositionsStatus(`Sending ${label}...`);
-          const txResult = await sendTransaction({
+          const txResult = await oms.wallet.sendTransaction({
             chainId: String(transaction.chainId),
             to: transaction.to,
             value: transaction.value.toString(),

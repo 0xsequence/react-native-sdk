@@ -19,19 +19,8 @@ import {
 } from 'react-native';
 import { InAppBrowser } from 'react-native-inappbrowser-reborn';
 import {
-  completeEmailAuth,
-  configure,
-  getSupportedNetworks,
-  getSession,
-  sendTransaction,
-  handleOidcRedirectCallback,
+  OMSClient,
   OidcProviders,
-  onSessionExpired,
-  signMessage,
-  signOut,
-  startEmailAuth,
-  startOidcRedirectAuth,
-  verifyMessageSignature,
   type OmsClientSessionExpiredEvent,
   type OmsClientSessionState,
   type OmsFeeOptionSelection,
@@ -42,13 +31,9 @@ import {
   type OmsWalletActivationResult,
 } from '@0xsequence/oms-react-native-sdk';
 
-const DEMO_PUBLISHABLE_KEY = 'AQAAAAAAAAK2JvvZhWqZ51riasWBftkrVXE';
-const DEMO_PROJECT_ID = 'proj_014kg56dc0a75';
+const DEMO_PUBLISHABLE_KEY =
+  'pk_dev_sdbx_01kqa06hyyetj_01kv5ceg4xefattzmm9fyx04ev';
 const DEMO_OIDC_REDIRECT_URI = 'omsclientrndemo://auth/callback';
-const DEMO_ENVIRONMENT = {
-  apiRpcUrl: 'https://dev-api.sequence.app/rpc/API',
-  indexerUrlTemplate: 'https://dev-{value}-indexer.sequence.app/rpc/Indexer/',
-};
 
 const DEFAULT_TRANSACTION_TO = '0xE5E8B483FfC05967FcFed58cc98D053265af6D99';
 const PREFERRED_NETWORK_ORDER = ['80002', '137'];
@@ -378,6 +363,10 @@ function NetworkPickerModal({
 }
 
 export default function App() {
+  const oms = useMemo(
+    () => new OMSClient({ publishableKey: DEMO_PUBLISHABLE_KEY }),
+    []
+  );
   const [networks, setNetworks] = useState<OmsNetwork[]>([]);
   const [selectedChainId, setSelectedChainId] = useState('80002');
   const [sdkReady, setSdkReady] = useState(false);
@@ -485,7 +474,7 @@ export default function App() {
   }, []);
 
   const refreshSession = useCallback(async () => {
-    const nextSession = await getSession();
+    const nextSession = await oms.wallet.getSession();
     setSession(nextSession);
     if (nextSession.walletAddress) {
       setExpiredSessionEvent(null);
@@ -494,7 +483,7 @@ export default function App() {
       setTransactionStatus('Transaction status: ready to send.');
     }
     return nextSession;
-  }, []);
+  }, [oms]);
 
   const runAction = useCallback(
     async (
@@ -556,7 +545,7 @@ export default function App() {
 
   const activateWallet = useCallback(
     async (result: OmsWalletActivationResult) => {
-      const nextSession = await getSession();
+      const nextSession = await oms.wallet.getSession();
       const address = nextSession.walletAddress ?? result.walletAddress;
       clearExpiredSessionState();
       setPendingWalletSelection(null);
@@ -572,7 +561,7 @@ export default function App() {
       setTransactionStatus('Transaction status: ready to send.');
       appendLog(`Wallet ready: ${address}`);
     },
-    [appendLog, clearExpiredSessionState]
+    [appendLog, clearExpiredSessionState, oms]
   );
 
   const finishOidcRedirectSignIn = useCallback(
@@ -588,7 +577,7 @@ export default function App() {
       let callbackHandled = false;
       try {
         setAuthStatus('Completing Google redirect sign-in...');
-        const result = await handleOidcRedirectCallback({
+        const result = await oms.wallet.handleOidcRedirectCallback({
           callbackUrl,
           walletSelection: manualWalletSelection ? 'manual' : 'automatic',
           sessionLifetimeSeconds: requestedSessionLifetimeSeconds(),
@@ -636,6 +625,7 @@ export default function App() {
       activateWallet,
       appendLog,
       manualWalletSelection,
+      oms,
       refreshSession,
       requestedSessionLifetimeSeconds,
     ]
@@ -662,13 +652,7 @@ export default function App() {
 
     async function bootstrap() {
       await runAction('Initializing SDK', async () => {
-        await configure({
-          publishableKey: DEMO_PUBLISHABLE_KEY,
-          projectId: DEMO_PROJECT_ID,
-          environment: DEMO_ENVIRONMENT,
-        });
-
-        const supportedNetworks = sortNetworks(await getSupportedNetworks());
+        const supportedNetworks = sortNetworks(oms.supportedNetworks);
         if (disposed) return;
 
         setNetworks(supportedNetworks);
@@ -688,12 +672,13 @@ export default function App() {
     return () => {
       disposed = true;
     };
-  }, [appendLog, refreshSession, runAction]);
+  }, [appendLog, oms, refreshSession, runAction]);
 
   useEffect(() => {
     if (!sdkReady) return undefined;
 
-    const sessionExpiredSubscription = onSessionExpired(handleSessionExpired);
+    const sessionExpiredSubscription =
+      oms.wallet.onSessionExpired(handleSessionExpired);
     const subscription = Linking.addEventListener('url', ({ url }) => {
       if (isDemoOidcRedirectUrl(url)) {
         runAction(
@@ -734,6 +719,7 @@ export default function App() {
     appendLog,
     finishOidcRedirectSignIn,
     handleSessionExpired,
+    oms,
     runAction,
     sdkReady,
   ]);
@@ -754,7 +740,7 @@ export default function App() {
         if (!emailForSignIn) {
           throw new Error('Email is required');
         }
-        await startEmailAuth(emailForSignIn);
+        await oms.wallet.startEmailAuth(emailForSignIn);
         setEmail('');
         setAuthStage('code');
         setAuthStatus(`Code requested for ${emailForSignIn}`);
@@ -770,7 +756,7 @@ export default function App() {
       'Confirm code and resolve wallet',
       async () => {
         setAuthStatus('Confirming code and resolving wallet...');
-        const authResult = await completeEmailAuth({
+        const authResult = await oms.wallet.completeEmailAuth({
           code: requireText(code, 'Verification code'),
           walletSelection: manualWalletSelection ? 'manual' : 'automatic',
           sessionLifetimeSeconds: requestedSessionLifetimeSeconds(),
@@ -803,7 +789,7 @@ export default function App() {
         setPendingWalletSelection(null);
         setAuthStatus('Opening Google redirect sign-in...');
         requestedSessionLifetimeSeconds();
-        const started = await startOidcRedirectAuth({
+        const started = await oms.wallet.startOidcRedirectAuth({
           provider: OidcProviders.google(),
           redirectUri: DEMO_OIDC_REDIRECT_URI,
           loginHint: expiredSessionEmail(expiredSessionEvent),
@@ -849,7 +835,7 @@ export default function App() {
 
   const cancelCodeStep = () => {
     runAction('Cancel email code step', async () => {
-      await signOut();
+      await oms.wallet.signOut();
       clearExpiredSessionState();
       setSession(SIGNED_OUT_SESSION);
       setCode('');
@@ -891,7 +877,7 @@ export default function App() {
 
   const logout = () => {
     runAction('Logout', async () => {
-      await signOut();
+      await oms.wallet.signOut();
       clearExpiredSessionState();
       setSession(SIGNED_OUT_SESSION);
       setAuthStage('email');
@@ -913,7 +899,10 @@ export default function App() {
         const network = requireNetwork(selectedNetwork);
         const nextMessage = requireText(message, 'Message');
         setSignatureStatus('Signature status: signing in progress...');
-        const signature = await signMessage(network.chainId, nextMessage);
+        const signature = await oms.wallet.signMessage(
+          network.chainId,
+          nextMessage
+        );
         setLastSignedMessage(nextMessage);
         setLastSignature(signature);
         setSignatureStatus('Signature status: signed. Ready to verify.');
@@ -933,7 +922,7 @@ export default function App() {
         const signedMessage = requireText(lastSignedMessage, 'Signed message');
         const signature = requireText(lastSignature, 'Signature');
         setSignatureStatus('Signature status: verification in progress...');
-        const isValid = await verifyMessageSignature({
+        const isValid = await oms.wallet.verifyMessageSignature({
           chainId: network.chainId,
           message: signedMessage,
           signature,
@@ -957,7 +946,7 @@ export default function App() {
       async () => {
         const network = requireNetwork(selectedNetwork);
         setTransactionStatus('Transaction status: sending in progress...');
-        const txResult = await sendTransaction({
+        const txResult = await oms.wallet.sendTransaction({
           chainId: network.chainId,
           to: requireText(transactionTo, 'Transaction destination'),
           value: decimalToBaseUnits(transactionValue, 18),
