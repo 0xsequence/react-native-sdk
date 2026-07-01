@@ -4,12 +4,8 @@ Expo development-build example for `@0xsequence/oms-react-native-sdk`.
 
 This app mirrors the SDK demo flow with email login, Google redirect login,
 wallet selection, message signing, signature verification, and transaction
-sending. It uses `expo-web-browser` for redirect auth and depends on the
-published npm package:
-
-```json
-"@0xsequence/oms-react-native-sdk": "0.1.0-alpha.2"
-```
+sending. It uses `expo-web-browser` for redirect auth and depends on the SDK
+version declared in `package.json`.
 
 This example is intentionally excluded from the root Yarn workspace. It is not
 linked to the local SDK package, which keeps it useful as a consumer-style smoke
@@ -17,11 +13,15 @@ test for the published npm artifact.
 
 ## Run
 
-Install dependencies from this folder:
+Install dependencies from the repo root:
 
 ```sh
-npm install
+yarn expo-example:install
 ```
+
+The install helper uses the published npm package when this SDK version exists.
+Before publication, it packs the local SDK and installs that tarball into this
+example.
 
 Build and launch a development build:
 
