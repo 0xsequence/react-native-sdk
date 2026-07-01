@@ -102,8 +102,9 @@ yarn lint
 # Run SDK example (React Native CLI)
 yarn sdk-example start
 
-# Run Expo example (standalone — uses npm, not yarn workspace)
-cd examples/expo-example && npm install && npm start
+# Run Expo example
+yarn expo-example:install
+yarn expo-example
 ```
 
 ## Testing
@@ -123,11 +124,9 @@ plan for when automated tests are added.
   change.
 - The `lib/` directory is generated; never edit it by hand.
 - `examples/expo-example` is intentionally outside the Yarn workspace (`!examples/expo-example` in
-  `package.json#workspaces`) — install its deps with `npm`, not `yarn`.
+  `package.json#workspaces`) — install its deps from the repo root with `yarn expo-example:install`.
 - Native builds (Android/iOS) are slow; validate JS-layer changes with `yarn lint && yarn typecheck`
   first; leave full native builds to CI.
-- The `resolutions` block in `package.json` pins `0xtrails` / `@0xtrails/*` — update all three
-  entries together when bumping the trails version.
 - Pre-release versions use the `0.x.y-alpha.N` scheme. Publishing steps are in `PUBLISHING.md`.
 
 ## CI/CD
@@ -143,7 +142,8 @@ Android and iOS PR checks pass before merging; validate locally when you need fa
 ## Common Pitfalls
 
 - Running `yarn` inside `examples/expo-example` will fail — it's not a Yarn workspace member. Use
-  `npm` there, or `yarn expo-example <script>` from the root.
+  `yarn expo-example:install` from the root to install dependencies, then run Expo example scripts
+  from the root.
 - `yarn prepare` regenerates `lib/` — if builds look stale, run `yarn clean && yarn prepare`.
 - The podspec resolves `oms-client-swift-sdk` and the Android module resolves
   `io.github.0xsequence:oms-client-kotlin-sdk` — bump native SDK versions in the podspec and
@@ -159,6 +159,5 @@ Android and iOS PR checks pass before merging; validate locally when you need fa
 | Native SDK version (Swift / Kotlin)       | `OmsClientReactNativeSdk.podspec`, `android/build.gradle` |
 | `package.json` scripts or test commands   | `TESTING.md`, `.github/workflows/ci.yml`                  |
 | Node version (`.nvmrc`)                   | `turbo.json#globalDependencies`, CI setup action          |
-| `resolutions` (`0xtrails` / `@0xtrails/*`)| All three resolution entries together                     |
 | Repo structure (new top-level dirs)       | `AGENTS.md` structure section                             |
 | Contributing workflow                     | `CONTRIBUTING.md`, `README.md`                            |
