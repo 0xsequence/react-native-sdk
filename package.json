@@ -90,11 +90,6 @@
     "react": "*",
     "react-native": "*"
   },
-  "resolutions": {
-    "0xtrails": "0.16.0",
-    "@0xtrails/api": "0.16.0",
-    "@0xtrails/wallet": "0.16.0"
-  },
   "workspaces": [
     "examples/*",
     "!examples/expo-example"
