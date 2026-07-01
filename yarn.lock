@@ -10276,9 +10276,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ox@npm:0.14.20":
-  version: 0.14.20
-  resolution: "ox@npm:0.14.20"
+"ox@npm:0.14.29":
+  version: 0.14.29
+  resolution: "ox@npm:0.14.29"
   dependencies:
     "@adraffy/ens-normalize": "npm:^1.11.0"
     "@noble/ciphers": "npm:^1.3.0"
@@ -10293,7 +10293,7 @@ __metadata:
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/fe1c34577536aea3bda5ec47e083be9069d99cb35a270527921f1c7b406283f12bc4b7e9348b46aa3ba88555fc8abc963129c6b5b8b3b375d5e1549f65f2ce9a
+  checksum: 10c0/bf36b2cd83d67bf43893b73876630554d0bd1748c7ad769607ceb8fe1aaf6afa6f9411a31e7e815de107a035811ebfa790c0af591aa403e363b83a1896acfc7b
   languageName: node
   linkType: hard
 
@@ -12333,8 +12333,8 @@ __metadata:
   linkType: hard
 
 "viem@npm:>=2.37.9, viem@npm:^2.1.1, viem@npm:^2.31.7, viem@npm:^2.41.0, viem@npm:^2.47.0":
-  version: 2.49.0
-  resolution: "viem@npm:2.49.0"
+  version: 2.54.1
+  resolution: "viem@npm:2.54.1"
   dependencies:
     "@noble/curves": "npm:1.9.1"
     "@noble/hashes": "npm:1.8.0"
@@ -12342,14 +12342,14 @@ __metadata:
     "@scure/bip39": "npm:1.6.0"
     abitype: "npm:1.2.3"
     isows: "npm:1.0.7"
-    ox: "npm:0.14.20"
-    ws: "npm:8.18.3"
+    ox: "npm:0.14.29"
+    ws: "npm:8.20.1"
   peerDependencies:
     typescript: ">=5.0.4"
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/06b35c498b5ab6c1232f7c733c9f929a3a91ca487e97168ed887a2d4118bf052a60f5924276f76bc31496f542bd1b6fe74ffe317ff4446d52116459f5cfaacab
+  checksum: 10c0/8ff6ff35f3c51e4fd678a0760102d0ceb8f83da8cd671ea02f4e62525daca349c8de04141d1b48ceb8ba903271c4235eb943cbb606116c942266099117001069
   languageName: node
   linkType: hard
 
@@ -12549,9 +12549,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ws@npm:8.18.3":
-  version: 8.18.3
-  resolution: "ws@npm:8.18.3"
+"ws@npm:8.20.1, ws@npm:^8.19.0, ws@npm:^8.5.0":
+  version: 8.20.1
+  resolution: "ws@npm:8.20.1"
   peerDependencies:
     bufferutil: ^4.0.1
     utf-8-validate: ">=5.0.2"
@@ -12560,7 +12560,7 @@ __metadata:
       optional: true
     utf-8-validate:
       optional: true
-  checksum: 10c0/eac918213de265ef7cb3d4ca348b891a51a520d839aa51cdb8ca93d4fa7ff9f6ccb339ccee89e4075324097f0a55157c89fa3f7147bde9d8d7e90335dc087b53
+  checksum: 10c0/ce162433218399cdedeb76fd33363d4d86a7d910058d4e3c679dce08cea65d6da6b39f11baa4d7808d024cf46ed88f6a05c17611621aaad8fc5e62edacc30c5d
   languageName: node
   linkType: hard
 
@@ -12585,21 +12585,6 @@ __metadata:
     utf-8-validate:
       optional: true
   checksum: 10c0/bd7d5f4aaf04fae7960c23dcb6c6375d525e00f795dd20b9385902bd008c40a94d3db3ce97d878acc7573df852056ca546328b27b39f47609f80fb22a0a9b61d
-  languageName: node
-  linkType: hard
-
-"ws@npm:^8.19.0, ws@npm:^8.5.0":
-  version: 8.20.1
-  resolution: "ws@npm:8.20.1"
-  peerDependencies:
-    bufferutil: ^4.0.1
-    utf-8-validate: ">=5.0.2"
-  peerDependenciesMeta:
-    bufferutil:
-      optional: true
-    utf-8-validate:
-      optional: true
-  checksum: 10c0/ce162433218399cdedeb76fd33363d4d86a7d910058d4e3c679dce08cea65d6da6b39f11baa4d7808d024cf46ed88f6a05c17611621aaad8fc5e62edacc30c5d
   languageName: node
   linkType: hard
 
