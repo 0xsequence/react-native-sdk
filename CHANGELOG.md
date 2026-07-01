@@ -13,10 +13,12 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Lowered the Android OMS SDK requirement to `minSdk 24`.
 - Aligned Android Kotlin, coroutine, and serialization versions with current
   React Native and Expo defaults.
+- Updated the iOS OMS SDK dependency to `0.1.0-alpha.4`.
+- Aligned iOS promise rejection metadata with the current native error contract.
 
 ### Fixed
-- Removed the need for Expo and bare React Native apps to raise Android
-  `minSdk`, override Kotlin, or enable core library desugaring for OMS.
+- Expo and bare React Native apps can use the standard Android build
+  requirements for OMS.
 
 ## [0.1.0-alpha.3] — 2026-06-26
 

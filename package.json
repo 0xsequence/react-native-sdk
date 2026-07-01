@@ -50,6 +50,7 @@
     "expo-example": "cd examples/expo-example && npm start",
     "expo-example:android": "cd examples/expo-example && npm run android",
     "expo-example:ios": "cd examples/expo-example && npm run ios",
+    "expo-example:install": "bash scripts/install-expo-example-dependencies.sh",
     "clean": "del-cli android/build examples/sdk-example/android/build examples/sdk-example/android/app/build examples/sdk-example/ios/build examples/trails-actions-example/android/build examples/trails-actions-example/android/app/build examples/trails-actions-example/ios/build lib",
     "prepare": "bob build",
     "test": "yarn prepare && node --test test/*.test.js",
