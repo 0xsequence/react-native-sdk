@@ -21,6 +21,7 @@ An npm 404 means the version is available. If npm prints a version, choose a new
 Update:
 
 - `package.json` `version`
+- `examples/expo-example/package.json` SDK dependency version and lockfile
 - `CHANGELOG.md`
 - native SDK references if they changed:
   - `android/build.gradle`
@@ -45,12 +46,17 @@ git status --short
 yarn lint
 yarn typecheck
 yarn test
+yarn expo-example:install
+npm --prefix examples/expo-example run typecheck
 yarn sdk-example build:android
 yarn sdk-example build:ios
 ```
 
-Do not publish if any command fails. If native SDK versions changed, confirm those versions are
-already available from Maven Central and CocoaPods.
+Do not publish if any command fails. `yarn expo-example:install` uses the published npm package
+when this SDK version exists, or a local tarball when it has not been published yet.
+
+If native SDK versions changed, confirm those versions are already available from Maven Central and
+CocoaPods before merging the release PR.
 
 ## 4. Dry Run
 
@@ -80,12 +86,17 @@ Use `--tag alpha` for alpha releases so prereleases do not become the default `l
 Verify npm sees the published version:
 
 ```sh
-npm view @0xsequence/oms-react-native-sdk@<version> version
+npm view @0xsequence/oms-react-native-sdk@<version> version dist.integrity
 ```
 
-If the release updates APIs used by the standalone Expo example, update
-`examples/expo-example` to depend on the newly published npm version after npm
-confirms it is available.
+Refresh and verify the standalone Expo example lockfile against the published npm tarball:
+
+```sh
+npm --prefix examples/expo-example install --package-lock-only --ignore-scripts
+git diff --exit-code examples/expo-example/package-lock.json
+```
+
+If the lockfile changes, commit the refreshed `examples/expo-example/package-lock.json`.
 
 If the package should become the default install later, move the npm dist-tag deliberately in a
 separate step.

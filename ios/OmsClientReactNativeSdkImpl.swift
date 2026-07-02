@@ -1261,18 +1261,13 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
       let code = omsError.code.rawValue
       var userInfo: [String: Any] = [
         NSLocalizedDescriptionKey: omsError.localizedDescription,
-        "code": code,
-        "retryable": omsError.retryable
+        "code": code
       ]
-      if let operation = omsError.operation {
-        userInfo["operation"] = operation.rawValue
-      }
-      if let status = omsError.status {
-        userInfo["status"] = NSNumber(value: status)
-      }
-      if let txnId = omsError.txnId {
-        userInfo["txnId"] = txnId
-      }
+      userInfo["operation"] = omsError.operation?.rawValue ?? NSNull()
+      userInfo["status"] = nullableNumber(omsError.status)
+      userInfo["txnId"] = omsError.txnId ?? NSNull()
+      userInfo["retryable"] = nullableBool(omsError.retryable)
+      userInfo["upstreamError"] = nullableUpstreamError(omsError.upstreamError)
       reject(
         code,
         omsError.localizedDescription,
@@ -1283,6 +1278,31 @@ public final class OmsClientReactNativeSdkImpl: NSObject, @unchecked Sendable {
 
     let nsError = error as NSError
     reject("oms_client_error", nsError.localizedDescription, nsError)
+  }
+
+  private func upstreamErrorDictionary(_ error: OmsUpstreamError) -> [String: Any] {
+    [
+      "service": error.service.rawValue,
+      "name": error.name ?? NSNull(),
+      "code": error.code ?? NSNull(),
+      "message": error.message ?? NSNull(),
+      "status": nullableNumber(error.status)
+    ]
+  }
+
+  private func nullableNumber(_ value: Int?) -> Any {
+    guard let value else { return NSNull() }
+    return NSNumber(value: value)
+  }
+
+  private func nullableBool(_ value: Bool?) -> Any {
+    guard let value else { return NSNull() }
+    return NSNumber(value: value)
+  }
+
+  private func nullableUpstreamError(_ error: OmsUpstreamError?) -> Any {
+    guard let error else { return NSNull() }
+    return upstreamErrorDictionary(error)
   }
 }
 

@@ -1,12 +1,12 @@
 buildscript {
   ext.OmsClientReactNativeSdk = [
-    kotlinVersion: "2.3.20",
-    minSdkVersion: 26,
+    kotlinVersion: "2.1.20",
+    minSdkVersion: 24,
     compileSdkVersion: 36,
     targetSdkVersion: 36,
-    omsClientKotlinSdkVersion: "0.1.0-alpha.3",
-    kotlinxCoroutinesVersion: "1.11.0",
-    kotlinxSerializationJsonVersion: "1.11.0"
+    omsClientKotlinSdkVersion: "0.1.0-alpha.4",
+    kotlinxCoroutinesVersion: "1.10.2",
+    kotlinxSerializationJsonVersion: "1.8.1"
   ]
 
   ext.getExtOrDefault = { prop ->

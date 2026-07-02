@@ -26,7 +26,7 @@ yarn prepare        # build lib/
 | `ios/` | ObjC/Swift native module |
 | `examples/sdk-example/` | React Native CLI example (Yarn workspace) |
 | `examples/trails-actions-example/` | Trails demo (Yarn workspace) |
-| `examples/expo-example/` | Expo example — **not** a Yarn workspace; use `npm` here |
+| `examples/expo-example/` | Expo example — **not** a Yarn workspace; install with `yarn expo-example:install` from the repo root |
 
 ## Development workflow
 
@@ -38,8 +38,9 @@ yarn prepare        # rebuild lib/ after src/ changes
 # Run the SDK example
 yarn sdk-example start
 
-# Run the Expo example (uses npm, not yarn)
-cd examples/expo-example && npm install && npm start
+# Run the Expo example
+yarn expo-example:install
+yarn expo-example
 ```
 
 ## Before opening a PR

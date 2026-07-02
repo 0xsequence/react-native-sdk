@@ -27,7 +27,7 @@ yarn typecheck
 yarn test
 
 # TypeScript type-check (Expo example)
-npm --prefix examples/expo-example ci
+yarn expo-example:install
 npm --prefix examples/expo-example run typecheck
 
 # Build the library
@@ -72,6 +72,7 @@ Android and iOS CI checks pass before merging; validate locally when you need fa
 |-----------------------------|----------------------------------------------|
 | Lint                        | `yarn lint`                                  |
 | Typecheck (library)         | `yarn typecheck`                             |
+| Install Expo example deps   | `yarn expo-example:install`                 |
 | Typecheck (Expo example)    | `npm --prefix examples/expo-example run typecheck` |
 | Build library               | `yarn prepare`                               |
 | Run unit tests              | `yarn test`                                  |

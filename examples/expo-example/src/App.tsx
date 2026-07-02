@@ -19,19 +19,12 @@ import {
   View,
 } from 'react-native';
 import {
-  completeEmailAuth,
-  configure,
-  getSupportedNetworks,
-  getSession,
-  sendTransaction,
-  handleOidcRedirectCallback,
+  OMSClient,
   OidcProviders,
-  signMessage,
-  signOut,
-  startEmailAuth,
-  startOidcRedirectAuth,
-  verifyMessageSignature,
+  type OmsClientSessionExpiredEvent,
   type OmsClientSessionState,
+  type OmsFeeOptionSelection,
+  type OmsFeeOptionWithBalance,
   type OmsNetwork,
   type OmsPendingWalletSelection,
   type OmsWallet,
@@ -40,16 +33,13 @@ import {
 
 WebBrowser.maybeCompleteAuthSession();
 
-const DEMO_PUBLISHABLE_KEY = 'AQAAAAAAAAK2JvvZhWqZ51riasWBftkrVXE';
-const DEMO_PROJECT_ID = 'proj_014kg56dc0a75';
+const DEMO_PUBLISHABLE_KEY =
+  'pk_dev_sdbx_01kqa06hyyetj_01kv5ceg4xefattzmm9fyx04ev';
 const DEMO_OIDC_REDIRECT_URI = 'omsclientrndemo://auth/callback';
-const DEMO_ENVIRONMENT = {
-  apiRpcUrl: 'https://dev-api.sequence.app/rpc/API',
-  indexerUrlTemplate: 'https://dev-{value}-indexer.sequence.app/rpc/Indexer/',
-};
 
 const DEFAULT_TRANSACTION_TO = '0xE5E8B483FfC05967FcFed58cc98D053265af6D99';
 const PREFERRED_NETWORK_ORDER = ['80002', '137'];
+const DEFAULT_SESSION_LIFETIME_SECONDS = '604800';
 const SIGNED_OUT_SESSION: OmsClientSessionState = {
   walletAddress: null,
   expiresAt: null,
@@ -239,6 +229,77 @@ function WalletSelectionOption({
   );
 }
 
+function FeeOptionPickerModal({
+  options,
+  visible,
+  onCancel,
+  onSelect,
+}: {
+  options: OmsFeeOptionWithBalance[];
+  visible: boolean;
+  onCancel: () => void;
+  onSelect: (selection: OmsFeeOptionSelection) => void;
+}) {
+  return (
+    <Modal
+      animationType="fade"
+      onRequestClose={onCancel}
+      transparent
+      visible={visible}
+    >
+      <Pressable onPress={onCancel} style={styles.modalBackdrop}>
+        <Pressable style={styles.pickerSheet}>
+          <View style={styles.pickerHeader}>
+            <Text style={styles.pickerTitle}>Fee Option</Text>
+            <DemoButton label="Cancel" onPress={onCancel} variant="outline" />
+          </View>
+          <FlatList
+            data={options}
+            keyExtractor={(option, index) =>
+              `${option.selection.token}-${index}`
+            }
+            renderItem={({ item }) => {
+              const selectable = feeOptionIsSelectable(item);
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={!selectable}
+                  onPress={() => onSelect(item.selection)}
+                  style={({ pressed }) => [
+                    styles.feeOption,
+                    !selectable && styles.buttonDisabled,
+                    pressed && selectable && styles.buttonPressed,
+                  ]}
+                >
+                  <View style={styles.feeOptionText}>
+                    <Text numberOfLines={1} style={styles.feeOptionTitle}>
+                      {feeOptionTitle(item)}
+                    </Text>
+                    <Text numberOfLines={2} style={styles.feeOptionSubtitle}>
+                      {feeOptionSubtitle(item)}
+                    </Text>
+                    <Text
+                      numberOfLines={1}
+                      selectable
+                      style={styles.feeOptionToken}
+                    >
+                      {item.selection.token}
+                    </Text>
+                  </View>
+                  <Text style={styles.networkOptionState}>
+                    {selectable ? 'Select' : 'Insufficient'}
+                  </Text>
+                </Pressable>
+              );
+            }}
+            style={styles.networkPickerList}
+          />
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 function NetworkPickerModal({
   networks,
   selectedChainId,
@@ -304,6 +365,10 @@ function NetworkPickerModal({
 }
 
 export default function App() {
+  const oms = useMemo(
+    () => new OMSClient({ publishableKey: DEMO_PUBLISHABLE_KEY }),
+    []
+  );
   const [networks, setNetworks] = useState<OmsNetwork[]>([]);
   const [selectedChainId, setSelectedChainId] = useState('80002');
   const [sdkReady, setSdkReady] = useState(false);
@@ -314,6 +379,11 @@ export default function App() {
   const [code, setCode] = useState('');
   const [authStatus, setAuthStatus] = useState('Waiting for sign-in.');
   const [manualWalletSelection, setManualWalletSelection] = useState(false);
+  const [sessionLifetimeSeconds, setSessionLifetimeSeconds] = useState(
+    DEFAULT_SESSION_LIFETIME_SECONDS
+  );
+  const [expiredSessionEvent, setExpiredSessionEvent] =
+    useState<OmsClientSessionExpiredEvent | null>(null);
   const [pendingWalletSelection, setPendingWalletSelection] =
     useState<OmsPendingWalletSelection | null>(null);
   const [message, setMessage] = useState('test');
@@ -335,8 +405,14 @@ export default function App() {
   const [networkPickerVisible, setNetworkPickerVisible] = useState(false);
   const [logLines, setLogLines] = useState(['Ready.']);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [feeOptionPickerOptions, setFeeOptionPickerOptions] = useState<
+    OmsFeeOptionWithBalance[]
+  >([]);
   const handledRedirectUrlsRef = useRef(new Set<string>());
   const handlingRedirectUrlRef = useRef<string | null>(null);
+  const feeOptionSelectionResolverRef = useRef<
+    ((selection: OmsFeeOptionSelection | null) => void) | null
+  >(null);
 
   const selectedNetwork = useMemo(
     () =>
@@ -349,16 +425,67 @@ export default function App() {
     setLogLines((current) => [...current, messageToAppend].slice(-80));
   }, []);
 
+  const resolveFeeOptionSelection = useCallback(
+    (selection: OmsFeeOptionSelection | null) => {
+      const resolver = feeOptionSelectionResolverRef.current;
+      feeOptionSelectionResolverRef.current = null;
+      setFeeOptionPickerOptions([]);
+      resolver?.(selection);
+    },
+    []
+  );
+
+  const selectFeeOption = useCallback(
+    async (
+      feeOptions: OmsFeeOptionWithBalance[]
+    ): Promise<OmsFeeOptionSelection | null> => {
+      if (feeOptions.length === 0) {
+        appendLog('No fee options available.');
+        return null;
+      }
+
+      feeOptionSelectionResolverRef.current?.(null);
+      setFeeOptionPickerOptions(feeOptions);
+      appendLog(`Fee options available: ${feeOptions.length}`);
+
+      return new Promise((resolve) => {
+        feeOptionSelectionResolverRef.current = resolve;
+      });
+    },
+    [appendLog]
+  );
+
+  const chooseFeeOption = useCallback(
+    (selection: OmsFeeOptionSelection) => {
+      appendLog(`Selected fee option: ${selection.token}`);
+      resolveFeeOptionSelection(selection);
+    },
+    [appendLog, resolveFeeOptionSelection]
+  );
+
+  const cancelFeeOptionSelection = useCallback(() => {
+    appendLog('Fee option selection cancelled.');
+    resolveFeeOptionSelection(null);
+  }, [appendLog, resolveFeeOptionSelection]);
+
+  useEffect(() => {
+    return () => {
+      feeOptionSelectionResolverRef.current?.(null);
+      feeOptionSelectionResolverRef.current = null;
+    };
+  }, []);
+
   const refreshSession = useCallback(async () => {
-    const nextSession = await getSession();
+    const nextSession = await oms.wallet.getSession();
     setSession(nextSession);
     if (nextSession.walletAddress) {
+      setExpiredSessionEvent(null);
       setAuthStatus('Restored persisted wallet session');
       setSignatureStatus('Signature status: ready to sign.');
       setTransactionStatus('Transaction status: ready to send.');
     }
     return nextSession;
-  }, []);
+  }, [oms]);
 
   const runAction = useCallback(
     async (
@@ -380,10 +507,49 @@ export default function App() {
     [appendLog]
   );
 
+  const requestedSessionLifetimeSeconds = useCallback(
+    () => parseSessionLifetimeSeconds(sessionLifetimeSeconds),
+    [sessionLifetimeSeconds]
+  );
+
+  const clearExpiredSessionState = useCallback(() => {
+    setExpiredSessionEvent(null);
+  }, []);
+
+  const handleSessionExpired = useCallback(
+    (event: OmsClientSessionExpiredEvent) => {
+      const emailHint = expiredSessionEmail(event);
+
+      setExpiredSessionEvent(event);
+      setSession(SIGNED_OUT_SESSION);
+      setPendingWalletSelection(null);
+      setCode('');
+      setAuthStage('email');
+      setAuthStatus(
+        emailHint
+          ? `Wallet session expired. Sign in again as ${emailHint}.`
+          : 'Wallet session expired. Sign in again.'
+      );
+      if (emailHint) {
+        setEmail(emailHint);
+      }
+      setLastSignedMessage(null);
+      setLastSignature(null);
+      setLastTransactionHash(null);
+      setSignatureStatus('Signature status: waiting for reauth.');
+      setTransactionStatus('Transaction status: waiting for reauth.');
+      appendLog(
+        `Wallet session expired at ${event.expiredAt}: wallet=${event.session.walletAddress ?? 'none'} email=${event.session.sessionEmail ?? 'none'}`
+      );
+    },
+    [appendLog]
+  );
+
   const activateWallet = useCallback(
     async (result: OmsWalletActivationResult) => {
-      const nextSession = await getSession();
+      const nextSession = await oms.wallet.getSession();
       const address = nextSession.walletAddress ?? result.walletAddress;
+      clearExpiredSessionState();
       setPendingWalletSelection(null);
       setCode('');
       setAuthStage('email');
@@ -397,7 +563,7 @@ export default function App() {
       setTransactionStatus('Transaction status: ready to send.');
       appendLog(`Wallet ready: ${address}`);
     },
-    [appendLog]
+    [appendLog, clearExpiredSessionState, oms]
   );
 
   const finishOidcRedirectSignIn = useCallback(
@@ -410,12 +576,15 @@ export default function App() {
       }
 
       handlingRedirectUrlRef.current = callbackUrl;
+      let callbackHandled = false;
       try {
         setAuthStatus('Completing Google redirect sign-in...');
-        const result = await handleOidcRedirectCallback({
+        const result = await oms.wallet.handleOidcRedirectCallback({
           callbackUrl,
           walletSelection: manualWalletSelection ? 'manual' : 'automatic',
+          sessionLifetimeSeconds: requestedSessionLifetimeSeconds(),
         });
+        callbackHandled = true;
 
         switch (result.type) {
           case 'completed':
@@ -448,11 +617,20 @@ export default function App() {
             break;
         }
       } finally {
-        handledRedirectUrlsRef.current.add(callbackUrl);
+        if (callbackHandled) {
+          handledRedirectUrlsRef.current.add(callbackUrl);
+        }
         handlingRedirectUrlRef.current = null;
       }
     },
-    [activateWallet, appendLog, manualWalletSelection, refreshSession]
+    [
+      activateWallet,
+      appendLog,
+      manualWalletSelection,
+      oms,
+      refreshSession,
+      requestedSessionLifetimeSeconds,
+    ]
   );
 
   const selectNetwork = useCallback(
@@ -476,13 +654,7 @@ export default function App() {
 
     async function bootstrap() {
       await runAction('Initializing SDK', async () => {
-        await configure({
-          publishableKey: DEMO_PUBLISHABLE_KEY,
-          projectId: DEMO_PROJECT_ID,
-          environment: DEMO_ENVIRONMENT,
-        });
-
-        const supportedNetworks = sortNetworks(await getSupportedNetworks());
+        const supportedNetworks = sortNetworks(oms.supportedNetworks);
         if (disposed) return;
 
         setNetworks(supportedNetworks);
@@ -502,11 +674,13 @@ export default function App() {
     return () => {
       disposed = true;
     };
-  }, [appendLog, refreshSession, runAction]);
+  }, [appendLog, oms, refreshSession, runAction]);
 
   useEffect(() => {
     if (!sdkReady) return undefined;
 
+    const sessionExpiredSubscription =
+      oms.wallet.onSessionExpired(handleSessionExpired);
     const subscription = Linking.addEventListener('url', ({ url }) => {
       if (isDemoOidcRedirectUrl(url)) {
         runAction(
@@ -539,8 +713,18 @@ export default function App() {
         appendLog(`!! ${describeError(error)}`);
       });
 
-    return () => subscription.remove();
-  }, [appendLog, finishOidcRedirectSignIn, runAction, sdkReady]);
+    return () => {
+      sessionExpiredSubscription.remove();
+      subscription.remove();
+    };
+  }, [
+    appendLog,
+    finishOidcRedirectSignIn,
+    handleSessionExpired,
+    oms,
+    runAction,
+    sdkReady,
+  ]);
 
   const walletAddress = session.walletAddress;
   const isSignedIn = walletAddress != null;
@@ -550,13 +734,18 @@ export default function App() {
     runAction(
       'Start email sign-in',
       async () => {
-        const normalizedEmail = requireText(email, 'Email');
+        const normalizedEmail = email.trim();
         setAuthStatus('Requesting email code...');
         setPendingWalletSelection(null);
-        await startEmailAuth(normalizedEmail);
+        const emailForSignIn =
+          normalizedEmail || expiredSessionEmail(expiredSessionEvent);
+        if (!emailForSignIn) {
+          throw new Error('Email is required');
+        }
+        await oms.wallet.startEmailAuth(emailForSignIn);
         setEmail('');
         setAuthStage('code');
-        setAuthStatus(`Code requested for ${normalizedEmail}`);
+        setAuthStatus(`Code requested for ${emailForSignIn}`);
       },
       (error) => {
         setAuthStatus(`Email sign-in failed: ${describeError(error)}`);
@@ -569,9 +758,10 @@ export default function App() {
       'Confirm code and resolve wallet',
       async () => {
         setAuthStatus('Confirming code and resolving wallet...');
-        const authResult = await completeEmailAuth({
+        const authResult = await oms.wallet.completeEmailAuth({
           code: requireText(code, 'Verification code'),
           walletSelection: manualWalletSelection ? 'manual' : 'automatic',
+          sessionLifetimeSeconds: requestedSessionLifetimeSeconds(),
         });
 
         if (authResult.type === 'walletSelection') {
@@ -600,9 +790,11 @@ export default function App() {
       async () => {
         setPendingWalletSelection(null);
         setAuthStatus('Opening Google redirect sign-in...');
-        const started = await startOidcRedirectAuth({
+        requestedSessionLifetimeSeconds();
+        const started = await oms.wallet.startOidcRedirectAuth({
           provider: OidcProviders.google(),
           redirectUri: DEMO_OIDC_REDIRECT_URI,
+          loginHint: expiredSessionEmail(expiredSessionEvent),
         });
         appendLog(`Google redirect auth started: state=${started.state}`);
 
@@ -629,7 +821,8 @@ export default function App() {
 
   const cancelCodeStep = () => {
     runAction('Cancel email code step', async () => {
-      await signOut();
+      await oms.wallet.signOut();
+      clearExpiredSessionState();
       setSession(SIGNED_OUT_SESSION);
       setCode('');
       setPendingWalletSelection(null);
@@ -670,7 +863,8 @@ export default function App() {
 
   const logout = () => {
     runAction('Logout', async () => {
-      await signOut();
+      await oms.wallet.signOut();
+      clearExpiredSessionState();
       setSession(SIGNED_OUT_SESSION);
       setAuthStage('email');
       setPendingWalletSelection(null);
@@ -691,7 +885,10 @@ export default function App() {
         const network = requireNetwork(selectedNetwork);
         const nextMessage = requireText(message, 'Message');
         setSignatureStatus('Signature status: signing in progress...');
-        const signature = await signMessage(network.chainId, nextMessage);
+        const signature = await oms.wallet.signMessage(
+          network.chainId,
+          nextMessage
+        );
         setLastSignedMessage(nextMessage);
         setLastSignature(signature);
         setSignatureStatus('Signature status: signed. Ready to verify.');
@@ -711,7 +908,7 @@ export default function App() {
         const signedMessage = requireText(lastSignedMessage, 'Signed message');
         const signature = requireText(lastSignature, 'Signature');
         setSignatureStatus('Signature status: verification in progress...');
-        const isValid = await verifyMessageSignature({
+        const isValid = await oms.wallet.verifyMessageSignature({
           chainId: network.chainId,
           message: signedMessage,
           signature,
@@ -735,10 +932,11 @@ export default function App() {
       async () => {
         const network = requireNetwork(selectedNetwork);
         setTransactionStatus('Transaction status: sending in progress...');
-        const txResult = await sendTransaction({
+        const txResult = await oms.wallet.sendTransaction({
           chainId: network.chainId,
           to: requireText(transactionTo, 'Transaction destination'),
           value: decimalToBaseUnits(transactionValue, 18),
+          selectFeeOption,
         });
         setLastTransactionHash(txResult.txnHash);
         setTransactionStatus(
@@ -796,6 +994,30 @@ export default function App() {
               <>
                 <Card title="Sign-In">
                   <Text style={styles.status}>{authStatus}</Text>
+                  {expiredSessionEvent ? (
+                    <View style={styles.sessionDetails}>
+                      <SessionDetail
+                        label="Expired"
+                        value={formatSessionExpiration(
+                          expiredSessionEvent.expiredAt
+                        )}
+                      />
+                      <SessionDetail
+                        label="Wallet"
+                        value={
+                          expiredSessionEvent.session.walletAddress ??
+                          'Unavailable'
+                        }
+                      />
+                      <SessionDetail
+                        label="Email"
+                        value={
+                          expiredSessionEvent.session.sessionEmail ??
+                          'Unavailable'
+                        }
+                      />
+                    </View>
+                  ) : null}
                   {pendingWalletSelection ? (
                     <Text style={styles.status}>
                       Finish sign-in by selecting a wallet below.
@@ -808,6 +1030,17 @@ export default function App() {
                         onToggle={() =>
                           setManualWalletSelection((current) => !current)
                         }
+                      />
+                      <Field
+                        keyboardType="number-pad"
+                        label="Session lifetime seconds"
+                        onChangeText={setSessionLifetimeSeconds}
+                        value={sessionLifetimeSeconds}
+                      />
+                      <View
+                        accessibilityElementsHidden
+                        importantForAccessibility="no-hide-descendants"
+                        style={styles.fieldSeparator}
                       />
                       <Field
                         keyboardType="email-address"
@@ -838,6 +1071,12 @@ export default function App() {
                         onToggle={() =>
                           setManualWalletSelection((current) => !current)
                         }
+                      />
+                      <Field
+                        keyboardType="number-pad"
+                        label="Session lifetime seconds"
+                        onChangeText={setSessionLifetimeSeconds}
+                        value={sessionLifetimeSeconds}
                       />
                       <Text style={styles.sectionLabel}>Verification Code</Text>
                       <Field
@@ -1017,6 +1256,12 @@ export default function App() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <FeeOptionPickerModal
+        onCancel={cancelFeeOptionSelection}
+        onSelect={chooseFeeOption}
+        options={feeOptionPickerOptions}
+        visible={feeOptionPickerOptions.length > 0}
+      />
       <NetworkPickerModal
         networks={networks}
         onClose={() => setNetworkPickerVisible(false)}
@@ -1056,6 +1301,68 @@ function requireText(value: string | null, label: string): string {
     throw new Error(`${label} is required`);
   }
   return trimmed;
+}
+
+function parseSessionLifetimeSeconds(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (!/^\d+$/.test(trimmed)) {
+    throw new Error('Session lifetime seconds must be a positive whole number');
+  }
+
+  const parsed = Number(trimmed);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw new Error('Session lifetime seconds must be a positive whole number');
+  }
+
+  return parsed;
+}
+
+function expiredSessionEmail(
+  event: OmsClientSessionExpiredEvent | null
+): string | null {
+  const email = event?.session.sessionEmail?.trim();
+  return email ? email : null;
+}
+
+function feeOptionTitle(option: OmsFeeOptionWithBalance): string {
+  const symbol = feeOptionSymbol(option);
+  return `${symbol} fee`;
+}
+
+function feeOptionSubtitle(option: OmsFeeOptionWithBalance): string {
+  const symbol = feeOptionSymbol(option);
+  const fee = `${option.feeOption.displayValue} ${symbol}`;
+  const available = option.available
+    ? `${option.available} ${symbol}`
+    : 'unknown';
+
+  return `Fee ${fee} · Available ${available}`;
+}
+
+function feeOptionSymbol(option: OmsFeeOptionWithBalance): string {
+  return option.feeOption.token.symbol || option.selection.token;
+}
+
+function feeOptionIsSelectable(option: OmsFeeOptionWithBalance): boolean {
+  const available = optionalBigInt(option.availableRaw);
+  const fee = optionalBigInt(option.feeOption.value);
+  return available == null || fee == null || available >= fee;
+}
+
+function optionalBigInt(value: string | null | undefined): bigint | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return BigInt(value);
+  } catch {
+    return null;
+  }
 }
 
 function formatLoginType(
@@ -1181,6 +1488,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase',
+  },
+  fieldSeparator: {
+    backgroundColor: '#303644',
+    height: 1,
   },
   input: {
     backgroundColor: '#0B0D12',
@@ -1356,6 +1667,37 @@ const styles = StyleSheet.create({
   walletOptionMeta: {
     color: '#94A3B8',
     fontSize: 12,
+  },
+  feeOption: {
+    alignItems: 'center',
+    borderColor: '#303644',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    padding: 12,
+  },
+  feeOptionText: {
+    flex: 1,
+    gap: 4,
+  },
+  feeOptionTitle: {
+    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  feeOptionSubtitle: {
+    color: '#CBD5E1',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  feeOptionToken: {
+    color: '#94A3B8',
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
+    fontSize: 11,
+    lineHeight: 16,
   },
   status: {
     color: '#CBD5E1',
