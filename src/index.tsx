@@ -1,6 +1,15 @@
-export { OMSClient } from './client';
-export { OidcProviders } from './oidcProviders';
+export { OMSWallet } from './client';
+export { OmsRelayOidcProviders } from './oidcProviders';
+export { FeeOptionSelectors } from './feeOptionSelectors';
+export { Networks, findNetworkById, findNetworkByName } from './networks';
+export type { Network } from './networks';
 export { formatUnits, parseUnits } from './units';
+export { OMSWalletError, isOMSWalletError } from './errors';
+export type {
+  OMSWalletErrorCode,
+  OMSWalletErrorDetails,
+  OMSWalletUpstreamError,
+} from './errors';
 export type { ParseUnitsOptions, ParseUnitsRoundingMode } from './units';
 export type {
   CallContractArg,
@@ -10,17 +19,20 @@ export type {
   GetBalancesParams,
   GetIdTokenParams,
   GetTransactionHistoryParams,
-  GoogleOidcProviderParams,
+  CustomOidcProviderConfig,
   HandleOidcRedirectCallbackParams,
   ListAccessPageParams,
   ListAccessPagesParams,
   ListAccessParams,
   OmsAccessPage,
   OmsBalancesResult,
-  OmsClientConfig,
-  OmsClientSessionExpiredEvent,
-  OmsClientSessionLoginType,
-  OmsClientSessionState,
+  OMSWalletEmailSessionAuth,
+  OMSWalletOidcSessionAuth,
+  OMSWalletOidcSessionAuthFlow,
+  OMSWalletParams,
+  OMSWalletSessionAuth,
+  OMSWalletSessionExpiredEvent,
+  OMSWalletSessionState,
   OmsCompleteAuthResult,
   OmsContractVerificationStatus,
   OmsCredentialInfo,
@@ -32,8 +44,8 @@ export type {
   OmsIndexerNetworkType,
   OmsListAccessResponse,
   OmsMetadataOptions,
-  OmsNetwork,
   OmsOidcRedirectAuthResult,
+  OmsRelayOidcProvider,
   OmsPendingWalletSelection,
   OmsSendTransactionResponse,
   OmsStartOidcRedirectAuthResult,
@@ -54,10 +66,12 @@ export type {
   OmsWalletSelectionBehavior,
   OmsWalletType,
   OidcProviderConfig,
+  OidcAuthMode,
   SendTransactionParams,
+  SignMessageParams,
   SignInWithOidcIdTokenParams,
   SignTypedDataParams,
   StartOidcRedirectAuthParams,
-  VerifyMessageSignatureParams,
-  VerifyTypedDataSignatureParams,
+  IsValidMessageSignatureParams,
+  IsValidTypedDataSignatureParams,
 } from './types';

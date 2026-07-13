@@ -1,5 +1,4 @@
 import type { EventSubscription } from 'react-native';
-import { supportedNetworks } from './networks';
 import type {
   CallContractParams,
   CompleteEmailAuthParams,
@@ -12,13 +11,12 @@ import type {
   ListAccessPagesParams,
   ListAccessParams,
   OmsBalancesResult,
-  OmsClientConfig,
-  OmsClientSessionExpiredEvent,
-  OmsClientSessionState,
+  OMSWalletParams,
+  OMSWalletSessionExpiredEvent,
+  OMSWalletSessionState,
   OmsCompleteAuthResult,
   OmsCredentialInfo,
   OmsListAccessResponse,
-  OmsNetwork,
   OmsOidcRedirectAuthResult,
   OmsSendTransactionResponse,
   OmsStartOidcRedirectAuthResult,
@@ -27,11 +25,12 @@ import type {
   OmsWallet,
   OmsWalletActivationResult,
   SendTransactionParams,
+  SignMessageParams,
   SignInWithOidcIdTokenParams,
   SignTypedDataParams,
   StartOidcRedirectAuthParams,
-  VerifyMessageSignatureParams,
-  VerifyTypedDataSignatureParams,
+  IsValidMessageSignatureParams,
+  IsValidTypedDataSignatureParams,
 } from './types';
 
 function unsupported(): never {
@@ -40,12 +39,11 @@ function unsupported(): never {
   );
 }
 
-export class OMSClient {
+export class OMSWallet {
   public readonly wallet: OMSWalletClient;
   public readonly indexer: OMSIndexerClient;
-  public readonly supportedNetworks: OmsNetwork[] = supportedNetworks;
 
-  constructor(_config: OmsClientConfig) {
+  constructor(_config: OMSWalletParams) {
     this.wallet = new OMSWalletClient();
     this.indexer = new OMSIndexerClient();
   }
@@ -56,12 +54,12 @@ export class OMSWalletClient {
     unsupported();
   }
 
-  getSession(): Promise<OmsClientSessionState> {
+  getSession(): Promise<OMSWalletSessionState> {
     unsupported();
   }
 
   onSessionExpired(
-    _listener: (event: OmsClientSessionExpiredEvent) => void
+    _listener: (event: OMSWalletSessionExpiredEvent) => void
   ): EventSubscription {
     unsupported();
   }
@@ -112,7 +110,7 @@ export class OMSWalletClient {
     unsupported();
   }
 
-  signMessage(_chainId: string, _message: string): Promise<string> {
+  signMessage(_params: SignMessageParams): Promise<string> {
     unsupported();
   }
 
@@ -136,14 +134,14 @@ export class OMSWalletClient {
     unsupported();
   }
 
-  verifyMessageSignature(
-    _params: VerifyMessageSignatureParams
+  isValidMessageSignature(
+    _params: IsValidMessageSignatureParams
   ): Promise<boolean> {
     unsupported();
   }
 
-  verifyTypedDataSignature(
-    _params: VerifyTypedDataSignatureParams
+  isValidTypedDataSignature(
+    _params: IsValidTypedDataSignatureParams
   ): Promise<boolean> {
     unsupported();
   }

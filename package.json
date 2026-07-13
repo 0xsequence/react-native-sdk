@@ -51,11 +51,13 @@
     "expo-example:android": "cd examples/expo-example && npm run android",
     "expo-example:ios": "cd examples/expo-example && npm run ios",
     "expo-example:install": "bash scripts/install-expo-example-dependencies.sh",
+    "expo-example:install:published": "bash scripts/install-expo-example-dependencies.sh --published",
     "clean": "del-cli android/build examples/sdk-example/android/build examples/sdk-example/android/app/build examples/sdk-example/ios/build examples/trails-actions-example/android/build examples/trails-actions-example/android/app/build examples/trails-actions-example/ios/build lib",
     "prepare": "bob build",
     "test": "yarn prepare && node --test test/*.test.js",
     "typecheck": "tsc",
-    "lint": "eslint \"**/*.{js,ts,tsx}\""
+    "lint": "eslint \"**/*.{js,ts,tsx}\"",
+    "verify": "yarn lint && yarn typecheck && yarn test"
   },
   "keywords": [
     "react-native",
@@ -120,11 +122,11 @@
     ]
   },
   "codegenConfig": {
-    "name": "OmsClientReactNativeSdkSpec",
+    "name": "OmsWalletReactNativeSdkSpec",
     "type": "modules",
     "jsSrcsDir": "src",
     "android": {
-      "javaPackageName": "com.omsclientreactnativesdk"
+      "javaPackageName": "com.omswalletreactnativesdk"
     }
   },
   "prettier": {

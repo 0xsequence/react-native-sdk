@@ -2,12 +2,12 @@ import type {
   OmsCredentialInfo,
   OmsFeeOptionSelection,
   OmsFeeOptionWithBalance,
-  OmsNetwork,
   OmsTokenBalance,
   OmsTokenBalancesPage,
   OmsWallet,
   OmsWalletActivationResult,
-} from './NativeOmsClientReactNativeSdk';
+} from './NativeOmsWalletReactNativeSdk';
+import type { Network } from './networks';
 
 export type {
   OmsAccessPage,
@@ -17,7 +17,6 @@ export type {
   OmsFeeOptionWithBalance,
   OmsFeeToken,
   OmsListAccessResponse,
-  OmsNetwork,
   OmsSendTransactionResponse,
   OmsStartOidcRedirectAuthResult,
   OmsTokenBalance,
@@ -31,32 +30,49 @@ export type {
   OmsTransactionTransfer,
   OmsWallet,
   OmsWalletActivationResult,
-} from './NativeOmsClientReactNativeSdk';
-
-export type OmsClientSessionLoginType = 'Email' | 'GoogleAuth' | 'Oidc';
+} from './NativeOmsWalletReactNativeSdk';
 
 export type OmsWalletType = 'ethereum';
 
 export type OmsWalletSelectionBehavior = 'automatic' | 'manual';
 
-export type OmsClientSessionState = {
-  walletAddress: string | null;
-  expiresAt: string | null;
-  loginType: OmsClientSessionLoginType | null;
-  sessionEmail: string | null;
+export type OMSWalletEmailSessionAuth = {
+  type: 'email';
+  email: string | null;
 };
 
-export type OmsClientSessionExpiredEvent = {
-  session: OmsClientSessionState;
+export type OMSWalletOidcSessionAuthFlow = 'redirect' | 'id-token';
+
+export type OMSWalletOidcSessionAuth = {
+  type: 'oidc';
+  flow: OMSWalletOidcSessionAuthFlow;
+  issuer: string;
+  provider: string | null;
+  providerLabel: string | null;
+  email: string | null;
+};
+
+export type OMSWalletSessionAuth =
+  | OMSWalletEmailSessionAuth
+  | OMSWalletOidcSessionAuth;
+
+export type OMSWalletSessionState = {
+  walletAddress: string | null;
+  expiresAt: string | null;
+  auth: OMSWalletSessionAuth | null;
+};
+
+export type OMSWalletSessionExpiredEvent = {
+  session: OMSWalletSessionState;
   expiredAt: string;
 };
 
-export type OmsClientConfig = {
+export type OMSWalletParams = {
   publishableKey: string;
 };
 
 export type SendTransactionParams = {
-  chainId: string;
+  network: Network;
   to: string;
   value: string;
   data?: string | null;
@@ -73,7 +89,6 @@ export type OmsFeeOptionSelector = (
 ) => OmsFeeOptionSelection | null | Promise<OmsFeeOptionSelection | null>;
 
 export type OmsPendingWalletSelection = {
-  id: string;
   walletType: OmsWalletType;
   wallets: OmsWallet[];
   credential: OmsCredentialInfo;
@@ -104,27 +119,11 @@ export type OmsCompleteAuthResult =
 export type OmsOidcRedirectAuthResult =
   | {
       type: 'completed';
-      wallet: OmsWallet;
-      pendingSelection?: undefined;
-      message?: undefined;
-    }
-  | {
-      type: 'walletSelection';
-      pendingSelection: OmsPendingWalletSelection;
-      wallet?: undefined;
-      message?: undefined;
+      result: OmsCompleteAuthResult;
     }
   | {
       type: 'notOidcRedirectCallback' | 'noPendingAuth';
-      wallet?: undefined;
-      pendingSelection?: undefined;
-      message?: undefined;
-    }
-  | {
-      type: 'failed';
-      message: string;
-      wallet?: undefined;
-      pendingSelection?: undefined;
+      result?: undefined;
     };
 
 export type CompleteEmailAuthParams = {
@@ -141,32 +140,55 @@ export type SignInWithOidcIdTokenParams = {
   walletSelection?: OmsWalletSelectionBehavior;
   walletType?: OmsWalletType;
   sessionLifetimeSeconds?: number | null;
+  provider?: string | null;
+  providerLabel?: string | null;
 };
 
-export type OidcProviderConfig = {
+export type OidcAuthMode = 'auth-code' | 'auth-code-pkce';
+
+declare const omsRelayOidcProviderBrand: unique symbol;
+
+export type OmsRelayOidcProvider = {
+  readonly provider: 'google' | 'apple';
+  readonly [omsRelayOidcProviderBrand]: true;
+};
+
+export type CustomOidcProviderConfig = {
   issuer: string;
   clientId: string;
   authorizationUrl: string;
-  scopes?: string[];
-  relayRedirectUri?: string | null;
-  authorizeParams?: Record<string, string>;
-};
-
-export type GoogleOidcProviderParams = {
-  clientId?: string;
-  relayRedirectUri?: string | null;
+  providerRedirectUri: string;
+  provider?: string | null;
+  providerLabel?: string | null;
   scopes?: string[];
   authorizeParams?: Record<string, string>;
+  authMode?: OidcAuthMode;
 };
 
-export type StartOidcRedirectAuthParams = {
-  provider: OidcProviderConfig;
-  redirectUri: string;
+export type OidcProviderConfig =
+  | OmsRelayOidcProvider
+  | CustomOidcProviderConfig;
+
+type StartOidcRedirectAuthParamsBase = {
   walletType?: OmsWalletType;
-  relayRedirectUri?: string | null;
-  authorizeParams?: Record<string, string> | null;
+  walletSelection?: OmsWalletSelectionBehavior | null;
+  sessionLifetimeSeconds?: number | null;
   loginHint?: string | null;
 };
+
+export type StartOidcRedirectAuthParams = StartOidcRedirectAuthParamsBase &
+  (
+    | {
+        provider: OmsRelayOidcProvider;
+        omsRelayReturnUri: string;
+        authorizeParams?: never;
+      }
+    | {
+        provider: CustomOidcProviderConfig;
+        omsRelayReturnUri?: never;
+        authorizeParams?: Record<string, string> | null;
+      }
+  );
 
 export type HandleOidcRedirectCallbackParams = {
   callbackUrl?: string | null;
@@ -180,8 +202,13 @@ export type CreateWalletParams = {
 };
 
 export type SignTypedDataParams = {
-  chainId: string;
+  network: Network;
   typedData: unknown;
+};
+
+export type SignMessageParams = {
+  network: Network;
+  message: string;
 };
 
 export type CallContractArg = {
@@ -197,7 +224,7 @@ export type OmsTransactionStatusPollingOptions = {
 };
 
 export type CallContractParams = {
-  chainId: string;
+  network: Network;
   contractAddress: string;
   method: string;
   args?: CallContractArg[] | null;
@@ -231,7 +258,7 @@ export type OmsBalancesResult = {
 
 export type GetBalancesParams = {
   walletAddress: string;
-  networks?: OmsNetwork[];
+  networks?: Network[];
   networkType?: OmsIndexerNetworkType;
   contractAddresses?: string[];
   includeMetadata?: boolean;
@@ -243,7 +270,7 @@ export type GetBalancesParams = {
 
 export type GetTransactionHistoryParams = {
   walletAddress: string;
-  networks?: OmsNetwork[];
+  networks?: Network[];
   networkType?: OmsIndexerNetworkType;
   contractAddresses?: string[];
   transactionHashes?: string[];
@@ -257,14 +284,14 @@ export type GetTransactionHistoryParams = {
   page?: OmsTokenBalancesPageRequest;
 };
 
-export type VerifyMessageSignatureParams = {
-  chainId: string;
+export type IsValidMessageSignatureParams = {
+  network: Network;
   message: string;
   signature: string;
 };
 
-export type VerifyTypedDataSignatureParams = {
-  chainId: string;
+export type IsValidTypedDataSignatureParams = {
+  network: Network;
   typedData: unknown;
   signature: string;
 };

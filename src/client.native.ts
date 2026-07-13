@@ -1,13 +1,14 @@
 import type { EventSubscription } from 'react-native';
-import OmsClientReactNativeSdk from './NativeOmsClientReactNativeSdk';
+import NativeOmsWalletReactNativeSdk from './NativeOmsWalletReactNativeSdk';
+import { normalizeNativeError } from './errors';
+import { isOmsRelayOidcProvider } from './oidcProviders';
 import type {
-  OmsClientSessionExpiredEvent as OmsNativeClientSessionExpiredEvent,
+  OMSWalletSessionExpiredEvent as OmsNativeClientSessionExpiredEvent,
   OmsFeeOptionSelectionRequest,
   OmsNativeCompleteAuthResult,
   OmsNativeOidcRedirectAuthResult,
   OmsNativePendingWalletSelection,
-} from './NativeOmsClientReactNativeSdk';
-import { supportedNetworks } from './networks';
+} from './NativeOmsWalletReactNativeSdk';
 import type {
   CallContractParams,
   CompleteEmailAuthParams,
@@ -20,14 +21,13 @@ import type {
   ListAccessPagesParams,
   ListAccessParams,
   OmsBalancesResult,
-  OmsClientConfig,
-  OmsClientSessionExpiredEvent,
-  OmsClientSessionState,
+  OMSWalletParams,
+  OMSWalletSessionExpiredEvent,
+  OMSWalletSessionState,
   OmsCompleteAuthResult,
   OmsCredentialInfo,
   OmsFeeOptionSelector,
   OmsListAccessResponse,
-  OmsNetwork,
   OmsOidcRedirectAuthResult,
   OmsPendingWalletSelection,
   OmsSendTransactionResponse,
@@ -37,12 +37,38 @@ import type {
   OmsWallet,
   OmsWalletActivationResult,
   SendTransactionParams,
+  SignMessageParams,
   SignInWithOidcIdTokenParams,
   SignTypedDataParams,
   StartOidcRedirectAuthParams,
-  VerifyMessageSignatureParams,
-  VerifyTypedDataSignatureParams,
+  IsValidMessageSignatureParams,
+  IsValidTypedDataSignatureParams,
 } from './types';
+
+const OmsWalletReactNativeSdk = new Proxy(NativeOmsWalletReactNativeSdk, {
+  get(target, property, receiver) {
+    const value = Reflect.get(target, property, receiver);
+    if (typeof value !== 'function') {
+      return value;
+    }
+    return (...args: unknown[]) => {
+      try {
+        const result = Reflect.apply(value, target, args);
+        if (
+          result != null &&
+          typeof (result as { then?: unknown }).then === 'function'
+        ) {
+          return Promise.resolve(result).catch((error) => {
+            throw normalizeNativeError(error);
+          });
+        }
+        return result;
+      } catch (error) {
+        throw normalizeNativeError(error);
+      }
+    };
+  },
+}) as typeof NativeOmsWalletReactNativeSdk;
 
 type IndexerParamsWithNetworks =
   | GetBalancesParams
@@ -71,24 +97,44 @@ function stringifyOptionalNumber(
   return value == null ? null : String(value);
 }
 
-function hasOwnProperty(value: object, key: string): boolean {
-  return Object.prototype.hasOwnProperty.call(value, key);
+function serializeOidcProvider(params: StartOidcRedirectAuthParams): string {
+  if (isOmsRelayOidcProvider(params.provider)) {
+    return stringifyRequiredJson(
+      { type: 'oms-relay', provider: params.provider.provider },
+      'provider'
+    );
+  }
+
+  if (
+    typeof params.provider.providerRedirectUri !== 'string' ||
+    params.provider.providerRedirectUri.length === 0
+  ) {
+    throw new Error('Custom OIDC provider requires providerRedirectUri');
+  }
+  return stringifyRequiredJson(
+    { ...params.provider, type: 'custom' },
+    'provider'
+  );
 }
 
-function resolveRelayRedirectUri(
-  params: StartOidcRedirectAuthParams
-): string | null {
-  if (hasOwnProperty(params, 'relayRedirectUri')) {
-    return params.relayRedirectUri ?? null;
+function omsRelayReturnUri(params: StartOidcRedirectAuthParams): string | null {
+  if (!isOmsRelayOidcProvider(params.provider)) {
+    return null;
   }
-  return params.provider.relayRedirectUri ?? null;
+  if (
+    typeof params.omsRelayReturnUri !== 'string' ||
+    params.omsRelayReturnUri.length === 0
+  ) {
+    throw new Error('OMS relay OIDC provider requires omsRelayReturnUri');
+  }
+  return params.omsRelayReturnUri;
 }
 
 function serializeIndexerParams(params: IndexerParamsWithNetworks): string {
   return stringifyRequiredJson(
     {
       ...params,
-      networks: params.networks?.map((network) => network.chainId),
+      networks: params.networks?.map((network) => String(network.id)),
     },
     'params'
   );
@@ -103,31 +149,54 @@ function requireNativeField<T>(value: T | null | undefined, name: string): T {
 
 let nextClientId = 0;
 let nextFeeOptionSelectorId = 0;
+const clientIds = new WeakMap<OMSWallet, string>();
+const clientReadiness = new WeakMap<OMSWallet, Promise<void>>();
+
+function nativeClientId(owner: OMSWallet): string {
+  const clientId = clientIds.get(owner);
+  if (clientId == null) {
+    throw new Error('OMSWallet is not initialized');
+  }
+  return clientId;
+}
+
+function ensureReady(owner: OMSWallet): Promise<void> {
+  const ready = clientReadiness.get(owner);
+  if (ready == null) {
+    throw new Error('OMSWallet is not initialized');
+  }
+  return ready;
+}
+
+function resetSessionExpiredReplay(owner: OMSWallet) {
+  latestSessionExpiredEvents.delete(nativeClientId(owner));
+}
+
 let feeOptionSelectionSubscription: EventSubscription | null = null;
 const feeOptionSelectors = new Map<string, OmsFeeOptionSelector>();
 let sessionExpiredSubscription: EventSubscription | null = null;
 const latestSessionExpiredEvents = new Map<
   string,
-  OmsClientSessionExpiredEvent
+  OMSWalletSessionExpiredEvent
 >();
 const sessionExpiredListeners = new Map<
   string,
-  Set<(event: OmsClientSessionExpiredEvent) => void>
+  Set<(event: OMSWalletSessionExpiredEvent) => void>
 >();
-const activateNativeWallet = OmsClientReactNativeSdk.useWallet.bind(
-  OmsClientReactNativeSdk
+const activateNativeWallet = OmsWalletReactNativeSdk.useWallet.bind(
+  OmsWalletReactNativeSdk
 );
 
 function ensureFeeOptionSelectionListener() {
   feeOptionSelectionSubscription ??=
-    OmsClientReactNativeSdk.onFeeOptionSelectionRequest(
+    OmsWalletReactNativeSdk.onFeeOptionSelectionRequest(
       handleFeeOptionSelectionRequest
     );
 }
 
 function handleNativeSessionExpired(event: OmsNativeClientSessionExpiredEvent) {
-  const sessionExpiredEvent: OmsClientSessionExpiredEvent = {
-    session: event.session as OmsClientSessionState,
+  const sessionExpiredEvent: OMSWalletSessionExpiredEvent = {
+    session: event.session as OMSWalletSessionState,
     expiredAt: event.expiredAt,
   };
   latestSessionExpiredEvents.set(event.clientId, sessionExpiredEvent);
@@ -141,7 +210,7 @@ function handleNativeSessionExpired(event: OmsNativeClientSessionExpiredEvent) {
 }
 
 function ensureSessionExpiredListener() {
-  sessionExpiredSubscription ??= OmsClientReactNativeSdk.onSessionExpired(
+  sessionExpiredSubscription ??= OmsWalletReactNativeSdk.onSessionExpired(
     handleNativeSessionExpired
   );
 }
@@ -155,7 +224,7 @@ async function handleFeeOptionSelectionRequest(
 ) {
   const selector = feeOptionSelectors.get(event.selectorId);
   if (selector == null) {
-    await OmsClientReactNativeSdk.respondToFeeOptionSelection(
+    await OmsWalletReactNativeSdk.respondToFeeOptionSelection(
       event.requestId,
       null,
       `Fee option selector ${event.selectorId} is no longer registered`
@@ -165,13 +234,13 @@ async function handleFeeOptionSelectionRequest(
 
   try {
     const selection = await selector(event.options);
-    await OmsClientReactNativeSdk.respondToFeeOptionSelection(
+    await OmsWalletReactNativeSdk.respondToFeeOptionSelection(
       event.requestId,
       selection?.token ?? null,
       null
     );
   } catch (error) {
-    await OmsClientReactNativeSdk.respondToFeeOptionSelection(
+    await OmsWalletReactNativeSdk.respondToFeeOptionSelection(
       event.requestId,
       null,
       errorMessage(error)
@@ -198,40 +267,41 @@ async function withFeeOptionSelector<T>(
 }
 
 function hydratePendingWalletSelection(
-  owner: OMSClient,
+  owner: OMSWallet,
   pendingSelection: OmsNativePendingWalletSelection
 ): OmsPendingWalletSelection {
+  const { id, ...publicSelection } = pendingSelection;
   return {
-    ...pendingSelection,
+    ...publicSelection,
     walletType:
       pendingSelection.walletType as OmsPendingWalletSelection['walletType'],
     async selectWallet(walletId: string) {
-      await owner.ensureReady();
+      await ensureReady(owner);
       const result =
-        await OmsClientReactNativeSdk.selectWalletForPendingSelection(
-          owner.clientId,
-          pendingSelection.id,
+        await OmsWalletReactNativeSdk.selectWalletForPendingSelection(
+          nativeClientId(owner),
+          id,
           walletId
         );
-      owner.resetSessionExpiredReplay();
+      resetSessionExpiredReplay(owner);
       return result;
     },
     async createAndSelectWallet(reference?: string | null) {
-      await owner.ensureReady();
+      await ensureReady(owner);
       const result =
-        await OmsClientReactNativeSdk.createAndSelectWalletForPendingSelection(
-          owner.clientId,
-          pendingSelection.id,
+        await OmsWalletReactNativeSdk.createAndSelectWalletForPendingSelection(
+          nativeClientId(owner),
+          id,
           reference ?? null
         );
-      owner.resetSessionExpiredReplay();
+      resetSessionExpiredReplay(owner);
       return result;
     },
   };
 }
 
 function hydrateCompleteAuthResult(
-  owner: OMSClient,
+  owner: OMSWallet,
   result: OmsNativeCompleteAuthResult
 ): OmsCompleteAuthResult {
   switch (result.type) {
@@ -269,31 +339,21 @@ function hydrateCompleteAuthResult(
 }
 
 function hydrateOidcRedirectAuthResult(
-  owner: OMSClient,
+  owner: OMSWallet,
   result: OmsNativeOidcRedirectAuthResult
 ): OmsOidcRedirectAuthResult {
   switch (result.type) {
     case 'completed':
       return {
         type: 'completed',
-        wallet: requireNativeField(result.wallet, 'wallet'),
-      };
-    case 'walletSelection':
-      return {
-        type: 'walletSelection',
-        pendingSelection: hydratePendingWalletSelection(
+        result: hydrateCompleteAuthResult(
           owner,
-          requireNativeField(result.pendingSelection, 'pendingSelection')
+          requireNativeField(result.result, 'result')
         ),
       };
     case 'notOidcRedirectCallback':
     case 'noPendingAuth':
       return { type: result.type };
-    case 'failed':
-      return {
-        type: 'failed',
-        message: result.message ?? 'OIDC redirect auth failed',
-      };
     default:
       throw new Error(
         `Unsupported OIDC redirect auth result type: ${result.type}`
@@ -301,61 +361,51 @@ function hydrateOidcRedirectAuthResult(
   }
 }
 
-export class OMSClient {
+export class OMSWallet {
   public readonly wallet: OMSWalletClient;
   public readonly indexer: OMSIndexerClient;
-  public readonly supportedNetworks: OmsNetwork[] = supportedNetworks;
-  public readonly clientId: string;
-  private readonly ready: Promise<void>;
 
-  constructor(config: OmsClientConfig) {
+  constructor(config: OMSWalletParams) {
     ensureSessionExpiredListener();
-    this.clientId = `oms-client-${++nextClientId}`;
-    this.ready = OmsClientReactNativeSdk.createClient(
-      this.clientId,
-      config.publishableKey
+    const clientId = `oms-wallet-${++nextClientId}`;
+    clientIds.set(this, clientId);
+    clientReadiness.set(
+      this,
+      OmsWalletReactNativeSdk.createClient(clientId, config.publishableKey)
     );
     this.wallet = new OMSWalletClient(this);
     this.indexer = new OMSIndexerClient(this);
   }
-
-  public ensureReady(): Promise<void> {
-    return this.ready;
-  }
-
-  public resetSessionExpiredReplay() {
-    latestSessionExpiredEvents.delete(this.clientId);
-  }
 }
 
 export class OMSWalletClient {
-  constructor(private readonly owner: OMSClient) {}
+  constructor(private readonly owner: OMSWallet) {}
 
   async getWalletAddress(): Promise<string | null> {
-    await this.owner.ensureReady();
-    return OmsClientReactNativeSdk.getWalletAddress(this.owner.clientId);
+    await ensureReady(this.owner);
+    return OmsWalletReactNativeSdk.getWalletAddress(nativeClientId(this.owner));
   }
 
-  async getSession(): Promise<OmsClientSessionState> {
-    await this.owner.ensureReady();
-    return OmsClientReactNativeSdk.getSession(
-      this.owner.clientId
-    ) as Promise<OmsClientSessionState>;
+  async getSession(): Promise<OMSWalletSessionState> {
+    await ensureReady(this.owner);
+    return OmsWalletReactNativeSdk.getSession(
+      nativeClientId(this.owner)
+    ) as Promise<OMSWalletSessionState>;
   }
 
   onSessionExpired(
-    listener: (event: OmsClientSessionExpiredEvent) => void
+    listener: (event: OMSWalletSessionExpiredEvent) => void
   ): EventSubscription {
     ensureSessionExpiredListener();
-    let listeners = sessionExpiredListeners.get(this.owner.clientId);
+    let listeners = sessionExpiredListeners.get(nativeClientId(this.owner));
     if (listeners == null) {
       listeners = new Set();
-      sessionExpiredListeners.set(this.owner.clientId, listeners);
+      sessionExpiredListeners.set(nativeClientId(this.owner), listeners);
     }
     listeners.add(listener);
 
     const latestSessionExpiredEvent = latestSessionExpiredEvents.get(
-      this.owner.clientId
+      nativeClientId(this.owner)
     );
     if (latestSessionExpiredEvent != null) {
       listener(latestSessionExpiredEvent);
@@ -365,51 +415,56 @@ export class OMSWalletClient {
       remove: () => {
         listeners.delete(listener);
         if (listeners.size === 0) {
-          sessionExpiredListeners.delete(this.owner.clientId);
+          sessionExpiredListeners.delete(nativeClientId(this.owner));
         }
       },
     };
   }
 
   async startEmailAuth(email: string): Promise<void> {
-    await this.owner.ensureReady();
-    this.owner.resetSessionExpiredReplay();
-    return OmsClientReactNativeSdk.startEmailAuth(this.owner.clientId, email);
+    await ensureReady(this.owner);
+    resetSessionExpiredReplay(this.owner);
+    return OmsWalletReactNativeSdk.startEmailAuth(
+      nativeClientId(this.owner),
+      email
+    );
   }
 
   async completeEmailAuth(
     params: CompleteEmailAuthParams
   ): Promise<OmsCompleteAuthResult> {
-    await this.owner.ensureReady();
+    await ensureReady(this.owner);
     const result = hydrateCompleteAuthResult(
       this.owner,
-      await OmsClientReactNativeSdk.completeEmailAuth(
-        this.owner.clientId,
+      await OmsWalletReactNativeSdk.completeEmailAuth(
+        nativeClientId(this.owner),
         params.code,
         params.walletSelection ?? null,
         params.walletType ?? null,
         stringifyOptionalNumber(params.sessionLifetimeSeconds)
       )
     );
-    this.owner.resetSessionExpiredReplay();
+    resetSessionExpiredReplay(this.owner);
     return result;
   }
 
   async signInWithOidcIdToken(
     params: SignInWithOidcIdTokenParams
   ): Promise<OmsCompleteAuthResult> {
-    await this.owner.ensureReady();
-    this.owner.resetSessionExpiredReplay();
+    await ensureReady(this.owner);
+    resetSessionExpiredReplay(this.owner);
     return hydrateCompleteAuthResult(
       this.owner,
-      await OmsClientReactNativeSdk.signInWithOidcIdToken(
-        this.owner.clientId,
+      await OmsWalletReactNativeSdk.signInWithOidcIdToken(
+        nativeClientId(this.owner),
         params.idToken,
         params.issuer,
         params.audience,
         params.walletSelection ?? null,
         params.walletType ?? null,
-        stringifyOptionalNumber(params.sessionLifetimeSeconds)
+        stringifyOptionalNumber(params.sessionLifetimeSeconds),
+        params.provider ?? null,
+        params.providerLabel ?? null
       )
     );
   }
@@ -417,14 +472,15 @@ export class OMSWalletClient {
   async startOidcRedirectAuth(
     params: StartOidcRedirectAuthParams
   ): Promise<OmsStartOidcRedirectAuthResult> {
-    await this.owner.ensureReady();
-    this.owner.resetSessionExpiredReplay();
-    return OmsClientReactNativeSdk.startOidcRedirectAuth(
-      this.owner.clientId,
-      stringifyRequiredJson(params.provider, 'provider'),
-      params.redirectUri,
+    await ensureReady(this.owner);
+    resetSessionExpiredReplay(this.owner);
+    return OmsWalletReactNativeSdk.startOidcRedirectAuth(
+      nativeClientId(this.owner),
+      serializeOidcProvider(params),
+      omsRelayReturnUri(params),
       params.walletType ?? null,
-      resolveRelayRedirectUri(params),
+      params.walletSelection ?? null,
+      stringifyOptionalNumber(params.sessionLifetimeSeconds),
       stringifyOptionalJson(params.authorizeParams),
       params.loginHint ?? null
     );
@@ -433,11 +489,11 @@ export class OMSWalletClient {
   async handleOidcRedirectCallback(
     params: HandleOidcRedirectCallbackParams = {}
   ): Promise<OmsOidcRedirectAuthResult> {
-    await this.owner.ensureReady();
+    await ensureReady(this.owner);
     const result = hydrateOidcRedirectAuthResult(
       this.owner,
-      await OmsClientReactNativeSdk.handleOidcRedirectCallback(
-        this.owner.clientId,
+      await OmsWalletReactNativeSdk.handleOidcRedirectCallback(
+        nativeClientId(this.owner),
         params.callbackUrl ?? null,
         params.walletSelection ?? null,
         stringifyOptionalNumber(params.sessionLifetimeSeconds)
@@ -447,56 +503,59 @@ export class OMSWalletClient {
       result.type !== 'notOidcRedirectCallback' &&
       result.type !== 'noPendingAuth'
     ) {
-      this.owner.resetSessionExpiredReplay();
+      resetSessionExpiredReplay(this.owner);
     }
     return result;
   }
 
   async listWallets(): Promise<OmsWallet[]> {
-    await this.owner.ensureReady();
-    return OmsClientReactNativeSdk.listWallets(this.owner.clientId);
+    await ensureReady(this.owner);
+    return OmsWalletReactNativeSdk.listWallets(nativeClientId(this.owner));
   }
 
   async useWallet(walletId: string): Promise<OmsWalletActivationResult> {
-    await this.owner.ensureReady();
-    const result = await activateNativeWallet(this.owner.clientId, walletId);
-    this.owner.resetSessionExpiredReplay();
+    await ensureReady(this.owner);
+    const result = await activateNativeWallet(
+      nativeClientId(this.owner),
+      walletId
+    );
+    resetSessionExpiredReplay(this.owner);
     return result;
   }
 
   async createWallet(
     params: CreateWalletParams = {}
   ): Promise<OmsWalletActivationResult> {
-    await this.owner.ensureReady();
-    const result = await OmsClientReactNativeSdk.createWallet(
-      this.owner.clientId,
+    await ensureReady(this.owner);
+    const result = await OmsWalletReactNativeSdk.createWallet(
+      nativeClientId(this.owner),
       params.walletType ?? null,
       params.reference ?? null
     );
-    this.owner.resetSessionExpiredReplay();
+    resetSessionExpiredReplay(this.owner);
     return result;
   }
 
   async signOut(): Promise<void> {
-    await this.owner.ensureReady();
-    this.owner.resetSessionExpiredReplay();
-    return OmsClientReactNativeSdk.signOut(this.owner.clientId);
+    await ensureReady(this.owner);
+    resetSessionExpiredReplay(this.owner);
+    return OmsWalletReactNativeSdk.signOut(nativeClientId(this.owner));
   }
 
-  async signMessage(chainId: string, message: string): Promise<string> {
-    await this.owner.ensureReady();
-    return OmsClientReactNativeSdk.signMessage(
-      this.owner.clientId,
-      chainId,
-      message
+  async signMessage(params: SignMessageParams): Promise<string> {
+    await ensureReady(this.owner);
+    return OmsWalletReactNativeSdk.signMessage(
+      nativeClientId(this.owner),
+      String(params.network.id),
+      params.message
     );
   }
 
   async signTypedData(params: SignTypedDataParams): Promise<string> {
-    await this.owner.ensureReady();
-    return OmsClientReactNativeSdk.signTypedData(
-      this.owner.clientId,
-      params.chainId,
+    await ensureReady(this.owner);
+    return OmsWalletReactNativeSdk.signTypedData(
+      nativeClientId(this.owner),
+      String(params.network.id),
       stringifyRequiredJson(params.typedData, 'typedData')
     );
   }
@@ -504,11 +563,11 @@ export class OMSWalletClient {
   async sendTransaction(
     params: SendTransactionParams
   ): Promise<OmsSendTransactionResponse> {
-    await this.owner.ensureReady();
+    await ensureReady(this.owner);
     return withFeeOptionSelector(params.selectFeeOption, (selectorId) =>
-      OmsClientReactNativeSdk.sendTransaction(
-        this.owner.clientId,
-        params.chainId,
+      OmsWalletReactNativeSdk.sendTransaction(
+        nativeClientId(this.owner),
+        String(params.network.id),
         params.to,
         params.value,
         params.data ?? null,
@@ -526,11 +585,11 @@ export class OMSWalletClient {
   async callContract(
     params: CallContractParams
   ): Promise<OmsSendTransactionResponse> {
-    await this.owner.ensureReady();
+    await ensureReady(this.owner);
     return withFeeOptionSelector(params.selectFeeOption, (selectorId) =>
-      OmsClientReactNativeSdk.callContract(
-        this.owner.clientId,
-        params.chainId,
+      OmsWalletReactNativeSdk.callContract(
+        nativeClientId(this.owner),
+        String(params.network.id),
         params.contractAddress,
         params.method,
         stringifyOptionalJson(params.args),
@@ -546,41 +605,41 @@ export class OMSWalletClient {
   }
 
   async getTransactionStatus(txnId: string): Promise<OmsTransactionStatus> {
-    await this.owner.ensureReady();
-    return OmsClientReactNativeSdk.getTransactionStatus(
-      this.owner.clientId,
+    await ensureReady(this.owner);
+    return OmsWalletReactNativeSdk.getTransactionStatus(
+      nativeClientId(this.owner),
       txnId
     );
   }
 
-  async verifyMessageSignature(
-    params: VerifyMessageSignatureParams
+  async isValidMessageSignature(
+    params: IsValidMessageSignatureParams
   ): Promise<boolean> {
-    await this.owner.ensureReady();
-    return OmsClientReactNativeSdk.verifyMessageSignature(
-      this.owner.clientId,
-      params.chainId,
+    await ensureReady(this.owner);
+    return OmsWalletReactNativeSdk.verifyMessageSignature(
+      nativeClientId(this.owner),
+      String(params.network.id),
       params.message,
       params.signature
     );
   }
 
-  async verifyTypedDataSignature(
-    params: VerifyTypedDataSignatureParams
+  async isValidTypedDataSignature(
+    params: IsValidTypedDataSignatureParams
   ): Promise<boolean> {
-    await this.owner.ensureReady();
-    return OmsClientReactNativeSdk.verifyTypedDataSignature(
-      this.owner.clientId,
-      params.chainId,
+    await ensureReady(this.owner);
+    return OmsWalletReactNativeSdk.verifyTypedDataSignature(
+      nativeClientId(this.owner),
+      String(params.network.id),
       stringifyRequiredJson(params.typedData, 'typedData'),
       params.signature
     );
   }
 
   async getIdToken(params: GetIdTokenParams = {}): Promise<string> {
-    await this.owner.ensureReady();
-    return OmsClientReactNativeSdk.getIdToken(
-      this.owner.clientId,
+    await ensureReady(this.owner);
+    return OmsWalletReactNativeSdk.getIdToken(
+      nativeClientId(this.owner),
       params.ttlSeconds == null ? null : String(params.ttlSeconds),
       stringifyOptionalJson(params.customClaims)
     );
@@ -589,9 +648,9 @@ export class OMSWalletClient {
   async listAccess(
     params: ListAccessParams = {}
   ): Promise<OmsCredentialInfo[]> {
-    await this.owner.ensureReady();
-    return OmsClientReactNativeSdk.listAccess(
-      this.owner.clientId,
+    await ensureReady(this.owner);
+    return OmsWalletReactNativeSdk.listAccess(
+      nativeClientId(this.owner),
       params.pageSize == null ? null : String(params.pageSize)
     );
   }
@@ -614,30 +673,30 @@ export class OMSWalletClient {
   async listAccessPage(
     params: ListAccessPageParams = {}
   ): Promise<OmsListAccessResponse> {
-    await this.owner.ensureReady();
-    return OmsClientReactNativeSdk.listAccessPage(
-      this.owner.clientId,
+    await ensureReady(this.owner);
+    return OmsWalletReactNativeSdk.listAccessPage(
+      nativeClientId(this.owner),
       params.pageSize == null ? null : String(params.pageSize),
       params.cursor ?? null
     );
   }
 
   async revokeAccess(targetCredentialId: string): Promise<void> {
-    await this.owner.ensureReady();
-    return OmsClientReactNativeSdk.revokeAccess(
-      this.owner.clientId,
+    await ensureReady(this.owner);
+    return OmsWalletReactNativeSdk.revokeAccess(
+      nativeClientId(this.owner),
       targetCredentialId
     );
   }
 }
 
 export class OMSIndexerClient {
-  constructor(private readonly owner: OMSClient) {}
+  constructor(private readonly owner: OMSWallet) {}
 
   async getBalances(params: GetBalancesParams): Promise<OmsBalancesResult> {
-    await this.owner.ensureReady();
-    return OmsClientReactNativeSdk.getBalances(
-      this.owner.clientId,
+    await ensureReady(this.owner);
+    return OmsWalletReactNativeSdk.getBalances(
+      nativeClientId(this.owner),
       serializeIndexerParams(params)
     );
   }
@@ -645,9 +704,9 @@ export class OMSIndexerClient {
   async getTransactionHistory(
     params: GetTransactionHistoryParams
   ): Promise<OmsTransactionHistoryResult> {
-    await this.owner.ensureReady();
-    return OmsClientReactNativeSdk.getTransactionHistory(
-      this.owner.clientId,
+    await ensureReady(this.owner);
+    return OmsWalletReactNativeSdk.getTransactionHistory(
+      nativeClientId(this.owner),
       serializeIndexerParams(params)
     );
   }

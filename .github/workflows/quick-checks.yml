@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 jobs:
-  lint-typecheck:
+  verify:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,17 +24,11 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Lint files
-        run: yarn lint
-
       - name: Install Expo example dependencies
         run: yarn expo-example:install
 
-      - name: Typecheck files
-        run: yarn typecheck
-
-      - name: Run unit tests
-        run: yarn test
+      - name: Verify SDK
+        run: yarn verify
 
       - name: Typecheck Expo example
         run: npm --prefix examples/expo-example run typecheck

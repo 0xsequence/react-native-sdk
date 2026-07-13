@@ -19,13 +19,14 @@ import {
 } from 'react-native';
 import { InAppBrowser } from 'react-native-inappbrowser-reborn';
 import {
-  OMSClient,
-  OidcProviders,
-  type OmsClientSessionExpiredEvent,
-  type OmsClientSessionState,
+  OMSWallet,
+  Networks,
+  OmsRelayOidcProviders,
+  type OMSWalletSessionExpiredEvent,
+  type OMSWalletSessionState,
   type OmsFeeOptionSelection,
   type OmsFeeOptionWithBalance,
-  type OmsNetwork,
+  type Network,
   type OmsPendingWalletSelection,
   type OmsWallet,
   type OmsWalletActivationResult,
@@ -38,11 +39,10 @@ const DEMO_OIDC_REDIRECT_URI = 'omsclientrndemo://auth/callback';
 const DEFAULT_TRANSACTION_TO = '0xE5E8B483FfC05967FcFed58cc98D053265af6D99';
 const PREFERRED_NETWORK_ORDER = ['80002', '137'];
 const DEFAULT_SESSION_LIFETIME_SECONDS = '604800';
-const SIGNED_OUT_SESSION: OmsClientSessionState = {
+const SIGNED_OUT_SESSION: OMSWalletSessionState = {
   walletAddress: null,
   expiresAt: null,
-  loginType: null,
-  sessionEmail: null,
+  auth: null,
 };
 
 LogBox.ignoreLogs(['SafeAreaView has been deprecated']);
@@ -305,11 +305,11 @@ function NetworkPickerModal({
   onClose,
   onSelect,
 }: {
-  networks: OmsNetwork[];
+  networks: Network[];
   selectedChainId: string;
   visible: boolean;
   onClose: () => void;
-  onSelect: (network: OmsNetwork) => void;
+  onSelect: (network: Network) => void;
 }) {
   return (
     <Modal
@@ -326,9 +326,9 @@ function NetworkPickerModal({
           </View>
           <FlatList
             data={networks}
-            keyExtractor={(network) => network.chainId}
+            keyExtractor={(network) => String(network.id)}
             renderItem={({ item }) => {
-              const selected = item.chainId === selectedChainId;
+              const selected = String(item.id) === selectedChainId;
               return (
                 <Pressable
                   accessibilityRole="button"
@@ -345,7 +345,7 @@ function NetworkPickerModal({
                       {item.displayName}
                     </Text>
                     <Text style={styles.networkOptionSubtitle}>
-                      Chain {item.chainId} · {item.nativeTokenSymbol}
+                      Chain {item.id} · {item.nativeTokenSymbol}
                     </Text>
                   </View>
                   <Text style={styles.networkOptionState}>
@@ -363,15 +363,15 @@ function NetworkPickerModal({
 }
 
 export default function App() {
-  const oms = useMemo(
-    () => new OMSClient({ publishableKey: DEMO_PUBLISHABLE_KEY }),
+  const omsWallet = useMemo(
+    () => new OMSWallet({ publishableKey: DEMO_PUBLISHABLE_KEY }),
     []
   );
-  const [networks, setNetworks] = useState<OmsNetwork[]>([]);
+  const [networks, setNetworks] = useState<Network[]>([]);
   const [selectedChainId, setSelectedChainId] = useState('80002');
   const [sdkReady, setSdkReady] = useState(false);
   const [session, setSession] =
-    useState<OmsClientSessionState>(SIGNED_OUT_SESSION);
+    useState<OMSWalletSessionState>(SIGNED_OUT_SESSION);
   const [authStage, setAuthStage] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -381,7 +381,7 @@ export default function App() {
     DEFAULT_SESSION_LIFETIME_SECONDS
   );
   const [expiredSessionEvent, setExpiredSessionEvent] =
-    useState<OmsClientSessionExpiredEvent | null>(null);
+    useState<OMSWalletSessionExpiredEvent | null>(null);
   const [pendingWalletSelection, setPendingWalletSelection] =
     useState<OmsPendingWalletSelection | null>(null);
   const [message, setMessage] = useState('test');
@@ -414,7 +414,7 @@ export default function App() {
 
   const selectedNetwork = useMemo(
     () =>
-      networks.find((network) => network.chainId === selectedChainId) ??
+      networks.find((network) => String(network.id) === selectedChainId) ??
       networks[0],
     [networks, selectedChainId]
   );
@@ -474,7 +474,7 @@ export default function App() {
   }, []);
 
   const refreshSession = useCallback(async () => {
-    const nextSession = await oms.wallet.getSession();
+    const nextSession = await omsWallet.wallet.getSession();
     setSession(nextSession);
     if (nextSession.walletAddress) {
       setExpiredSessionEvent(null);
@@ -483,7 +483,7 @@ export default function App() {
       setTransactionStatus('Transaction status: ready to send.');
     }
     return nextSession;
-  }, [oms]);
+  }, [omsWallet]);
 
   const runAction = useCallback(
     async (
@@ -515,7 +515,7 @@ export default function App() {
   }, []);
 
   const handleSessionExpired = useCallback(
-    (event: OmsClientSessionExpiredEvent) => {
+    (event: OMSWalletSessionExpiredEvent) => {
       const emailHint = expiredSessionEmail(event);
 
       setExpiredSessionEvent(event);
@@ -537,7 +537,7 @@ export default function App() {
       setSignatureStatus('Signature status: waiting for reauth.');
       setTransactionStatus('Transaction status: waiting for reauth.');
       appendLog(
-        `Wallet session expired at ${event.expiredAt}: wallet=${event.session.walletAddress ?? 'none'} email=${event.session.sessionEmail ?? 'none'}`
+        `Wallet session expired at ${event.expiredAt}: wallet=${event.session.walletAddress ?? 'none'} email=${sessionEmail(event.session) ?? 'none'}`
       );
     },
     [appendLog]
@@ -545,7 +545,7 @@ export default function App() {
 
   const activateWallet = useCallback(
     async (result: OmsWalletActivationResult) => {
-      const nextSession = await oms.wallet.getSession();
+      const nextSession = await omsWallet.wallet.getSession();
       const address = nextSession.walletAddress ?? result.walletAddress;
       clearExpiredSessionState();
       setPendingWalletSelection(null);
@@ -561,7 +561,7 @@ export default function App() {
       setTransactionStatus('Transaction status: ready to send.');
       appendLog(`Wallet ready: ${address}`);
     },
-    [appendLog, clearExpiredSessionState, oms]
+    [appendLog, clearExpiredSessionState, omsWallet]
   );
 
   const finishOidcRedirectSignIn = useCallback(
@@ -577,35 +577,32 @@ export default function App() {
       let callbackHandled = false;
       try {
         setAuthStatus('Completing Google redirect sign-in...');
-        const result = await oms.wallet.handleOidcRedirectCallback({
+        const result = await omsWallet.wallet.handleOidcRedirectCallback({
           callbackUrl,
-          walletSelection: manualWalletSelection ? 'manual' : 'automatic',
-          sessionLifetimeSeconds: requestedSessionLifetimeSeconds(),
         });
         callbackHandled = true;
 
         switch (result.type) {
           case 'completed':
+            if (result.result.type === 'walletSelection') {
+              setPendingWalletSelection(result.result.pendingSelection);
+              setCode('');
+              setAuthStage('email');
+              setAuthStatus('Choose a wallet to finish Google sign-in.');
+              appendLog(
+                `Google redirect wallet selection available: ${result.result.pendingSelection.wallets.length} existing wallet(s)`
+              );
+              break;
+            }
             await activateWallet({
-              walletAddress: result.wallet.address,
-              wallet: result.wallet,
+              walletAddress: result.result.walletAddress,
+              wallet: result.result.wallet,
             });
             setAuthStatus('Google redirect login complete');
             appendLog(
-              `Google redirect sign-in complete: ${result.wallet.address}`
+              `Google redirect sign-in complete: ${result.result.walletAddress}`
             );
             break;
-          case 'walletSelection':
-            setPendingWalletSelection(result.pendingSelection);
-            setCode('');
-            setAuthStage('email');
-            setAuthStatus('Choose a wallet to finish Google sign-in.');
-            appendLog(
-              `Google redirect wallet selection available: ${result.pendingSelection.wallets.length} existing wallet(s)`
-            );
-            break;
-          case 'failed':
-            throw new Error(result.message);
           case 'noPendingAuth':
             setAuthStatus('No pending Google redirect sign-in.');
             await refreshSession();
@@ -621,28 +618,19 @@ export default function App() {
         handlingRedirectUrlRef.current = null;
       }
     },
-    [
-      activateWallet,
-      appendLog,
-      manualWalletSelection,
-      oms,
-      refreshSession,
-      requestedSessionLifetimeSeconds,
-    ]
+    [activateWallet, appendLog, omsWallet, refreshSession]
   );
 
   const selectNetwork = useCallback(
-    (network: OmsNetwork) => {
-      setSelectedChainId(network.chainId);
+    (network: Network) => {
+      setSelectedChainId(String(network.id));
       setNetworkPickerVisible(false);
       setLastSignedMessage(null);
       setLastSignature(null);
       setLastTransactionHash(null);
       setSignatureStatus('Signature status: ready to sign.');
       setTransactionStatus('Transaction status: ready to send.');
-      appendLog(
-        `Selected network: ${network.displayName} (${network.chainId})`
-      );
+      appendLog(`Selected network: ${network.displayName} (${network.id})`);
     },
     [appendLog]
   );
@@ -652,11 +640,11 @@ export default function App() {
 
     async function bootstrap() {
       await runAction('Initializing SDK', async () => {
-        const supportedNetworks = sortNetworks(oms.supportedNetworks);
+        const supportedNetworks = sortNetworks(Object.values(Networks));
         if (disposed) return;
 
         setNetworks(supportedNetworks);
-        setSelectedChainId(supportedNetworks[0]?.chainId ?? '80002');
+        setSelectedChainId(String(supportedNetworks[0]?.id ?? 80002));
         const nextSession = await refreshSession();
         if (nextSession.walletAddress) {
           appendLog(`Wallet ready: ${nextSession.walletAddress}`);
@@ -672,13 +660,13 @@ export default function App() {
     return () => {
       disposed = true;
     };
-  }, [appendLog, oms, refreshSession, runAction]);
+  }, [appendLog, omsWallet, refreshSession, runAction]);
 
   useEffect(() => {
     if (!sdkReady) return undefined;
 
     const sessionExpiredSubscription =
-      oms.wallet.onSessionExpired(handleSessionExpired);
+      omsWallet.wallet.onSessionExpired(handleSessionExpired);
     const subscription = Linking.addEventListener('url', ({ url }) => {
       if (isDemoOidcRedirectUrl(url)) {
         runAction(
@@ -719,7 +707,7 @@ export default function App() {
     appendLog,
     finishOidcRedirectSignIn,
     handleSessionExpired,
-    oms,
+    omsWallet,
     runAction,
     sdkReady,
   ]);
@@ -740,7 +728,7 @@ export default function App() {
         if (!emailForSignIn) {
           throw new Error('Email is required');
         }
-        await oms.wallet.startEmailAuth(emailForSignIn);
+        await omsWallet.wallet.startEmailAuth(emailForSignIn);
         setEmail('');
         setAuthStage('code');
         setAuthStatus(`Code requested for ${emailForSignIn}`);
@@ -756,7 +744,7 @@ export default function App() {
       'Confirm code and resolve wallet',
       async () => {
         setAuthStatus('Confirming code and resolving wallet...');
-        const authResult = await oms.wallet.completeEmailAuth({
+        const authResult = await omsWallet.wallet.completeEmailAuth({
           code: requireText(code, 'Verification code'),
           walletSelection: manualWalletSelection ? 'manual' : 'automatic',
           sessionLifetimeSeconds: requestedSessionLifetimeSeconds(),
@@ -789,12 +777,14 @@ export default function App() {
         setPendingWalletSelection(null);
         setAuthStatus('Opening Google redirect sign-in...');
         requestedSessionLifetimeSeconds();
-        const started = await oms.wallet.startOidcRedirectAuth({
-          provider: OidcProviders.google(),
-          redirectUri: DEMO_OIDC_REDIRECT_URI,
+        const started = await omsWallet.wallet.startOidcRedirectAuth({
+          provider: OmsRelayOidcProviders.google,
+          omsRelayReturnUri: DEMO_OIDC_REDIRECT_URI,
+          walletSelection: manualWalletSelection ? 'manual' : 'automatic',
+          sessionLifetimeSeconds: requestedSessionLifetimeSeconds(),
           loginHint: expiredSessionEmail(expiredSessionEvent),
         });
-        appendLog(`Google redirect auth started: state=${started.state}`);
+        appendLog('Google redirect auth started.');
 
         if (!(await InAppBrowser.isAvailable())) {
           throw new Error('In-app browser is not available on this device');
@@ -835,7 +825,7 @@ export default function App() {
 
   const cancelCodeStep = () => {
     runAction('Cancel email code step', async () => {
-      await oms.wallet.signOut();
+      await omsWallet.wallet.signOut();
       clearExpiredSessionState();
       setSession(SIGNED_OUT_SESSION);
       setCode('');
@@ -877,7 +867,7 @@ export default function App() {
 
   const logout = () => {
     runAction('Logout', async () => {
-      await oms.wallet.signOut();
+      await omsWallet.wallet.signOut();
       clearExpiredSessionState();
       setSession(SIGNED_OUT_SESSION);
       setAuthStage('email');
@@ -899,14 +889,14 @@ export default function App() {
         const network = requireNetwork(selectedNetwork);
         const nextMessage = requireText(message, 'Message');
         setSignatureStatus('Signature status: signing in progress...');
-        const signature = await oms.wallet.signMessage(
-          network.chainId,
-          nextMessage
-        );
+        const signature = await omsWallet.wallet.signMessage({
+          network,
+          message: nextMessage,
+        });
         setLastSignedMessage(nextMessage);
         setLastSignature(signature);
         setSignatureStatus('Signature status: signed. Ready to verify.');
-        appendLog(`Signed message on chain ${network.chainId}`);
+        appendLog(`Signed message on chain ${network.id}`);
       },
       () => {
         setSignatureStatus('Signature status: signing failed.');
@@ -922,14 +912,14 @@ export default function App() {
         const signedMessage = requireText(lastSignedMessage, 'Signed message');
         const signature = requireText(lastSignature, 'Signature');
         setSignatureStatus('Signature status: verification in progress...');
-        const isValid = await oms.wallet.verifyMessageSignature({
-          chainId: network.chainId,
+        const isValid = await omsWallet.wallet.isValidMessageSignature({
+          network,
           message: signedMessage,
           signature,
         });
         setSignatureStatus(
           isValid
-            ? `Signature status: valid on chain ${network.chainId}.`
+            ? `Signature status: valid on chain ${network.id}.`
             : 'Signature status: invalid.'
         );
         appendLog(`Verify signature => isValid=${String(isValid)}`);
@@ -946,8 +936,8 @@ export default function App() {
       async () => {
         const network = requireNetwork(selectedNetwork);
         setTransactionStatus('Transaction status: sending in progress...');
-        const txResult = await oms.wallet.sendTransaction({
-          chainId: network.chainId,
+        const txResult = await omsWallet.wallet.sendTransaction({
+          network,
           to: requireText(transactionTo, 'Transaction destination'),
           value: decimalToBaseUnits(transactionValue, 18),
           selectFeeOption,
@@ -955,7 +945,7 @@ export default function App() {
         setLastTransactionHash(txResult.txnHash);
         setTransactionStatus(
           txResult.txnHash
-            ? `Transaction status: sent on chain ${network.chainId}.`
+            ? `Transaction status: sent on chain ${network.id}.`
             : `Transaction status: ${txResult.status}. Transaction hash pending.`
         );
         appendLog(
@@ -972,9 +962,7 @@ export default function App() {
 
   const openExplorer = () => {
     if (!lastTransactionHash || !selectedNetwork) return;
-    Linking.openURL(
-      explorerUrlFor(selectedNetwork.chainId, lastTransactionHash)
-    );
+    Linking.openURL(explorerUrlFor(selectedNetwork, lastTransactionHash));
   };
 
   return (
@@ -1025,7 +1013,7 @@ export default function App() {
                       <SessionDetail
                         label="Email"
                         value={
-                          expiredSessionEvent.session.sessionEmail ??
+                          sessionEmail(expiredSessionEvent.session) ??
                           'Unavailable'
                         }
                       />
@@ -1160,11 +1148,11 @@ export default function App() {
                   <View style={styles.sessionDetails}>
                     <SessionDetail
                       label="Login type"
-                      value={formatLoginType(session.loginType)}
+                      value={formatSessionAuth(session)}
                     />
                     <SessionDetail
                       label="Email"
-                      value={session.sessionEmail ?? 'Unavailable'}
+                      value={sessionEmail(session) ?? 'Unavailable'}
                     />
                     <SessionDetail
                       label="Expiration"
@@ -1189,7 +1177,7 @@ export default function App() {
                       </Text>
                       <Text style={styles.networkPickerSubtitle}>
                         {selectedNetwork
-                          ? `Chain ${selectedNetwork.chainId} · ${selectedNetwork.nativeTokenSymbol}`
+                          ? `Chain ${selectedNetwork.id} · ${selectedNetwork.nativeTokenSymbol}`
                           : 'Supported networks unavailable'}
                       </Text>
                     </View>
@@ -1286,10 +1274,10 @@ export default function App() {
   );
 }
 
-function sortNetworks(networks: OmsNetwork[]): OmsNetwork[] {
+function sortNetworks(networks: Network[]): Network[] {
   return [...networks].sort((left, right) => {
-    const leftIndex = PREFERRED_NETWORK_ORDER.indexOf(left.chainId);
-    const rightIndex = PREFERRED_NETWORK_ORDER.indexOf(right.chainId);
+    const leftIndex = PREFERRED_NETWORK_ORDER.indexOf(String(left.id));
+    const rightIndex = PREFERRED_NETWORK_ORDER.indexOf(String(right.id));
     if (leftIndex !== -1 || rightIndex !== -1) {
       return normalizeOrder(leftIndex) - normalizeOrder(rightIndex);
     }
@@ -1301,7 +1289,7 @@ function normalizeOrder(index: number): number {
   return index === -1 ? Number.MAX_SAFE_INTEGER : index;
 }
 
-function requireNetwork(network: OmsNetwork | undefined): OmsNetwork {
+function requireNetwork(network: Network | undefined): Network {
   if (!network) {
     throw new Error('Network is required');
   }
@@ -1335,9 +1323,9 @@ function parseSessionLifetimeSeconds(value: string): number | null {
 }
 
 function expiredSessionEmail(
-  event: OmsClientSessionExpiredEvent | null
+  event: OMSWalletSessionExpiredEvent | null
 ): string | null {
-  const email = event?.session.sessionEmail?.trim();
+  const email = event == null ? null : sessionEmail(event.session)?.trim();
   return email ? email : null;
 }
 
@@ -1378,16 +1366,19 @@ function optionalBigInt(value: string | null | undefined): bigint | null {
   }
 }
 
-function formatLoginType(
-  loginType: OmsClientSessionState['loginType']
-): string {
-  switch (loginType) {
-    case 'Email':
+function sessionEmail(session: OMSWalletSessionState): string | null {
+  return session.auth?.email ?? null;
+}
+
+function formatSessionAuth(session: OMSWalletSessionState): string {
+  switch (session.auth?.type) {
+    case 'email':
       return 'Email';
-    case 'GoogleAuth':
-      return 'Google Auth';
-    case 'Oidc':
-      return 'OIDC';
+    case 'oidc': {
+      const provider =
+        session.auth.providerLabel ?? session.auth.provider ?? 'OIDC';
+      return `${provider} (${session.auth.flow})`;
+    }
     default:
       return 'Unavailable';
   }
@@ -1435,11 +1426,8 @@ function describeError(error: unknown): string {
   return String(error);
 }
 
-function explorerUrlFor(chainId: string, txHash: string): string {
-  if (chainId === '137') {
-    return `https://polygonscan.com/tx/${txHash}`;
-  }
-  return `https://amoy.polygonscan.com/tx/${txHash}`;
+function explorerUrlFor(network: Network, txHash: string): string {
+  return `${network.explorerUrl}/tx/${txHash}`;
 }
 
 function isDemoOidcRedirectUrl(url: string): boolean {

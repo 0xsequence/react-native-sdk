@@ -44,11 +44,12 @@ import {
   type EarnMarket,
 } from '0xtrails/actions';
 import {
-  OMSClient,
-  OidcProviders,
-  type OmsClientSessionExpiredEvent,
-  type OmsClientSessionState,
-  type OmsNetwork,
+  OMSWallet,
+  Networks,
+  OmsRelayOidcProviders,
+  type OMSWalletSessionExpiredEvent,
+  type OMSWalletSessionState,
+  type Network,
   type OmsSendTransactionResponse,
 } from '@0xsequence/oms-react-native-sdk';
 import {
@@ -157,11 +158,10 @@ const SIGNED_OUT_BALANCES: BalanceState = {
   usdcRaw: '0',
   status: 'Sign in to load balances.',
 };
-const SIGNED_OUT_SESSION: OmsClientSessionState = {
+const SIGNED_OUT_SESSION: OMSWalletSessionState = {
   walletAddress: null,
   expiresAt: null,
-  loginType: null,
-  sessionEmail: null,
+  auth: null,
 };
 
 LogBox.ignoreLogs(['SafeAreaView has been deprecated']);
@@ -639,9 +639,9 @@ function requireText(value: string, label: string): string {
 }
 
 function expiredSessionEmail(
-  event: OmsClientSessionExpiredEvent | null
+  event: OMSWalletSessionExpiredEvent | null
 ): string | null {
-  const email = event?.session.sessionEmail?.trim();
+  const email = event == null ? null : sessionEmail(event.session)?.trim();
   return email ? email : null;
 }
 
@@ -728,9 +728,18 @@ function formatTokenAmount(
   }
 }
 
-function formatLoginType(type: string | null): string {
-  if (!type) return 'Unknown';
-  return type.charAt(0).toUpperCase() + type.slice(1);
+function sessionEmail(session: OMSWalletSessionState): string | null {
+  return session.auth?.email ?? null;
+}
+
+function formatSessionAuth(session: OMSWalletSessionState): string {
+  if (session.auth?.type === 'email') return 'Email';
+  if (session.auth?.type === 'oidc') {
+    const provider =
+      session.auth.providerLabel ?? session.auth.provider ?? 'OIDC';
+    return `${provider} (${session.auth.flow})`;
+  }
+  return 'Unknown';
 }
 
 function formatSessionExpiration(expiresAt: number | string | null): string {
@@ -743,10 +752,10 @@ function normalizeOrder(chainId: string): number {
   return preferredIndex === -1 ? Number.MAX_SAFE_INTEGER : preferredIndex;
 }
 
-function sortNetworks(networks: OmsNetwork[]): OmsNetwork[] {
+function sortNetworks(networks: Network[]): Network[] {
   return [...networks].sort((left, right) => {
-    const leftOrder = normalizeOrder(left.chainId);
-    const rightOrder = normalizeOrder(right.chainId);
+    const leftOrder = normalizeOrder(String(left.id));
+    const rightOrder = normalizeOrder(String(right.id));
 
     if (leftOrder !== rightOrder) {
       return leftOrder - rightOrder;
@@ -806,19 +815,12 @@ function delay(ms: number): Promise<void> {
 }
 
 async function getPolygonBalances(
-  oms: OMSClient,
+  omsWallet: OMSWallet,
   walletAddress: `0x${string}`
 ): Promise<BalanceState> {
-  const polygonNetwork = oms.supportedNetworks.find(
-    (network) => network.chainId === POLYGON_CHAIN_ID
-  );
-  if (!polygonNetwork) {
-    throw new Error('Polygon network is not available in this project.');
-  }
-
-  const result = await oms.indexer.getBalances({
+  const result = await omsWallet.indexer.getBalances({
     walletAddress,
-    networks: [polygonNetwork],
+    networks: [Networks.polygon],
     contractAddresses: [POLYGON_USDC],
     includeMetadata: false,
   });
@@ -1189,20 +1191,20 @@ async function prepareSwapAndEarnUsdc({
 }
 
 export default function App() {
-  const oms = useMemo(
-    () => new OMSClient({ publishableKey: DEMO_PUBLISHABLE_KEY }),
+  const omsWallet = useMemo(
+    () => new OMSWallet({ publishableKey: DEMO_PUBLISHABLE_KEY }),
     []
   );
-  const [networks, setNetworks] = useState<OmsNetwork[]>([]);
+  const [networks, setNetworks] = useState<Network[]>([]);
   const [sdkReady, setSdkReady] = useState(false);
   const [session, setSession] =
-    useState<OmsClientSessionState>(SIGNED_OUT_SESSION);
+    useState<OMSWalletSessionState>(SIGNED_OUT_SESSION);
   const [authStage, setAuthStage] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [authStatus, setAuthStatus] = useState('Waiting for sign-in.');
   const [expiredSessionEvent, setExpiredSessionEvent] =
-    useState<OmsClientSessionExpiredEvent | null>(null);
+    useState<OMSWalletSessionExpiredEvent | null>(null);
   const [swapPolAmount, setSwapPolAmount] = useState(DEFAULT_SWAP_POL_AMOUNT);
   const [depositUsdcAmount, setDepositUsdcAmount] = useState(
     DEFAULT_DEPOSIT_USDC_AMOUNT
@@ -1266,7 +1268,7 @@ export default function App() {
   }, []);
 
   const refreshSession = useCallback(async () => {
-    const nextSession = await oms.wallet.getSession();
+    const nextSession = await omsWallet.wallet.getSession();
     setSession(nextSession);
     if (nextSession.walletAddress) {
       setExpiredSessionEvent(null);
@@ -1276,14 +1278,14 @@ export default function App() {
       setEarnStatus('Swap and Deposit status: ready to prepare.');
     }
     return nextSession;
-  }, [oms]);
+  }, [omsWallet]);
 
   const clearExpiredSessionState = useCallback(() => {
     setExpiredSessionEvent(null);
   }, []);
 
   const handleSessionExpired = useCallback(
-    (event: OmsClientSessionExpiredEvent) => {
+    (event: OMSWalletSessionExpiredEvent) => {
       const emailHint = expiredSessionEmail(event);
 
       setExpiredSessionEvent(event);
@@ -1301,7 +1303,7 @@ export default function App() {
       setBrowserUrl(null);
       resetActionState();
       appendLog(
-        `Wallet session expired at ${event.expiredAt}: wallet=${event.session.walletAddress ?? 'none'} email=${event.session.sessionEmail ?? 'none'}`
+        `Wallet session expired at ${event.expiredAt}: wallet=${event.session.walletAddress ?? 'none'} email=${sessionEmail(event.session) ?? 'none'}`
       );
     },
     [appendLog, resetActionState]
@@ -1339,37 +1341,37 @@ export default function App() {
       handlingRedirectUrlRef.current = callbackUrl;
       try {
         setAuthStatus('Completing Google redirect sign-in...');
-        const result = await oms.wallet.handleOidcRedirectCallback({
+        const result = await omsWallet.wallet.handleOidcRedirectCallback({
           callbackUrl,
-          walletSelection: 'automatic',
         });
 
         switch (result.type) {
           case 'completed': {
+            if (result.result.type === 'walletSelection') {
+              const existingWallet = result.result.pendingSelection.wallets[0];
+              const activation = existingWallet
+                ? await result.result.pendingSelection.selectWallet(
+                    existingWallet.id
+                  )
+                : await result.result.pendingSelection.createAndSelectWallet();
+              const nextSession = await refreshSession();
+              setCode('');
+              setAuthStage('email');
+              setAuthStatus('Google redirect login complete');
+              appendLog(
+                `Google redirect wallet selected: ${nextSession.walletAddress ?? activation.walletAddress}`
+              );
+              break;
+            }
             const nextSession = await refreshSession();
-            const address = nextSession.walletAddress ?? result.wallet.address;
+            const address =
+              nextSession.walletAddress ?? result.result.walletAddress;
             setCode('');
             setAuthStage('email');
             setAuthStatus('Google redirect login complete');
             appendLog(`Google redirect sign-in complete: ${address}`);
             break;
           }
-          case 'walletSelection': {
-            const existingWallet = result.pendingSelection.wallets[0];
-            const activation = existingWallet
-              ? await result.pendingSelection.selectWallet(existingWallet.id)
-              : await result.pendingSelection.createAndSelectWallet();
-            const nextSession = await refreshSession();
-            setCode('');
-            setAuthStage('email');
-            setAuthStatus('Google redirect login complete');
-            appendLog(
-              `Google redirect wallet selected: ${nextSession.walletAddress ?? activation.walletAddress}`
-            );
-            break;
-          }
-          case 'failed':
-            throw new Error(result.message);
           case 'noPendingAuth':
             setAuthStatus('No pending Google redirect sign-in.');
             await refreshSession();
@@ -1383,7 +1385,7 @@ export default function App() {
         handlingRedirectUrlRef.current = null;
       }
     },
-    [appendLog, oms, refreshSession]
+    [appendLog, omsWallet, refreshSession]
   );
 
   const refreshBalances = useCallback(
@@ -1397,7 +1399,7 @@ export default function App() {
       }));
 
       try {
-        const nextBalances = await getPolygonBalances(oms, walletAddress);
+        const nextBalances = await getPolygonBalances(omsWallet, walletAddress);
         setBalances(nextBalances);
         return nextBalances;
       } catch (error) {
@@ -1410,19 +1412,19 @@ export default function App() {
         return null;
       }
     },
-    [appendLog, oms]
+    [appendLog, omsWallet]
   );
 
   const readBalanceSnapshot = useCallback(
     async (walletAddress: `0x${string}`): Promise<BalanceState> => {
       try {
-        return await getPolygonBalances(oms, walletAddress);
+        return await getPolygonBalances(omsWallet, walletAddress);
       } catch (error) {
         appendLog(`!! Balance snapshot failed: ${describeError(error)}`);
         return balances;
       }
     },
-    [appendLog, balances, oms]
+    [appendLog, balances, omsWallet]
   );
 
   const refreshEarnPositions = useCallback(
@@ -1493,7 +1495,10 @@ export default function App() {
         await delay(BALANCE_POLL_INTERVAL_MS);
 
         try {
-          const nextBalances = await getPolygonBalances(oms, walletAddress);
+          const nextBalances = await getPolygonBalances(
+            omsWallet,
+            walletAddress
+          );
           const isExpectedChange = hasExpectedBalanceChange(
             operation,
             before,
@@ -1532,7 +1537,7 @@ export default function App() {
       }));
       throw new Error(message);
     },
-    [oms]
+    [omsWallet]
   );
 
   const pollEarnPositionsUntilChanged = useCallback(
@@ -1624,13 +1629,13 @@ export default function App() {
 
     async function bootstrap() {
       await runAction('Initializing SDK', async () => {
-        const supportedNetworks = sortNetworks(oms.supportedNetworks);
+        const supportedNetworks = sortNetworks(Object.values(Networks));
         if (disposed) return;
 
         setNetworks(supportedNetworks);
 
         const polygonNetwork = supportedNetworks.find(
-          (network) => network.chainId === POLYGON_CHAIN_ID
+          (network) => String(network.id) === POLYGON_CHAIN_ID
         );
         if (!polygonNetwork) {
           throw new Error('Polygon network is not available in this project.');
@@ -1652,13 +1657,13 @@ export default function App() {
     return () => {
       disposed = true;
     };
-  }, [appendLog, oms, refreshSession, runAction]);
+  }, [appendLog, omsWallet, refreshSession, runAction]);
 
   useEffect(() => {
     if (!sdkReady) return undefined;
 
     const sessionExpiredSubscription =
-      oms.wallet.onSessionExpired(handleSessionExpired);
+      omsWallet.wallet.onSessionExpired(handleSessionExpired);
 
     const handleRedirectUrl = (url: string) => {
       if (!isDemoOidcRedirectUrl(url)) return;
@@ -1696,7 +1701,7 @@ export default function App() {
     appendLog,
     finishOidcRedirectSignIn,
     handleSessionExpired,
-    oms.wallet,
+    omsWallet.wallet,
     runAction,
     sdkReady,
   ]);
@@ -1705,7 +1710,7 @@ export default function App() {
   const isSignedIn = walletAddress != null;
   const isBusy = loadingAction != null;
   const polygonNetwork = useMemo(
-    () => networks.find((network) => network.chainId === POLYGON_CHAIN_ID),
+    () => networks.find((network) => String(network.id) === POLYGON_CHAIN_ID),
     [networks]
   );
 
@@ -1756,7 +1761,7 @@ export default function App() {
           throw new Error('Email is required');
         }
         setAuthStatus('Requesting email code...');
-        await oms.wallet.startEmailAuth(emailForSignIn);
+        await omsWallet.wallet.startEmailAuth(emailForSignIn);
         setEmail('');
         setAuthStage('code');
         setAuthStatus(`Code requested for ${emailForSignIn}`);
@@ -1774,12 +1779,13 @@ export default function App() {
         setCode('');
         setAuthStage('email');
         setAuthStatus('Opening Google redirect sign-in...');
-        const started = await oms.wallet.startOidcRedirectAuth({
-          provider: OidcProviders.google(),
-          redirectUri: DEMO_OIDC_REDIRECT_URI,
+        const started = await omsWallet.wallet.startOidcRedirectAuth({
+          provider: OmsRelayOidcProviders.google,
+          omsRelayReturnUri: DEMO_OIDC_REDIRECT_URI,
+          walletSelection: 'automatic',
           loginHint: expiredSessionEmail(expiredSessionEvent),
         });
-        appendLog(`Google redirect auth started: state=${started.state}`);
+        appendLog('Google redirect auth started.');
 
         if (!(await InAppBrowser.isAvailable())) {
           throw new Error('In-app browser is not available on this device');
@@ -1823,7 +1829,9 @@ export default function App() {
       'Complete email sign-in',
       async () => {
         setAuthStatus('Verifying code...');
-        await oms.wallet.completeEmailAuth({ code: requireText(code, 'Code') });
+        await omsWallet.wallet.completeEmailAuth({
+          code: requireText(code, 'Code'),
+        });
         const nextSession = await refreshSession();
         clearExpiredSessionState();
         setCode('');
@@ -1841,7 +1849,7 @@ export default function App() {
 
   const cancelCodeStep = () => {
     runAction('Cancel email sign-in', async () => {
-      await oms.wallet.signOut();
+      await omsWallet.wallet.signOut();
       clearExpiredSessionState();
       setAuthStage('email');
       setCode('');
@@ -1853,7 +1861,7 @@ export default function App() {
 
   const logout = () => {
     runAction('Sign out', async () => {
-      await oms.wallet.signOut();
+      await omsWallet.wallet.signOut();
       clearExpiredSessionState();
       setSession(SIGNED_OUT_SESSION);
       setAuthStage('email');
@@ -1968,8 +1976,8 @@ export default function App() {
         const before = await readBalanceSnapshot(address);
 
         setSwapStatus('Swap status: sending...');
-        const txResult = await oms.wallet.sendTransaction({
-          chainId: POLYGON_CHAIN_ID,
+        const txResult = await omsWallet.wallet.sendTransaction({
+          network: Networks.polygon,
           to: prepared.to,
           value: prepared.value,
           data: prepared.data,
@@ -2015,8 +2023,8 @@ export default function App() {
               ? 'transaction'
               : `transaction ${index + 1}/${prepared.transactions.length}`;
           setDepositStatus(`Deposit status: sending ${label}...`);
-          const txResult = await oms.wallet.sendTransaction({
-            chainId: String(transaction.chainId),
+          const txResult = await omsWallet.wallet.sendTransaction({
+            network: Networks.polygon,
             to: transaction.to,
             value: transaction.value.toString(),
             data: transaction.data,
@@ -2075,8 +2083,8 @@ export default function App() {
         const beforePositions = await readEarnPositionsSnapshot(address);
 
         setEarnStatus('Swap and Deposit status: sending...');
-        const txResult = await oms.wallet.sendTransaction({
-          chainId: POLYGON_CHAIN_ID,
+        const txResult = await omsWallet.wallet.sendTransaction({
+          network: Networks.polygon,
           to: prepared.to,
           value: prepared.value,
           data: prepared.data,
@@ -2138,8 +2146,8 @@ export default function App() {
               ? 'withdraw transaction'
               : `withdraw transaction ${index + 1}`;
           setEarnPositionsStatus(`Sending ${label}...`);
-          const txResult = await oms.wallet.sendTransaction({
-            chainId: String(transaction.chainId),
+          const txResult = await omsWallet.wallet.sendTransaction({
+            network: Networks.polygon,
             to: transaction.to,
             value: transaction.value.toString(),
             data: transaction.data,
@@ -2179,11 +2187,11 @@ export default function App() {
     () => [
       {
         label: 'Login',
-        value: formatLoginType(session.loginType),
+        value: formatSessionAuth(session),
       },
       {
         label: 'Email',
-        value: session.sessionEmail ?? 'Unavailable',
+        value: sessionEmail(session) ?? 'Unavailable',
       },
       {
         label: 'Expires',
@@ -2194,12 +2202,7 @@ export default function App() {
         value: `${polygonNetwork?.displayName ?? 'Polygon'} (${POLYGON_CHAIN_ID})`,
       },
     ],
-    [
-      polygonNetwork?.displayName,
-      session.expiresAt,
-      session.loginType,
-      session.sessionEmail,
-    ]
+    [polygonNetwork?.displayName, session]
   );
 
   return (
@@ -2257,7 +2260,7 @@ export default function App() {
                       <SessionDetail
                         label="Email"
                         value={
-                          expiredSessionEvent.session.sessionEmail ??
+                          sessionEmail(expiredSessionEvent.session) ??
                           'Unavailable'
                         }
                       />

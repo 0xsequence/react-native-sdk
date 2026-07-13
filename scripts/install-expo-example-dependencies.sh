@@ -7,7 +7,8 @@ PACKAGE_NAME="$(cd "$ROOT_DIR" && node -p "require('./package.json').name")"
 PACKAGE_VERSION="$(cd "$ROOT_DIR" && node -p "require('./package.json').version")"
 PACKAGE_SPEC="$PACKAGE_NAME@$PACKAGE_VERSION"
 
-if npm view "$PACKAGE_SPEC" version >/dev/null 2>&1; then
+if [[ "${1:-}" == "--published" ]]; then
+  npm --prefix "$EXPO_DIR" install --package-lock-only --ignore-scripts "$PACKAGE_SPEC"
   npm --prefix "$EXPO_DIR" ci
   exit 0
 fi

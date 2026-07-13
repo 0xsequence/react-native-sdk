@@ -42,27 +42,31 @@ export type OmsNativeCompleteAuthResult = {
 
 export type OmsStartOidcRedirectAuthResult = {
   authorizationUrl: string;
-  state: string;
-  challenge: string;
 };
 
 export type OmsNativeOidcRedirectAuthResult = {
   type: string;
-  wallet?: OmsWallet;
-  pendingSelection?: OmsNativePendingWalletSelection;
-  message?: string;
+  result?: OmsNativeCompleteAuthResult;
 };
 
-export type OmsClientSessionState = {
+export type OmsNativeSessionAuth = {
+  type: string;
+  flow?: string | null;
+  issuer?: string | null;
+  provider?: string | null;
+  providerLabel?: string | null;
+  email: string | null;
+};
+
+export type OMSWalletSessionState = {
   walletAddress: string | null;
   expiresAt: string | null;
-  loginType: string | null;
-  sessionEmail: string | null;
+  auth: OmsNativeSessionAuth | null;
 };
 
-export type OmsClientSessionExpiredEvent = {
+export type OMSWalletSessionExpiredEvent = {
   clientId: string;
-  session: OmsClientSessionState;
+  session: OMSWalletSessionState;
   expiredAt: string;
 };
 
@@ -194,6 +198,7 @@ export type OmsSendTransactionResponse = {
   txnId: string;
   status: string;
   txnHash: string | null;
+  statusResolution: 'not-requested' | 'resolved' | 'timed-out';
 };
 
 export type OmsFeeToken = {
@@ -250,11 +255,11 @@ export type OmsListAccessResponse = {
 
 export interface Spec extends TurboModule {
   readonly onFeeOptionSelectionRequest: CodegenTypes.EventEmitter<OmsFeeOptionSelectionRequest>;
-  readonly onSessionExpired: CodegenTypes.EventEmitter<OmsClientSessionExpiredEvent>;
+  readonly onSessionExpired: CodegenTypes.EventEmitter<OMSWalletSessionExpiredEvent>;
 
   createClient(clientId: string, publishableKey: string): Promise<void>;
   getWalletAddress(clientId: string): Promise<string | null>;
-  getSession(clientId: string): Promise<OmsClientSessionState>;
+  getSession(clientId: string): Promise<OMSWalletSessionState>;
   startEmailAuth(clientId: string, email: string): Promise<void>;
   completeEmailAuth(
     clientId: string,
@@ -270,14 +275,17 @@ export interface Spec extends TurboModule {
     audience: string,
     walletSelection: string | null,
     walletType: string | null,
-    sessionLifetimeSeconds: string | null
+    sessionLifetimeSeconds: string | null,
+    provider: string | null,
+    providerLabel: string | null
   ): Promise<OmsNativeCompleteAuthResult>;
   startOidcRedirectAuth(
     clientId: string,
     providerJson: string,
-    redirectUri: string,
+    omsRelayReturnUri: string | null,
     walletType: string | null,
-    relayRedirectUri: string | null,
+    walletSelection: string | null,
+    sessionLifetimeSeconds: string | null,
     authorizeParamsJson: string | null,
     loginHint: string | null
   ): Promise<OmsStartOidcRedirectAuthResult>;
@@ -390,5 +398,5 @@ export interface Spec extends TurboModule {
 }
 
 export default TurboModuleRegistry.getEnforcing<Spec>(
-  'OmsClientReactNativeSdk'
+  'OmsWalletReactNativeSdk'
 );

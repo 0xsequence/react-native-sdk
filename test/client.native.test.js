@@ -6,7 +6,17 @@ const rootDir = path.resolve(__dirname, '..');
 const clientModulePath = path.join(rootDir, 'lib/commonjs/client.native.js');
 const nativeModulePath = path.join(
   rootDir,
-  'lib/commonjs/NativeOmsClientReactNativeSdk.js'
+  'lib/commonjs/NativeOmsWalletReactNativeSdk.js'
+);
+const networksModulePath = path.join(rootDir, 'lib/commonjs/networks.js');
+const feeOptionSelectorsModulePath = path.join(
+  rootDir,
+  'lib/commonjs/feeOptionSelectors.js'
+);
+const errorsModulePath = path.join(rootDir, 'lib/commonjs/errors.js');
+const oidcProvidersModulePath = path.join(
+  rootDir,
+  'lib/commonjs/oidcProviders.js'
 );
 
 const config = {
@@ -71,8 +81,10 @@ function sessionExpiredEvent(id = 'expired') {
     session: {
       walletAddress: `0x${id.replace(/\D/g, '').padStart(40, '1')}`,
       expiresAt: '2026-06-10T00:00:00.000Z',
-      loginType: 'Email',
-      sessionEmail: `${id}@example.com`,
+      auth: {
+        type: 'email',
+        email: `${id}@example.com`,
+      },
     },
     expiredAt: '2026-06-10T00:00:00.000Z',
   };
@@ -130,8 +142,7 @@ function loadClient(overrides = {}) {
       (async () => ({
         walletAddress: null,
         expiresAt: null,
-        loginType: null,
-        sessionEmail: null,
+        auth: null,
       }))
   );
   native.startEmailAuth = makeRecorder(
@@ -155,15 +166,16 @@ function loadClient(overrides = {}) {
     overrides.startOidcRedirectAuth ??
       (async () => ({
         authorizationUrl: 'https://auth.example.com',
-        state: 'state',
-        challenge: 'challenge',
       }))
   );
   native.handleOidcRedirectCallback = makeRecorder(
     calls,
     'handleOidcRedirectCallback',
     overrides.handleOidcRedirectCallback ??
-      (async () => ({ type: 'completed', wallet: wallet() }))
+      (async () => ({
+        type: 'completed',
+        result: walletSelectedResult(),
+      }))
   );
   native.useWallet = makeRecorder(
     calls,
@@ -243,7 +255,7 @@ function loadClient(overrides = {}) {
 }
 
 function createOms(client) {
-  return new client.OMSClient(config);
+  return new client.OMSWallet(config);
 }
 
 function emitSessionExpired(native, clientId, event) {
@@ -263,7 +275,7 @@ async function expectReplayCleared(action) {
   const { client, native } = loadClient();
   const oms = createOms(client);
   const staleEvent = sessionExpiredEvent('stale');
-  emitSessionExpired(native, 'oms-client-1', staleEvent);
+  emitSessionExpired(native, 'oms-wallet-1', staleEvent);
 
   await action(oms, native);
 
@@ -278,35 +290,83 @@ test('creates a native client and routes instance calls with its client id', asy
   await oms.wallet.getSession();
 
   assert.deepEqual(calls.createClient[0], [
-    'oms-client-1',
+    'oms-wallet-1',
     'test-publishable-key',
   ]);
-  assert.deepEqual(calls.getSession[0], ['oms-client-1']);
-  assert.equal(
-    oms.supportedNetworks.some((network) => network.chainId === '137'),
-    true
-  );
+  assert.deepEqual(calls.getSession[0], ['oms-wallet-1']);
 });
 
 test('exposes supported network metadata aligned with native SDKs', () => {
-  const { client } = loadClient();
-  const oms = createOms(client);
+  const { Networks, findNetworkById, findNetworkByName } = require(
+    networksModulePath
+  );
 
   assert.equal(
-    oms.supportedNetworks.find((network) => network.chainId === '43114')
-      ?.explorerUrl,
+    Networks.avalanche.explorerUrl,
     'https://subnets.avax.network/c-chain'
   );
   assert.equal(
-    oms.supportedNetworks.find((network) => network.chainId === '43113')
-      ?.explorerUrl,
+    Networks.avalancheTestnet.explorerUrl,
     'https://subnets-test.avax.network/c-chain'
   );
+  assert.equal(Networks.katana.explorerUrl, 'https://katanascan.com');
+  assert.equal(findNetworkById(137), Networks.polygon);
+  assert.equal(findNetworkByName(' Polygon '), Networks.polygon);
+  assert.equal(Object.isFrozen(Networks.polygon), true);
+});
+
+test('selects the first fee option covered by the available balance', async () => {
+  const { FeeOptionSelectors } = require(feeOptionSelectorsModulePath);
+  const option = (token, feeValue, availableRaw) => ({
+    feeOption: {
+      token: { symbol: token },
+      value: feeValue,
+    },
+    selection: { token },
+    availableRaw,
+  });
+
+  const selected = await FeeOptionSelectors.firstAvailable([
+    option('POL', '101', '100'),
+    option('USDC', '999999999999999999999999', '1000000000000000000000000'),
+    option('WETH', '1', '10'),
+  ]);
+
+  assert.deepEqual(selected, { token: 'USDC' });
   assert.equal(
-    oms.supportedNetworks.find((network) => network.chainId === '747474')
-      ?.explorerUrl,
-    'https://katanascan.com'
+    await FeeOptionSelectors.firstAvailable([option('POL', '101', '100')]),
+    null
   );
+});
+
+test('normalizes native OMS errors into the public error shape', async () => {
+  const nativeError = Object.assign(new Error('No active wallet session'), {
+    code: 'OMS_SESSION_MISSING',
+    userInfo: {
+      code: 'OMS_SESSION_MISSING',
+      operation: 'wallet.getSession',
+      status: null,
+      txnId: null,
+      retryable: false,
+      upstreamError: null,
+    },
+  });
+  const { client } = loadClient({
+    getSession: async () => {
+      throw nativeError;
+    },
+  });
+  const { OMSWalletError } = require(errorsModulePath);
+  const oms = createOms(client);
+
+  await assert.rejects(oms.wallet.getSession(), (error) => {
+    assert.equal(error instanceof OMSWalletError, true);
+    assert.equal(error.code, 'OMS_SESSION_MISSING');
+    assert.equal(error.operation, 'wallet.getSession');
+    assert.equal(error.retryable, false);
+    assert.equal(error.cause, nativeError);
+    return true;
+  });
 });
 
 test('replays native session expiry only to matching client subscribers', () => {
@@ -317,22 +377,22 @@ test('replays native session expiry only to matching client subscribers', () => 
   const secondEvent = sessionExpiredEvent('second');
   const thirdEvent = sessionExpiredEvent('third');
 
-  emitSessionExpired(native, 'oms-client-1', firstEvent);
+  emitSessionExpired(native, 'oms-wallet-1', firstEvent);
 
   const firstSubscriber = subscribe(firstOms);
   const secondSubscriber = subscribe(secondOms);
   assert.deepEqual(firstSubscriber.events, [firstEvent]);
   assert.deepEqual(secondSubscriber.events, []);
 
-  emitSessionExpired(native, 'oms-client-1', secondEvent);
+  emitSessionExpired(native, 'oms-wallet-1', secondEvent);
   assert.deepEqual(firstSubscriber.events, [firstEvent, secondEvent]);
   assert.deepEqual(secondSubscriber.events, []);
 
-  emitSessionExpired(native, 'oms-client-2', thirdEvent);
+  emitSessionExpired(native, 'oms-wallet-2', thirdEvent);
   assert.deepEqual(secondSubscriber.events, [thirdEvent]);
 
   firstSubscriber.subscription.remove();
-  emitSessionExpired(native, 'oms-client-1', thirdEvent);
+  emitSessionExpired(native, 'oms-wallet-1', thirdEvent);
   assert.deepEqual(firstSubscriber.events, [firstEvent, secondEvent]);
 });
 
@@ -346,8 +406,8 @@ test('clears cached session expiry when auth or session state is reset', async (
         issuer: 'issuer',
         clientId: 'client',
         authorizationUrl: 'url',
+        providerRedirectUri: 'example://auth',
       },
-      redirectUri: 'example://auth',
     })
   );
   await expectReplayCleared((oms) =>
@@ -381,20 +441,21 @@ test('routes pending wallet selection activation with the owning client id', asy
       code: '123456',
       walletSelection: 'manual',
     });
+    assert.equal('id' in result.pendingSelection, false);
     const staleEvent = sessionExpiredEvent(selectionAction);
-    emitSessionExpired(native, 'oms-client-1', staleEvent);
+    emitSessionExpired(native, 'oms-wallet-1', staleEvent);
 
     if (selectionAction === 'selectWallet') {
       await result.pendingSelection.selectWallet('wallet-1');
       assert.deepEqual(calls.selectWalletForPendingSelection[0], [
-        'oms-client-1',
+        'oms-wallet-1',
         'pending-1',
         'wallet-1',
       ]);
     } else {
       await result.pendingSelection.createAndSelectWallet('reference');
       assert.deepEqual(calls.createAndSelectWalletForPendingSelection[0], [
-        'oms-client-1',
+        'oms-wallet-1',
         'pending-1',
         'reference',
       ]);
@@ -412,7 +473,7 @@ test('does not clear cached session expiry for ignored OIDC redirect callbacks',
     });
     const oms = createOms(client);
     const staleEvent = sessionExpiredEvent(type);
-    emitSessionExpired(native, 'oms-client-1', staleEvent);
+    emitSessionExpired(native, 'oms-wallet-1', staleEvent);
 
     assert.deepEqual(await oms.wallet.handleOidcRedirectCallback(), { type });
 
@@ -434,14 +495,14 @@ test('passes auth session lifetime and login hint parameters to native', async (
   await oms.wallet.completeEmailAuth({ code: '654321' });
 
   assert.deepEqual(calls.completeEmailAuth[0], [
-    'oms-client-1',
+    'oms-wallet-1',
     '123456',
     'manual',
     'ethereum',
     '3600',
   ]);
   assert.deepEqual(calls.completeEmailAuth[1], [
-    'oms-client-1',
+    'oms-wallet-1',
     '654321',
     null,
     null,
@@ -455,15 +516,19 @@ test('passes auth session lifetime and login hint parameters to native', async (
     walletSelection: 'automatic',
     walletType: 'ethereum',
     sessionLifetimeSeconds: 7200,
+    provider: 'google',
+    providerLabel: 'Google',
   });
   assert.deepEqual(calls.signInWithOidcIdToken[0], [
-    'oms-client-1',
+    'oms-wallet-1',
     'id-token',
     'https://issuer.example.com',
     'audience',
     'automatic',
     'ethereum',
     '7200',
+    'google',
+    'Google',
   ]);
 
   await oms.wallet.handleOidcRedirectCallback({
@@ -473,13 +538,13 @@ test('passes auth session lifetime and login hint parameters to native', async (
   });
   await oms.wallet.handleOidcRedirectCallback();
   assert.deepEqual(calls.handleOidcRedirectCallback[0], [
-    'oms-client-1',
+    'oms-wallet-1',
     'example://auth?code=abc',
     'manual',
     '1800',
   ]);
   assert.deepEqual(calls.handleOidcRedirectCallback[1], [
-    'oms-client-1',
+    'oms-wallet-1',
     null,
     null,
     null,
@@ -489,34 +554,37 @@ test('passes auth session lifetime and login hint parameters to native', async (
     issuer: 'issuer',
     clientId: 'client',
     authorizationUrl: 'https://auth.example.com',
-    relayRedirectUri: 'https://relay.example.com/callback',
+    providerRedirectUri: 'example://provider/callback',
   };
   await oms.wallet.startOidcRedirectAuth({
     provider,
-    redirectUri: 'example://auth',
     walletType: 'ethereum',
+    walletSelection: 'manual',
+    sessionLifetimeSeconds: 5400,
     authorizeParams: { prompt: 'select_account' },
     loginHint: 'user@example.com',
   });
+  const { OmsRelayOidcProviders } = require(oidcProvidersModulePath);
   await oms.wallet.startOidcRedirectAuth({
-    provider,
-    redirectUri: 'example://auth',
-    relayRedirectUri: null,
+    provider: OmsRelayOidcProviders.google,
+    omsRelayReturnUri: 'example://auth',
   });
 
   assert.deepEqual(calls.startOidcRedirectAuth[0], [
-    'oms-client-1',
-    JSON.stringify(provider),
-    'example://auth',
+    'oms-wallet-1',
+    JSON.stringify({ ...provider, type: 'custom' }),
+    null,
     'ethereum',
-    'https://relay.example.com/callback',
+    'manual',
+    '5400',
     JSON.stringify({ prompt: 'select_account' }),
     'user@example.com',
   ]);
   assert.deepEqual(calls.startOidcRedirectAuth[1], [
-    'oms-client-1',
-    JSON.stringify(provider),
+    'oms-wallet-1',
+    JSON.stringify({ type: 'oms-relay', provider: 'google' }),
     'example://auth',
+    null,
     null,
     null,
     null,
@@ -527,17 +595,15 @@ test('passes auth session lifetime and login hint parameters to native', async (
 test('serializes indexer balance and transaction history params for native', async () => {
   const { calls, client } = loadClient();
   const oms = createOms(client);
-  const polygon = oms.supportedNetworks.find(
-    (network) => network.chainId === '137'
-  );
+  const { Networks } = require(networksModulePath);
 
   await oms.indexer.getBalances({
     walletAddress: '0xwallet',
-    networks: [polygon],
+    networks: [Networks.polygon],
     includeMetadata: false,
     page: { page: 1, pageSize: 25 },
   });
-  assert.equal(calls.getBalances[0][0], 'oms-client-1');
+  assert.equal(calls.getBalances[0][0], 'oms-wallet-1');
   assert.deepEqual(JSON.parse(calls.getBalances[0][1]), {
     walletAddress: '0xwallet',
     networks: ['137'],
@@ -547,11 +613,11 @@ test('serializes indexer balance and transaction history params for native', asy
 
   await oms.indexer.getTransactionHistory({
     walletAddress: '0xwallet',
-    networks: [polygon],
+    networks: [Networks.polygon],
     transactionHashes: ['0xtxn'],
     metadataOptions: { includeContracts: ['0xcontract'] },
   });
-  assert.equal(calls.getTransactionHistory[0][0], 'oms-client-1');
+  assert.equal(calls.getTransactionHistory[0][0], 'oms-wallet-1');
   assert.deepEqual(JSON.parse(calls.getTransactionHistory[0][1]), {
     walletAddress: '0xwallet',
     networks: ['137'],
@@ -604,13 +670,15 @@ test('round-trips fee option selection token from native request', async () => {
         txnId: 'txn-1',
         status: 'sent',
         txnHash: '0xtxn',
+        statusResolution: 'resolved',
       };
     },
   });
   const oms = createOms(client);
+  const { Networks } = require(networksModulePath);
 
   const result = await oms.wallet.sendTransaction({
-    chainId: '137',
+    network: Networks.polygon,
     to: '0xrecipient',
     value: '0',
     selectFeeOption: async (feeOptions) => {
@@ -623,6 +691,7 @@ test('round-trips fee option selection token from native request', async () => {
     txnId: 'txn-1',
     status: 'sent',
     txnHash: '0xtxn',
+    statusResolution: 'resolved',
   });
   assert.deepEqual(capturedFeeOptions, [feeOption]);
   assert.deepEqual(calls.respondToFeeOptionSelection[0], [
@@ -631,7 +700,7 @@ test('round-trips fee option selection token from native request', async () => {
     null,
   ]);
   assert.deepEqual(calls.sendTransaction[0].slice(0, 8), [
-    'oms-client-1',
+    'oms-wallet-1',
     '137',
     '0xrecipient',
     '0',
