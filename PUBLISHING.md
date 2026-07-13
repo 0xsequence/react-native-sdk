@@ -25,7 +25,7 @@ Update:
 - `CHANGELOG.md`
 - native SDK references if they changed:
   - `android/build.gradle`
-  - `OmsClientReactNativeSdk.podspec`
+  - `OmsWalletReactNativeSdk.podspec`
   - `README.md`
   - `API.md`
 
@@ -43,17 +43,15 @@ Run the standard checks from a clean worktree:
 
 ```sh
 git status --short
-yarn lint
-yarn typecheck
-yarn test
 yarn expo-example:install
+yarn verify
 npm --prefix examples/expo-example run typecheck
 yarn sdk-example build:android
 yarn sdk-example build:ios
 ```
 
-Do not publish if any command fails. `yarn expo-example:install` uses the published npm package
-when this SDK version exists, or a local tarball when it has not been published yet.
+Do not publish if any command fails. `yarn expo-example:install` packs the local SDK source so the
+standalone Expo example is checked against the release candidate.
 
 If native SDK versions changed, confirm those versions are already available from Maven Central and
 CocoaPods before merging the release PR.
@@ -68,7 +66,7 @@ yarn npm publish --dry-run --access public --tag alpha
 ```
 
 The dry run should include `lib`, `src`, `android`, `ios`, and
-`OmsClientReactNativeSdk.podspec`.
+`OmsWalletReactNativeSdk.podspec`.
 
 ## 5. Publish
 
@@ -92,7 +90,7 @@ npm view @0xsequence/oms-react-native-sdk@<version> version dist.integrity
 Refresh and verify the standalone Expo example lockfile against the published npm tarball:
 
 ```sh
-npm --prefix examples/expo-example install --package-lock-only --ignore-scripts
+yarn expo-example:install:published
 git diff --exit-code examples/expo-example/package-lock.json
 ```
 

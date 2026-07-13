@@ -145,8 +145,8 @@ Android and iOS PR checks pass before merging; validate locally when you need fa
   `yarn expo-example:install` from the root to install dependencies, then run Expo example scripts
   from the root.
 - `yarn prepare` regenerates `lib/` — if builds look stale, run `yarn clean && yarn prepare`.
-- The podspec resolves `oms-client-swift-sdk` and the Android module resolves
-  `io.github.0xsequence:oms-client-kotlin-sdk` — bump native SDK versions in the podspec and
+- The podspec resolves `oms-wallet-swift-sdk` and the Android module resolves
+  `io.github.0xsequence:oms-wallet-kotlin-sdk` — bump native SDK versions in the podspec and
   `android/build.gradle` together.
 - Turbo cache can mask failures: if something seems wrong, run with `--force` to skip the cache.
 - Signed commits are required (enforced by branch protection) — configure `git commit -S` locally.
@@ -156,7 +156,7 @@ Android and iOS PR checks pass before merging; validate locally when you need fa
 | When this changes…                        | Also update…                                              |
 |-------------------------------------------|-----------------------------------------------------------|
 | `src/index.tsx` exports                   | `API.md`, `lib/` (run `yarn prepare`)                     |
-| Native SDK version (Swift / Kotlin)       | `OmsClientReactNativeSdk.podspec`, `android/build.gradle` |
+| Native SDK version (Swift / Kotlin)       | `OmsWalletReactNativeSdk.podspec`, `android/build.gradle` |
 | `package.json` scripts or test commands   | `TESTING.md`, `.github/workflows/ci.yml`                  |
 | Node version (`.nvmrc`)                   | `turbo.json#globalDependencies`, CI setup action          |
 | Repo structure (new top-level dirs)       | `AGENTS.md` structure section                             |

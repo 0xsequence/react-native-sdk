@@ -1,6 +1,6 @@
 # @0xsequence/oms-react-native-sdk
 
-React Native SDK for the OMS platform.
+React Native SDK for OMS Wallet.
 
 ## Installation
 
@@ -8,181 +8,128 @@ React Native SDK for the OMS platform.
 npm install @0xsequence/oms-react-native-sdk
 ```
 
-## Usage
+The package contains native code. Bare React Native apps can use autolinking. Expo apps require a development build, prebuild, or EAS Build; Expo Go is not supported.
+
+## Create A Wallet Client
 
 ```ts
-import { OMSClient } from '@0xsequence/oms-react-native-sdk';
+import { OMSWallet } from '@0xsequence/oms-react-native-sdk';
 
-const oms = new OMSClient({
+const omsWallet = new OMSWallet({
   publishableKey: '<publishable-key>',
 });
+```
 
-await oms.wallet.startEmailAuth('player@example.com');
-const auth = await oms.wallet.completeEmailAuth({ code: '<otp-code>' });
+## Authenticate
+
+For email authentication, request a code and complete authentication with the code the user receives:
+
+```ts
+await omsWallet.wallet.startEmailAuth('player@example.com');
+
+const auth = await omsWallet.wallet.completeEmailAuth({
+  code: '<otp-code>',
+});
 
 if (auth.type === 'walletSelection') {
-  const selected = await auth.pendingSelection.selectWallet('<wallet-id>');
-  console.log(selected.walletAddress);
-} else {
-  console.log(auth.walletAddress);
-}
-
-const signature = await oms.wallet.signMessage(
-  '137',
-  'Hello from React Native'
-);
-const address = await oms.wallet.getWalletAddress();
-```
-
-### OIDC Redirect Auth
-
-Apps own browser opening and deep-link handling. Use a system auth browser such
-as Custom Tabs or ASWebAuthenticationSession/SFAuthenticationSession; do not run
-provider OAuth in an embedded WebView.
-
-```ts
-import { InAppBrowser } from 'react-native-inappbrowser-reborn';
-import { OidcProviders } from '@0xsequence/oms-react-native-sdk';
-
-const started = await oms.wallet.startOidcRedirectAuth({
-  provider: OidcProviders.google(),
-  redirectUri: 'com.example.app:/oauth/callback',
-});
-
-const browserResult = await InAppBrowser.openAuth(
-  started.authorizationUrl,
-  'com.example.app:/oauth/callback'
-);
-
-if (browserResult.type !== 'success') {
-  throw new Error('OIDC sign-in was cancelled');
-}
-
-const result = await oms.wallet.handleOidcRedirectCallback({
-  callbackUrl: browserResult.url,
-  walletSelection: 'manual',
-});
-
-if (result.type === 'walletSelection') {
-  await result.pendingSelection.createAndSelectWallet();
+  await auth.pendingSelection.selectWallet(auth.wallets[0]!.id);
 }
 ```
 
-### Indexer
+For mobile OIDC integrations, obtain an ID token with the provider's native SDK and pass it to OMS Wallet:
 
 ```ts
-const polygon = oms.supportedNetworks.find(
-  (network) => network.chainId === '137'
-);
+await omsWallet.wallet.signInWithOidcIdToken({
+  idToken,
+  issuer: 'https://accounts.google.com',
+  audience: '<google-client-id>',
+  provider: 'google',
+  providerLabel: 'Google',
+});
+```
 
-const balances = await oms.indexer.getBalances({
-  walletAddress: address!,
-  networks: polygon ? [polygon] : undefined,
+OMS relay providers are available for redirect authentication. The app owns browser presentation and callback handling:
+
+```ts
+import {
+  OmsRelayOidcProviders,
+} from '@0xsequence/oms-react-native-sdk';
+
+const callbackUri = 'com.example.app://auth/callback';
+const started = await omsWallet.wallet.startOidcRedirectAuth({
+  provider: OmsRelayOidcProviders.google,
+  omsRelayReturnUri: callbackUri,
+});
+
+// Open started.authorizationUrl in a system authentication browser.
+
+const callback = await omsWallet.wallet.handleOidcRedirectCallback({
+  callbackUrl,
+});
+
+if (callback.type === 'completed') {
+  console.log(callback.result.walletAddress);
+}
+```
+
+Use `CustomOidcProviderConfig` when your project owns the OIDC provider configuration and redirect URI.
+
+## Use The Wallet
+
+```ts
+import {
+  FeeOptionSelectors,
+  Networks,
+  parseUnits,
+} from '@0xsequence/oms-react-native-sdk';
+
+const signature = await omsWallet.wallet.signMessage({
+  network: Networks.polygon,
+  message: 'Hello from React Native',
+});
+
+const transaction = await omsWallet.wallet.sendTransaction({
+  network: Networks.polygon,
+  to: '0xRecipient',
+  value: parseUnits('0.01', 18),
+  selectFeeOption: FeeOptionSelectors.firstAvailable,
+});
+```
+
+`sendTransaction` and `callContract` wait for transaction status by default. Set `waitForStatus: false` to return after submission.
+
+## Query The Indexer
+
+```ts
+const walletAddress = await omsWallet.wallet.getWalletAddress();
+
+const balances = await omsWallet.indexer.getBalances({
+  walletAddress: walletAddress!,
+  networks: [Networks.polygon],
   includeMetadata: true,
 });
-
-const history = await oms.indexer.getTransactionHistory({
-  walletAddress: address!,
-  networks: polygon ? [polygon] : undefined,
-});
 ```
 
-`getBalances` returns `nativeBalances` separately from token-contract
-`balances`.
+`getBalances` returns native-token balances in `nativeBalances` and token-contract balances in `balances`.
 
-### Fee Option Selection
+## Native Requirements
 
-```ts
-const txResult = await oms.wallet.sendTransaction({
-  chainId: '137',
-  to: '0xRecipient',
-  value: '0',
-  selectFeeOption: async (feeOptions) => {
-    const selected =
-      feeOptions.find((option) => option.availableRaw !== '0') ?? feeOptions[0];
-    return selected ? selected.selection : null;
-  },
-});
-```
+- Android: `minSdk 24`, `compileSdk 34` or newer, Java 17, and Android 10 / API 29 or newer at runtime.
+- iOS: deployment target 15.0 or newer.
+- Redirect authentication: configure the consuming app's callback URI scheme or universal/app link.
 
-`selectFeeOption` receives the same enriched fee options as the native SDKs:
-`feeOption`, wallet `balance`, formatted `available`, raw `availableRaw`, and
-`decimals`. Return `option.selection` for a quoted option.
+The wrapper resolves `io.github.0xsequence:oms-wallet-kotlin-sdk:0.2.0` on Android and `oms-wallet-swift-sdk` `0.2.0` on iOS.
 
-### Unit Formatting
+## Reference
 
-```ts
-import { formatUnits, parseUnits } from '@0xsequence/oms-react-native-sdk';
-
-const raw = parseUnits('12.34', 6); // "12340000"
-const formatted = formatUnits(raw, 6); // "12.34"
-const rounded = parseUnits('1.235', 2); // "124"
-```
-
-By default `parseUnits` rounds fractional precision beyond `decimals` to the
-nearest base unit, matching the native SDKs. Pass `{ roundingMode: 'reject' }`
-to fail on non-zero excess precision.
-
-## API Reference
-
-See [API.md](./API.md) for the public API surface and TypeScript shapes.
-
-## Supported APIs
-
-- Email OTP auth, OIDC ID-token auth, and OIDC redirect auth
-- Manual wallet selection
-- Session restore, sign-out, wallet address, and session metadata
-- Wallet list, use existing wallet, and create wallet
-- Synchronous supported network list via `oms.supportedNetworks`
-- Message and typed-data signing and verification
-- Transaction sending, custom fee-option selection, contract calls, and transaction status lookup
-- Indexer balances and transaction history
-- Wallet ID token retrieval
-- Wallet access list, access-page iteration, single-page access lookup, and revoke access
-- Unit parsing and formatting helpers
-
-## Native SDK Dependencies
-
-The React Native SDK owns its native SDK dependencies. Android resolves
-`io.github.0xsequence:oms-client-kotlin-sdk:0.1.0-alpha.4` from Maven, and iOS
-resolves `oms-client-swift-sdk` `0.1.0-alpha.4` from CocoaPods.
-
-The React Native wrapper itself is distributed through npm. React Native
-autolinking consumes the wrapper podspec and Android project from
-`node_modules`.
-
-Example apps should depend on `@0xsequence/oms-react-native-sdk`, not directly
-on the underlying native SDKs.
-
-## Consumer Requirements
-
-- Bare React Native apps are supported through normal React Native autolinking.
-- Expo apps must use a development build, Expo prebuild/EAS Build, or the bare
-  workflow. Expo Go cannot load this SDK because it includes custom native code.
-- Android builds need `minSdk 24`, `compileSdk 34` or newer, and Java 17 compile
-  options.
-- Supported Android devices need Android 10 / API 29 or newer.
-- iOS apps need deployment target 15.0 or newer.
-- OIDC redirect auth requires the consuming app to configure its own URL scheme
-  or app links.
+See [API.md](./API.md) for the public TypeScript API and [PUBLISHING.md](./PUBLISHING.md) for the release process.
 
 ## Examples
 
-- `examples/sdk-example` is the bare React Native SDK demo.
-- `examples/trails-actions-example` is the bare React Native demo for OMS wallet
-  flow with Trails action resolution.
-- `examples/expo-example` is a standalone Expo development-build demo that uses
-  `expo-web-browser` and the npm package. It is intentionally excluded from the
-  root Yarn workspace so it is not linked to the local SDK source.
-
-## Publishing
-
-See [PUBLISHING.md](./PUBLISHING.md) for the release process.
+- `examples/sdk-example`: bare React Native wallet demo.
+- `examples/trails-actions-example`: bare React Native Trails actions demo.
+- `examples/expo-example`: standalone Expo development-build demo.
 
 ## License
 
 MIT
-
----
-
-Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)

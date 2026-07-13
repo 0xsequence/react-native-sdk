@@ -1,4 +1,4 @@
-# TESTING.md
+# Testing
 
 How testing works in this repo. `AGENTS.md` points here so agents know how to verify changes.
 
@@ -17,14 +17,8 @@ Native device/simulator verification is still manual unless called out by a spec
 Run these before merging any change:
 
 ```bash
-# Lint and formatting
-yarn lint
-
-# TypeScript type-check (library)
-yarn typecheck
-
-# Unit tests
-yarn test
+# Lint, typecheck, and unit tests
+yarn verify
 
 # TypeScript type-check (Expo example)
 yarn expo-example:install
@@ -46,7 +40,7 @@ Android and iOS CI checks pass before merging; validate locally when you need fa
   - Runner: Node's built-in `node:test`.
   - Location: `test/*.test.js`.
   - Command: `yarn test`.
-  - Current native bridge tests mock `lib/commonjs/NativeOmsClientReactNativeSdk.js` after
+  - Current native bridge tests mock `lib/commonjs/NativeOmsWalletReactNativeSdk.js` after
     `yarn prepare`, then import `lib/commonjs/client.native.js`.
 
 - **Integration tests** — tests that exercise the native bridge on a real device or simulator.
@@ -61,7 +55,7 @@ Android and iOS CI checks pass before merging; validate locally when you need fa
   test runner later.
 - Every bug fix should include a regression test.
 - Every new exported function should have at least one happy-path unit test.
-- Keep unit tests free of native-bridge calls — mock `NativeOmsClientReactNativeSdk` at the module
+- Keep unit tests free of native-bridge calls — mock `NativeOmsWalletReactNativeSdk` at the module
   boundary.
 
 ---
@@ -76,4 +70,4 @@ Android and iOS CI checks pass before merging; validate locally when you need fa
 | Typecheck (Expo example)    | `npm --prefix examples/expo-example run typecheck` |
 | Build library               | `yarn prepare`                               |
 | Run unit tests              | `yarn test`                                  |
-| Full CI equivalent          | `yarn lint && yarn typecheck && yarn test`   |
+| SDK verification            | `yarn verify`                                |

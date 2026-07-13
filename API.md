@@ -1,74 +1,35 @@
 # Public API
 
-This document describes the public TypeScript API for
-`@0xsequence/oms-react-native-sdk`.
-
-## Installation
-
-```sh
-npm install @0xsequence/oms-react-native-sdk
-```
-
-## Native Requirements
-
-Android builds need `minSdk` 24 or newer, `compileSdk` 34 or newer, and Java 17
-compile options. Supported Android devices need Android 10 / API 29 or newer.
+Reference for `@0xsequence/oms-react-native-sdk`.
 
 ## Client
 
 ```ts
-import { OMSClient } from '@0xsequence/oms-react-native-sdk';
+import { OMSWallet } from '@0xsequence/oms-react-native-sdk';
 
-const oms = new OMSClient({
+const omsWallet = new OMSWallet({
   publishableKey: '<publishable-key>',
 });
 ```
 
 ```ts
-new OMSClient(config: OmsClientConfig)
+new OMSWallet(params: OMSWalletParams)
 
-type OmsClientConfig = {
+type OMSWalletParams = {
   publishableKey: string;
 };
 ```
 
-`OMSClient` exposes `wallet`, `indexer`, and `supportedNetworks`.
+`OMSWallet` exposes `wallet` and `indexer` clients.
 
-## Wallet
+## Authentication
 
-All wallet APIs are accessed through `oms.wallet`.
-
-### Session
+### Email
 
 ```ts
-oms.wallet.getWalletAddress(): Promise<string | null>
-oms.wallet.getSession(): Promise<OmsClientSessionState>
-oms.wallet.onSessionExpired(
-  listener: (event: OmsClientSessionExpiredEvent) => void
-): { remove(): void }
-oms.wallet.signOut(): Promise<void>
-```
+omsWallet.wallet.startEmailAuth(email: string): Promise<void>
 
-```ts
-type OmsClientSessionState = {
-  walletAddress: string | null;
-  expiresAt: string | null;
-  loginType: 'Email' | 'GoogleAuth' | 'Oidc' | null;
-  sessionEmail: string | null;
-};
-
-type OmsClientSessionExpiredEvent = {
-  session: OmsClientSessionState;
-  expiredAt: string;
-};
-```
-
-### Email Auth
-
-```ts
-oms.wallet.startEmailAuth(email: string): Promise<void>
-
-oms.wallet.completeEmailAuth({
+omsWallet.wallet.completeEmailAuth({
   code: string;
   walletSelection?: 'automatic' | 'manual';
   walletType?: 'ethereum';
@@ -76,75 +37,82 @@ oms.wallet.completeEmailAuth({
 }): Promise<OmsCompleteAuthResult>
 ```
 
-### OIDC ID Token Auth
+### OIDC ID Token
 
 ```ts
-oms.wallet.signInWithOidcIdToken({
+omsWallet.wallet.signInWithOidcIdToken({
   idToken: string;
   issuer: string;
   audience: string;
   walletSelection?: 'automatic' | 'manual';
   walletType?: 'ethereum';
   sessionLifetimeSeconds?: number | null;
+  provider?: string | null;
+  providerLabel?: string | null;
 }): Promise<OmsCompleteAuthResult>
 ```
 
-### OIDC Redirect Auth
+### OIDC Redirect
+
+Use the fixed OMS relay provider values with an app callback URI:
 
 ```ts
-type OidcProviderConfig = {
+OmsRelayOidcProviders.google
+OmsRelayOidcProviders.apple
+
+omsWallet.wallet.startOidcRedirectAuth({
+  provider: OmsRelayOidcProviders.google;
+  omsRelayReturnUri: string;
+  walletType?: 'ethereum';
+  walletSelection?: 'automatic' | 'manual' | null;
+  sessionLifetimeSeconds?: number | null;
+  loginHint?: string | null;
+}): Promise<{ authorizationUrl: string }>
+```
+
+For a project-owned provider, pass its complete configuration. `providerRedirectUri` is the URI registered with that provider. `omsRelayReturnUri` is not accepted for custom providers.
+
+```ts
+type CustomOidcProviderConfig = {
   issuer: string;
   clientId: string;
   authorizationUrl: string;
+  providerRedirectUri: string;
+  provider?: string | null;
+  providerLabel?: string | null;
   scopes?: string[];
-  relayRedirectUri?: string | null;
   authorizeParams?: Record<string, string>;
+  authMode?: 'auth-code' | 'auth-code-pkce';
 };
 
-OidcProviders.google(params?: {
-  clientId?: string;
-  relayRedirectUri?: string | null;
-  scopes?: string[];
-  authorizeParams?: Record<string, string>;
-}): OidcProviderConfig
+omsWallet.wallet.startOidcRedirectAuth({
+  provider: CustomOidcProviderConfig;
+  authorizeParams?: Record<string, string> | null;
+  walletType?: 'ethereum';
+  walletSelection?: 'automatic' | 'manual' | null;
+  sessionLifetimeSeconds?: number | null;
+  loginHint?: string | null;
+}): Promise<{ authorizationUrl: string }>
 ```
 
+Complete a redirect after the app receives the callback URI:
+
 ```ts
-oms.wallet.startOidcRedirectAuth({
-  provider: OidcProviderConfig;
-  redirectUri: string;
-  walletType?: 'ethereum';
-  relayRedirectUri?: string | null;
-  authorizeParams?: Record<string, string> | null;
-  loginHint?: string | null;
-}): Promise<OmsStartOidcRedirectAuthResult>
-
-type OmsStartOidcRedirectAuthResult = {
-  authorizationUrl: string;
-  state: string;
-  challenge: string;
-};
-
-oms.wallet.handleOidcRedirectCallback({
+omsWallet.wallet.handleOidcRedirectCallback({
   callbackUrl?: string | null;
   walletSelection?: 'automatic' | 'manual';
   sessionLifetimeSeconds?: number | null;
-}): Promise<OmsOidcRedirectAuthResult>
-```
+} = {}): Promise<OmsOidcRedirectAuthResult>
 
-Apps own browser opening and deep-link handling. Open `authorizationUrl` with a
-system auth browser, then pass the resulting app-link URL to
-`handleOidcRedirectCallback`.
+type OmsOidcRedirectAuthResult =
+  | { type: 'completed'; result: OmsCompleteAuthResult }
+  | { type: 'notOidcRedirectCallback' }
+  | { type: 'noPendingAuth' };
+```
 
 ### Auth Results
 
 ```ts
-type OmsCredentialInfo = {
-  credentialId: string;
-  expiresAt: string;
-  isCaller: boolean;
-};
-
 type OmsCompleteAuthResult =
   | {
       type: 'walletSelected';
@@ -162,15 +130,7 @@ type OmsCompleteAuthResult =
       pendingSelection: OmsPendingWalletSelection;
     };
 
-type OmsOidcRedirectAuthResult =
-  | { type: 'completed'; wallet: OmsWallet }
-  | { type: 'walletSelection'; pendingSelection: OmsPendingWalletSelection }
-  | { type: 'notOidcRedirectCallback' }
-  | { type: 'noPendingAuth' }
-  | { type: 'failed'; message: string };
-
 type OmsPendingWalletSelection = {
-  id: string;
   walletType: 'ethereum';
   wallets: OmsWallet[];
   credential: OmsCredentialInfo;
@@ -181,61 +141,122 @@ type OmsPendingWalletSelection = {
 };
 ```
 
-### Wallets
+The native pending-selection identifier is intentionally not public. Use the methods on `pendingSelection`.
+
+## Session
 
 ```ts
-oms.wallet.listWallets(): Promise<OmsWallet[]>
-oms.wallet.useWallet(walletId: string): Promise<OmsWalletActivationResult>
-oms.wallet.createWallet({
+omsWallet.wallet.getWalletAddress(): Promise<string | null>
+omsWallet.wallet.getSession(): Promise<OMSWalletSessionState>
+omsWallet.wallet.onSessionExpired(
+  listener: (event: OMSWalletSessionExpiredEvent) => void
+): { remove(): void }
+omsWallet.wallet.signOut(): Promise<void>
+```
+
+```ts
+type OMSWalletSessionState = {
+  walletAddress: string | null;
+  expiresAt: string | null;
+  auth:
+    | { type: 'email'; email: string | null }
+    | {
+        type: 'oidc';
+        flow: 'redirect' | 'id-token';
+        issuer: string;
+        provider: string | null;
+        providerLabel: string | null;
+        email: string | null;
+      }
+    | null;
+};
+
+type OMSWalletSessionExpiredEvent = {
+  session: OMSWalletSessionState;
+  expiredAt: string;
+};
+```
+
+## Wallet Management
+
+```ts
+omsWallet.wallet.listWallets(): Promise<OmsWallet[]>
+omsWallet.wallet.useWallet(walletId: string): Promise<OmsWalletActivationResult>
+omsWallet.wallet.createWallet({
   walletType?: 'ethereum';
   reference?: string | null;
 } = {}): Promise<OmsWalletActivationResult>
 ```
 
-```ts
-type OmsWallet = {
-  id: string;
-  type: string;
-  address: string;
-  reference: string | null;
-};
+## Networks
 
-type OmsWalletActivationResult = {
-  walletAddress: string;
-  wallet: OmsWallet;
-};
+Wallet and indexer methods accept exported `Network` values:
+
+```ts
+Networks.mainnet
+Networks.sepolia
+Networks.polygon
+Networks.amoy
+Networks.arbitrum
+Networks.arbitrumSepolia
+Networks.optimism
+Networks.optimismSepolia
+Networks.base
+Networks.baseSepolia
+Networks.bsc
+Networks.bscTestnet
+Networks.arbitrumNova
+Networks.avalanche
+Networks.avalancheTestnet
+Networks.katana
+
+findNetworkById(chainId: number): Network | undefined
+findNetworkByName(name: string): Network | undefined
 ```
 
-### Signing
+```ts
+interface Network {
+  readonly id: number;
+  readonly name: string;
+  readonly nativeTokenSymbol: string;
+  readonly explorerUrl: string;
+  readonly displayName: string;
+}
+```
+
+The predefined network values and `Networks` registry are frozen. Arbitrary custom networks are not supported.
+
+## Signing
 
 ```ts
-oms.wallet.signMessage(chainId: string, message: string): Promise<string>
+omsWallet.wallet.signMessage({
+  network: Network;
+  message: string;
+}): Promise<string>
 
-oms.wallet.signTypedData({
-  chainId: string;
+omsWallet.wallet.signTypedData({
+  network: Network;
   typedData: unknown;
 }): Promise<string>
 
-oms.wallet.verifyMessageSignature({
-  chainId: string;
+omsWallet.wallet.isValidMessageSignature({
+  network: Network;
   message: string;
   signature: string;
 }): Promise<boolean>
 
-oms.wallet.verifyTypedDataSignature({
-  chainId: string;
+omsWallet.wallet.isValidTypedDataSignature({
+  network: Network;
   typedData: unknown;
   signature: string;
 }): Promise<boolean>
 ```
 
-Signature verification checks against the active wallet session.
-
-### Transactions
+## Transactions
 
 ```ts
-oms.wallet.sendTransaction({
-  chainId: string;
+omsWallet.wallet.sendTransaction({
+  network: Network;
   to: string;
   value: string;
   data?: string | null;
@@ -245,8 +266,8 @@ oms.wallet.sendTransaction({
   statusPolling?: OmsTransactionStatusPollingOptions;
 }): Promise<OmsSendTransactionResponse>
 
-oms.wallet.callContract({
-  chainId: string;
+omsWallet.wallet.callContract({
+  network: Network;
   contractAddress: string;
   method: string;
   args?: { type: string; value: unknown }[] | null;
@@ -256,19 +277,19 @@ oms.wallet.callContract({
   statusPolling?: OmsTransactionStatusPollingOptions;
 }): Promise<OmsSendTransactionResponse>
 
-oms.wallet.getTransactionStatus(txnId: string): Promise<OmsTransactionStatus>
+omsWallet.wallet.getTransactionStatus(
+  txnId: string
+): Promise<OmsTransactionStatus>
 ```
+
+`waitForStatus` defaults to `true`. `value` is a raw base-unit integer string.
 
 ```ts
 type OmsSendTransactionResponse = {
   txnId: string;
   status: string;
   txnHash: string | null;
-};
-
-type OmsTransactionStatus = {
-  status: string;
-  txnHash: string | null;
+  statusResolution: 'not-requested' | 'resolved' | 'timed-out';
 };
 
 type OmsTransactionStatusPollingOptions = {
@@ -279,9 +300,6 @@ type OmsTransactionStatusPollingOptions = {
 };
 ```
 
-`value` is a raw base-unit integer string. Use `parseUnits` for display-value
-conversion before sending.
-
 ### Fee Selection
 
 ```ts
@@ -289,96 +307,53 @@ type OmsFeeOptionSelector = (
   feeOptions: OmsFeeOptionWithBalance[]
 ) => OmsFeeOptionSelection | null | Promise<OmsFeeOptionSelection | null>;
 
-type OmsFeeOptionSelection = {
-  token: string;
-};
-
-type OmsFeeToken = {
-  network: string;
-  name: string;
-  symbol: string;
-  type: string;
-  decimals: number | null;
-  logoUrl: string | null;
-  contractAddress: string | null;
-  tokenId: string | null;
-};
-
-type OmsFeeOption = {
-  token: OmsFeeToken;
-  value: string;
-  displayValue: string;
-};
-
-type OmsFeeOptionWithBalance = {
-  feeOption: OmsFeeOption;
-  selection: OmsFeeOptionSelection;
-  balance: OmsTokenBalance | null;
-  available: string | null;
-  availableRaw: string | null;
-  decimals: number | null;
-};
+FeeOptionSelectors.firstAvailable
 ```
 
-Return `option.selection` when choosing a quoted fee option.
+`firstAvailable` returns the first quoted option whose raw available balance covers the fee, or `null` when no option is affordable.
 
-### ID Token And Access
+## Wallet ID Tokens And Access
 
 ```ts
-oms.wallet.getIdToken({
+omsWallet.wallet.getIdToken({
   ttlSeconds?: number | null;
   customClaims?: Record<string, unknown> | null;
 } = {}): Promise<string>
 
-oms.wallet.listAccess({ pageSize?: number | null } = {}): Promise<OmsCredentialInfo[]>
+omsWallet.wallet.listAccess({
+  pageSize?: number | null;
+} = {}): Promise<OmsCredentialInfo[]>
 
-oms.wallet.listAccessPages(
-  { pageSize?: number | null } = {}
-): AsyncGenerator<OmsListAccessResponse, void, void>
+omsWallet.wallet.listAccessPages({
+  pageSize?: number | null;
+} = {}): AsyncGenerator<OmsListAccessResponse, void, void>
 
-oms.wallet.listAccessPage({
+omsWallet.wallet.listAccessPage({
   pageSize?: number | null;
   cursor?: string | null;
 } = {}): Promise<OmsListAccessResponse>
 
-oms.wallet.revokeAccess(targetCredentialId: string): Promise<void>
-```
-
-```ts
-type OmsAccessPage = {
-  limit: number | null;
-  cursor: string | null;
-};
-
-type OmsListAccessResponse = {
-  credentials: OmsCredentialInfo[];
-  page: OmsAccessPage | null;
-};
+omsWallet.wallet.revokeAccess(targetCredentialId: string): Promise<void>
 ```
 
 ## Indexer
 
-All indexer APIs are accessed through `oms.indexer`.
-
 ```ts
-oms.indexer.getBalances({
+omsWallet.indexer.getBalances({
   walletAddress: string;
-  networks?: OmsNetwork[];
+  networks?: Network[];
   networkType?: 'MAINNETS' | 'TESTNETS' | 'ALL';
   contractAddresses?: string[];
   includeMetadata?: boolean;
   omitPrices?: boolean | null;
   tokenIds?: string[];
   contractStatus?: 'VERIFIED' | 'UNVERIFIED' | 'ALL' | null;
-  page?: {
-    page?: number;
-    pageSize?: number;
-  };
+  page?: { page?: number; pageSize?: number };
 }): Promise<OmsBalancesResult>
 
-oms.indexer.getTransactionHistory({
+omsWallet.indexer.getTransactionHistory({
   walletAddress: string;
-  networks?: OmsNetwork[];
+  networks?: Network[];
   networkType?: 'MAINNETS' | 'TESTNETS' | 'ALL';
   contractAddresses?: string[];
   transactionHashes?: string[];
@@ -388,125 +363,37 @@ oms.indexer.getTransactionHistory({
   tokenId?: string | null;
   includeMetadata?: boolean;
   omitPrices?: boolean | null;
-  metadataOptions?: {
-    verifiedOnly?: boolean;
-    unverifiedOnly?: boolean;
-    includeContracts?: string[];
-  } | null;
-  page?: {
-    page?: number;
-    pageSize?: number;
-  };
+  metadataOptions?: OmsMetadataOptions | null;
+  page?: { page?: number; pageSize?: number };
 }): Promise<OmsTransactionHistoryResult>
 ```
 
+## Errors
+
+Native OMS errors are exposed as `OMSWalletError`:
+
 ```ts
-type OmsBalancesResult = {
-  status: number;
-  page?: OmsTokenBalancesPage | null;
-  nativeBalances: OmsTokenBalance[];
-  balances: OmsTokenBalance[];
-};
-
-type OmsTransactionHistoryResult = {
-  status: number;
-  page?: OmsTokenBalancesPage | null;
-  transactions: OmsTransaction[];
-};
-
-type OmsTransaction = {
-  txnHash: string | null;
-  blockNumber: number | null;
-  blockHash: string | null;
-  chainId: number | null;
-  metaTxnId?: string | null;
-  transfers?: OmsTransactionTransfer[] | null;
-  timestamp?: string | null;
-};
-
-type OmsTransactionTransfer = {
-  transferType?: string | null;
-  contractAddress?: string | null;
-  contractType?: string | null;
-  from?: string | null;
-  to?: string | null;
-  tokenIds?: string[] | null;
-  amounts?: string[] | null;
-  logIndex?: number | null;
-  amountsUSD?: string[] | null;
-  pricesUSD?: string[] | null;
-  contractInfo?: OmsTokenContractInfo | null;
-  tokenMetadata?: unknown | null;
-};
+try {
+  await omsWallet.wallet.getIdToken();
+} catch (error) {
+  if (isOMSWalletError(error)) {
+    console.log(error.code, error.operation, error.retryable);
+  }
+}
 ```
 
-Pass `networks` for explicit chain selection. If omitted, `networkType`
-defaults to `MAINNETS`.
+`OMSWalletError` includes `code`, `operation`, `status`, `txnId`, `retryable`, and `upstreamError`. Bridge input validation and non-OMS native failures remain ordinary `Error` values.
 
-## Networks
-
-```ts
-oms.supportedNetworks: OmsNetwork[]
-```
+## Unit Helpers
 
 ```ts
-type OmsNetwork = {
-  chainId: string;
-  name: string;
-  nativeTokenSymbol: string;
-  explorerUrl: string;
-  displayName: string;
-};
-```
+parseUnits(
+  value: string,
+  decimals?: number,
+  options?: { roundingMode?: 'reject' | 'nearest' }
+): string
 
-Wallet, transaction, signature, and indexer APIs take `chainId` as a string.
-
-## Token Types
-
-```ts
-type OmsTokenBalance = {
-  contractType: string | null;
-  contractAddress: string | null;
-  accountAddress: string | null;
-  tokenId: string | null;
-  balance: string | null;
-  blockHash: string | null;
-  blockNumber?: number | null;
-  chainId?: number | null;
-  name?: string | null;
-  symbol?: string | null;
-  balanceUSD?: string | null;
-  priceUSD?: string | null;
-  priceUpdatedAt?: string | null;
-  uniqueCollectibles?: string | null;
-  isSummary?: boolean | null;
-  contractInfo?: OmsTokenContractInfo | null;
-  tokenMetadata?: OmsTokenMetadata | null;
-};
-
-type OmsTokenBalancesPage = {
-  page: number | null;
-  pageSize: number | null;
-  more: boolean | null;
-};
-```
-
-The SDK also exports `OmsTokenContractInfo`, `OmsTokenMetadata`, and
-`OmsTokenMetadataAsset` for metadata returned in these fields.
-
-## Formatting Helpers
-
-```ts
-parseUnits(value: string, decimals?: number, options?: ParseUnitsOptions): string
 formatUnits(value: string | bigint, decimals?: number): string
-
-type ParseUnitsRoundingMode = 'reject' | 'nearest';
-
-type ParseUnitsOptions = {
-  roundingMode?: ParseUnitsRoundingMode;
-};
 ```
 
-By default `parseUnits` rounds fractional precision beyond `decimals` to the
-nearest base unit. Pass `{ roundingMode: 'reject' }` to fail on non-zero excess
-precision.
+`parseUnits` rounds excess fractional precision to the nearest base unit by default. Pass `{ roundingMode: 'reject' }` to reject non-zero excess precision.
