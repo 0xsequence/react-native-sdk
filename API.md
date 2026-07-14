@@ -159,7 +159,7 @@ type OMSWalletSessionState = {
   walletAddress: string | undefined;
   expiresAt: string | undefined;
   auth:
-    | { type: 'email'; email: string | undefined }
+    | { type: 'email'; email: string }
     | {
         type: 'oidc';
         flow: 'redirect' | 'id-token';
@@ -448,22 +448,34 @@ Indexer responses use the following models:
 
 ```ts
 type TokenBalancesPage = {
-  page?: number;
-  pageSize?: number;
-  more?: boolean;
+  page: number;
+  pageSize: number;
+  more: boolean;
 };
 
-type TokenBalance = {
-  contractType?: string;
-  contractAddress?: string;
-  accountAddress?: string;
-  tokenId?: string;
-  balance?: string;
-  blockHash?: string;
-  blockNumber?: number;
-  chainId?: number;
-  name?: string;
-  symbol?: string;
+type NativeTokenBalance = {
+  contractType: 'NATIVE';
+  contractAddress?: undefined;
+  accountAddress: string;
+  tokenId?: undefined;
+  name: string;
+  symbol: string;
+  balance: string;
+  chainId: number;
+  balanceUSD?: string;
+  priceUSD?: string;
+  priceUpdatedAt?: string;
+};
+
+type ContractTokenBalance = {
+  contractType: string;
+  contractAddress: string;
+  accountAddress: string;
+  tokenId: string;
+  balance: string;
+  blockHash: string;
+  blockNumber: number;
+  chainId: number;
   balanceUSD?: string;
   priceUSD?: string;
   priceUpdatedAt?: string;
@@ -473,21 +485,23 @@ type TokenBalance = {
   tokenMetadata?: TokenMetadata;
 };
 
+type TokenBalance = NativeTokenBalance | ContractTokenBalance;
+
 type TokenContractInfo = {
-  chainId?: number;
-  address?: string;
-  source?: string;
-  name?: string;
-  type?: string;
-  symbol?: string;
+  chainId: number;
+  address: string;
+  source: string;
+  name: string;
+  type: string;
+  symbol: string;
   decimals?: number;
   logoURI?: string;
-  deployed?: boolean;
-  bytecodeHash?: string;
-  extensions?: Record<string, unknown>;
-  updatedAt?: string;
+  deployed: boolean;
+  bytecodeHash: string;
+  extensions: Record<string, unknown>;
+  updatedAt: string;
   queuedAt?: string;
-  status?: string;
+  status: string;
 };
 
 type TokenMetadataAsset = {
@@ -507,15 +521,15 @@ type TokenMetadataAsset = {
 type TokenMetadata = {
   chainId?: number;
   contractAddress?: string;
-  tokenId?: string;
-  source?: string;
-  name?: string;
+  tokenId: string;
+  source: string;
+  name: string;
   description?: string;
   image?: string;
   video?: string;
   audio?: string;
   properties?: Record<string, unknown>;
-  attributes?: Record<string, unknown>[];
+  attributes: Record<string, unknown>[];
   imageData?: string;
   externalUrl?: string;
   backgroundColor?: string;
@@ -523,7 +537,7 @@ type TokenMetadata = {
   decimals?: number;
   updatedAt?: string;
   assets?: TokenMetadataAsset[];
-  status?: string;
+  status: string;
   queuedAt?: string;
   lastFetched?: string;
 };
@@ -531,8 +545,8 @@ type TokenMetadata = {
 type BalancesResult = {
   status: number;
   page?: TokenBalancesPage;
-  nativeBalances: TokenBalance[];
-  balances: TokenBalance[];
+  nativeBalances: NativeTokenBalance[];
+  balances: ContractTokenBalance[];
 };
 
 type TransactionHistoryResult = {
@@ -547,23 +561,23 @@ type Transaction = {
   blockHash: string;
   chainId: number;
   metaTxnId?: string;
-  transfers?: TransactionTransfer[];
+  transfers: TransactionTransfer[];
   timestamp: string;
 };
 
 type TransactionTransfer = {
-  transferType?: string;
-  contractAddress?: string;
-  contractType?: string;
-  from?: string;
-  to?: string;
+  transferType: string;
+  contractAddress: string;
+  contractType: string;
+  from: string;
+  to: string;
   tokenIds?: string[];
-  amounts?: string[];
-  logIndex?: number;
+  amounts: string[];
+  logIndex: number;
   amountsUSD?: string[];
   pricesUSD?: string[];
   contractInfo?: TokenContractInfo;
-  tokenMetadata?: Record<string, unknown>;
+  tokenMetadata?: Record<string, TokenMetadata>;
 };
 ```
 

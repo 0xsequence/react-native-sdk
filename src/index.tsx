@@ -51,6 +51,8 @@ export type {
   StartEmailAuthParams,
   StartOidcRedirectAuthResult,
   TokenBalance,
+  NativeTokenBalance,
+  ContractTokenBalance,
   TokenBalancesPage,
   TokenBalancesPageRequest,
   TokenContractInfo,

@@ -25,9 +25,11 @@ import technology.polygon.omswallet.models.FeeToken
 import technology.polygon.omswallet.models.IndexerNetworkType
 import technology.polygon.omswallet.models.ListAccessResponse
 import technology.polygon.omswallet.models.MetadataOptions
+import technology.polygon.omswallet.models.NativeTokenBalance
 import technology.polygon.omswallet.models.Page
 import technology.polygon.omswallet.models.SendTransactionRequest
 import technology.polygon.omswallet.models.TokenBalance
+import technology.polygon.omswallet.models.ContractTokenBalance
 import technology.polygon.omswallet.models.TokenBalancesPage
 import technology.polygon.omswallet.models.TokenBalancesPageRequest
 import technology.polygon.omswallet.models.TokenBalancesResult
@@ -737,7 +739,7 @@ class OmsWalletReactNativeSdkModule(reactContext: ReactApplicationContext) :
           "auth",
           Arguments.createMap().apply {
             putString("type", "email")
-            putNullableString("email", auth.email)
+            putString("email", auth.email)
           }
         )
         is OMSWalletOidcSessionAuth -> putMap(
@@ -799,63 +801,67 @@ class OmsWalletReactNativeSdkModule(reactContext: ReactApplicationContext) :
 
   private fun tokenBalanceMap(balance: TokenBalance): WritableMap =
     Arguments.createMap().apply {
-      putNullableString("contractType", balance.contractType)
-      putNullableString("contractAddress", balance.contractAddress)
-      putNullableString("accountAddress", balance.accountAddress)
-      putNullableString("tokenId", balance.tokenId)
-      putNullableString("balance", balance.balance)
-      putNullableString("name", balance.name)
-      putNullableString("symbol", balance.symbol)
+      putString("contractType", balance.contractType)
+      putString("accountAddress", balance.accountAddress)
+      putString("balance", balance.balance)
+      putDouble("chainId", balance.chainId.toDouble())
       putNullableString("balanceUSD", balance.balanceUSD)
       putNullableString("priceUSD", balance.priceUSD)
       putNullableString("priceUpdatedAt", balance.priceUpdatedAt)
-      putNullableString("blockHash", balance.blockHash)
-      balance.blockNumber?.let { putDouble("blockNumber", it.toDouble()) }
-      balance.chainId?.let { putDouble("chainId", it.toDouble()) }
-      putNullableString("uniqueCollectibles", balance.uniqueCollectibles)
-      balance.isSummary?.let { putBoolean("isSummary", it) } ?: putNull("isSummary")
-      balance.contractInfo?.let { putMap("contractInfo", tokenContractInfoMap(it)) } ?: putNull("contractInfo")
-      balance.tokenMetadata?.let { putMap("tokenMetadata", tokenMetadataMap(it)) } ?: putNull("tokenMetadata")
+      when (balance) {
+        is NativeTokenBalance -> {
+          putString("name", balance.name)
+          putString("symbol", balance.symbol)
+        }
+        is ContractTokenBalance -> {
+          putString("contractAddress", balance.contractAddress)
+          putString("tokenId", balance.tokenId)
+          putString("blockHash", balance.blockHash)
+          putDouble("blockNumber", balance.blockNumber.toDouble())
+          putNullableString("uniqueCollectibles", balance.uniqueCollectibles)
+          balance.isSummary?.let { putBoolean("isSummary", it) } ?: putNull("isSummary")
+          balance.contractInfo?.let { putMap("contractInfo", tokenContractInfoMap(it)) } ?: putNull("contractInfo")
+          balance.tokenMetadata?.let { putMap("tokenMetadata", tokenMetadataMap(it)) } ?: putNull("tokenMetadata")
+        }
+      }
     }
 
   private fun tokenContractInfoMap(info: TokenContractInfo): WritableMap =
     Arguments.createMap().apply {
-      info.chainId?.let { putDouble("chainId", it.toDouble()) } ?: putNull("chainId")
-      putNullableString("address", info.address)
-      putNullableString("source", info.source)
-      putNullableString("name", info.name)
-      putNullableString("type", info.type)
-      putNullableString("symbol", info.symbol)
+      putDouble("chainId", info.chainId.toDouble())
+      putString("address", info.address)
+      putString("source", info.source)
+      putString("name", info.name)
+      putString("type", info.type)
+      putString("symbol", info.symbol)
       info.decimals?.let { putDouble("decimals", it.toDouble()) } ?: putNull("decimals")
       putNullableString("logoURI", info.logoURI)
-      info.deployed?.let { putBoolean("deployed", it) } ?: putNull("deployed")
-      putNullableString("bytecodeHash", info.bytecodeHash)
-      info.extensions?.let { putMap("extensions", jsonObjectMap(it)) } ?: putNull("extensions")
-      putNullableString("updatedAt", info.updatedAt)
+      putBoolean("deployed", info.deployed)
+      putString("bytecodeHash", info.bytecodeHash)
+      putMap("extensions", jsonObjectMap(info.extensions))
+      putString("updatedAt", info.updatedAt)
       putNullableString("queuedAt", info.queuedAt)
-      putNullableString("status", info.status)
+      putString("status", info.status)
     }
 
   private fun tokenMetadataMap(metadata: TokenMetadata): WritableMap =
     Arguments.createMap().apply {
       metadata.chainId?.let { putDouble("chainId", it.toDouble()) } ?: putNull("chainId")
       putNullableString("contractAddress", metadata.contractAddress)
-      putNullableString("tokenId", metadata.tokenId)
-      putNullableString("source", metadata.source)
-      putNullableString("name", metadata.name)
+      putString("tokenId", metadata.tokenId)
+      putString("source", metadata.source)
+      putString("name", metadata.name)
       putNullableString("description", metadata.description)
       putNullableString("image", metadata.image)
       putNullableString("video", metadata.video)
       putNullableString("audio", metadata.audio)
       metadata.properties?.let { putMap("properties", jsonObjectMap(it)) } ?: putNull("properties")
-      metadata.attributes?.let {
-        putArray(
-          "attributes",
-          Arguments.createArray().apply {
-            it.forEach { attribute -> pushMap(jsonObjectMap(attribute)) }
-          }
-        )
-      } ?: putNull("attributes")
+      putArray(
+        "attributes",
+        Arguments.createArray().apply {
+          metadata.attributes.forEach { attribute -> pushMap(jsonObjectMap(attribute)) }
+        }
+      )
       putNullableString("imageData", metadata.imageData)
       putNullableString("externalUrl", metadata.externalUrl)
       putNullableString("backgroundColor", metadata.backgroundColor)
@@ -870,7 +876,7 @@ class OmsWalletReactNativeSdkModule(reactContext: ReactApplicationContext) :
           }
         )
       } ?: putNull("assets")
-      putNullableString("status", metadata.status)
+      putString("status", metadata.status)
       putNullableString("queuedAt", metadata.queuedAt)
       putNullableString("lastFetched", metadata.lastFetched)
     }
@@ -892,32 +898,30 @@ class OmsWalletReactNativeSdkModule(reactContext: ReactApplicationContext) :
 
   private fun transactionMap(transaction: Transaction): WritableMap =
     Arguments.createMap().apply {
-      putNullableString("txnHash", transaction.txnHash)
-      transaction.blockNumber?.let { putDouble("blockNumber", it.toDouble()) } ?: putNull("blockNumber")
-      putNullableString("blockHash", transaction.blockHash)
-      transaction.chainId?.let { putDouble("chainId", it.toDouble()) } ?: putNull("chainId")
+      putString("txnHash", transaction.txnHash)
+      putDouble("blockNumber", transaction.blockNumber.toDouble())
+      putString("blockHash", transaction.blockHash)
+      putDouble("chainId", transaction.chainId.toDouble())
       putNullableString("metaTxnId", transaction.metaTxnId)
-      transaction.transfers?.let {
-        putArray(
-          "transfers",
-          Arguments.createArray().apply {
-            it.forEach { transfer -> pushMap(transactionTransferMap(transfer)) }
-          }
-        )
-      } ?: putNull("transfers")
-      putNullableString("timestamp", transaction.timestamp)
+      putArray(
+        "transfers",
+        Arguments.createArray().apply {
+          transaction.transfers.forEach { transfer -> pushMap(transactionTransferMap(transfer)) }
+        }
+      )
+      putString("timestamp", transaction.timestamp)
     }
 
   private fun transactionTransferMap(transfer: TransactionTransfer): WritableMap =
     Arguments.createMap().apply {
-      putNullableString("transferType", transfer.transferType)
-      putNullableString("contractAddress", transfer.contractAddress)
-      putNullableString("contractType", transfer.contractType)
-      putNullableString("from", transfer.from)
-      putNullableString("to", transfer.to)
+      putString("transferType", transfer.transferType)
+      putString("contractAddress", transfer.contractAddress)
+      putString("contractType", transfer.contractType)
+      putString("from", transfer.from)
+      putString("to", transfer.to)
       transfer.tokenIds?.let { putArray("tokenIds", stringArray(it)) } ?: putNull("tokenIds")
-      transfer.amounts?.let { putArray("amounts", stringArray(it)) } ?: putNull("amounts")
-      transfer.logIndex?.let { putDouble("logIndex", it.toDouble()) } ?: putNull("logIndex")
+      putArray("amounts", stringArray(transfer.amounts))
+      putDouble("logIndex", transfer.logIndex.toDouble())
       transfer.amountsUSD?.let { putArray("amountsUSD", stringArray(it)) } ?: putNull("amountsUSD")
       transfer.pricesUSD?.let { putArray("pricesUSD", stringArray(it)) } ?: putNull("pricesUSD")
       transfer.contractInfo?.let { putMap("contractInfo", tokenContractInfoMap(it)) } ?: putNull("contractInfo")

@@ -15,6 +15,8 @@ import type {
   OmsNativeSessionState,
   OmsNativeTransactionStatus,
   OmsNativeTokenBalance,
+  OmsNativeNativeTokenBalance,
+  OmsNativeContractTokenBalance,
   OmsNativeTokenBalancesPage,
   OmsNativeTokenContractInfo,
   OmsNativeTokenMetadata,
@@ -61,6 +63,8 @@ import type {
   StartOidcRedirectAuthParams,
   TransactionStatus,
   TokenBalance,
+  NativeTokenBalance,
+  ContractTokenBalance,
   TokenBalancesPage,
   TokenContractInfo,
   TokenMetadata,
@@ -298,9 +302,9 @@ function hydrateTokenBalancesPage(
   page: OmsNativeTokenBalancesPage
 ): TokenBalancesPage {
   return {
-    page: optionalNativeField(page.page),
-    pageSize: optionalNativeField(page.pageSize),
-    more: optionalNativeField(page.more),
+    page: page.page,
+    pageSize: page.pageSize,
+    more: page.more,
   };
 }
 
@@ -308,21 +312,20 @@ function hydrateTokenContractInfo(
   info: OmsNativeTokenContractInfo
 ): TokenContractInfo {
   return {
-    chainId: optionalNativeField(info.chainId),
-    address: optionalNativeField(info.address),
-    source: optionalNativeField(info.source),
-    name: optionalNativeField(info.name),
-    type: optionalNativeField(info.type),
-    symbol: optionalNativeField(info.symbol),
+    chainId: info.chainId,
+    address: info.address,
+    source: info.source,
+    name: info.name,
+    type: info.type,
+    symbol: info.symbol,
     decimals: optionalNativeField(info.decimals),
     logoURI: optionalNativeField(info.logoURI),
-    deployed: optionalNativeField(info.deployed),
-    bytecodeHash: optionalNativeField(info.bytecodeHash),
-    extensions:
-      info.extensions == null ? undefined : hydrateObject(info.extensions),
-    updatedAt: optionalNativeField(info.updatedAt),
+    deployed: info.deployed,
+    bytecodeHash: info.bytecodeHash,
+    extensions: hydrateObject(info.extensions),
+    updatedAt: info.updatedAt,
     queuedAt: optionalNativeField(info.queuedAt),
-    status: optionalNativeField(info.status),
+    status: info.status,
   };
 }
 
@@ -348,9 +351,9 @@ function hydrateTokenMetadata(metadata: OmsNativeTokenMetadata): TokenMetadata {
   return {
     chainId: optionalNativeField(metadata.chainId),
     contractAddress: optionalNativeField(metadata.contractAddress),
-    tokenId: optionalNativeField(metadata.tokenId),
-    source: optionalNativeField(metadata.source),
-    name: optionalNativeField(metadata.name),
+    tokenId: metadata.tokenId,
+    source: metadata.source,
+    name: metadata.name,
     description: optionalNativeField(metadata.description),
     image: optionalNativeField(metadata.image),
     video: optionalNativeField(metadata.video),
@@ -359,10 +362,7 @@ function hydrateTokenMetadata(metadata: OmsNativeTokenMetadata): TokenMetadata {
       metadata.properties == null
         ? undefined
         : hydrateObject(metadata.properties),
-    attributes:
-      metadata.attributes == null
-        ? undefined
-        : metadata.attributes.map(hydrateObject),
+    attributes: metadata.attributes.map(hydrateObject),
     imageData: optionalNativeField(metadata.imageData),
     externalUrl: optionalNativeField(metadata.externalUrl),
     backgroundColor: optionalNativeField(metadata.backgroundColor),
@@ -370,24 +370,56 @@ function hydrateTokenMetadata(metadata: OmsNativeTokenMetadata): TokenMetadata {
     decimals: optionalNativeField(metadata.decimals),
     updatedAt: optionalNativeField(metadata.updatedAt),
     assets: metadata.assets?.map(hydrateTokenMetadataAsset),
-    status: optionalNativeField(metadata.status),
+    status: metadata.status,
     queuedAt: optionalNativeField(metadata.queuedAt),
     lastFetched: optionalNativeField(metadata.lastFetched),
   };
 }
 
+function hydrateTokenBalance(
+  balance: OmsNativeNativeTokenBalance
+): NativeTokenBalance;
+function hydrateTokenBalance(
+  balance: OmsNativeContractTokenBalance
+): ContractTokenBalance;
+function hydrateTokenBalance(balance: OmsNativeTokenBalance): TokenBalance;
 function hydrateTokenBalance(balance: OmsNativeTokenBalance): TokenBalance {
-  return {
-    contractType: optionalNativeField(balance.contractType),
-    contractAddress: optionalNativeField(balance.contractAddress),
-    accountAddress: optionalNativeField(balance.accountAddress),
-    tokenId: optionalNativeField(balance.tokenId),
-    balance: optionalNativeField(balance.balance),
-    blockHash: optionalNativeField(balance.blockHash),
-    blockNumber: optionalNativeField(balance.blockNumber),
-    chainId: optionalNativeField(balance.chainId),
-    name: optionalNativeField(balance.name),
-    symbol: optionalNativeField(balance.symbol),
+  if (balance.contractAddress == null) {
+    const nativeBalance: NativeTokenBalance = {
+      contractType: 'NATIVE',
+      accountAddress: balance.accountAddress,
+      name: requireNativeField(balance.name, 'name', 'native token balance'),
+      symbol: requireNativeField(
+        balance.symbol,
+        'symbol',
+        'native token balance'
+      ),
+      balance: balance.balance,
+      chainId: balance.chainId,
+      balanceUSD: optionalNativeField(balance.balanceUSD),
+      priceUSD: optionalNativeField(balance.priceUSD),
+      priceUpdatedAt: optionalNativeField(balance.priceUpdatedAt),
+    };
+    return nativeBalance;
+  }
+
+  const contractBalance: ContractTokenBalance = {
+    contractType: balance.contractType,
+    contractAddress: balance.contractAddress,
+    accountAddress: balance.accountAddress,
+    tokenId: requireNativeField(balance.tokenId, 'tokenId', 'token balance'),
+    balance: balance.balance,
+    blockHash: requireNativeField(
+      balance.blockHash,
+      'blockHash',
+      'token balance'
+    ),
+    blockNumber: requireNativeField(
+      balance.blockNumber,
+      'blockNumber',
+      'token balance'
+    ),
+    chainId: balance.chainId,
     balanceUSD: optionalNativeField(balance.balanceUSD),
     priceUSD: optionalNativeField(balance.priceUSD),
     priceUpdatedAt: optionalNativeField(balance.priceUpdatedAt),
@@ -402,6 +434,7 @@ function hydrateTokenBalance(balance: OmsNativeTokenBalance): TokenBalance {
         ? undefined
         : hydrateTokenMetadata(balance.tokenMetadata),
   };
+  return contractBalance;
 }
 
 function hydrateFeeOption(option: OmsNativeFeeOption): FeeOption {
@@ -439,14 +472,14 @@ function hydrateTransactionTransfer(
   transfer: OmsNativeTransactionTransfer
 ): TransactionTransfer {
   return {
-    transferType: optionalNativeField(transfer.transferType),
-    contractAddress: optionalNativeField(transfer.contractAddress),
-    contractType: optionalNativeField(transfer.contractType),
-    from: optionalNativeField(transfer.from),
-    to: optionalNativeField(transfer.to),
+    transferType: transfer.transferType,
+    contractAddress: transfer.contractAddress,
+    contractType: transfer.contractType,
+    from: transfer.from,
+    to: transfer.to,
     tokenIds: optionalNativeField(transfer.tokenIds),
-    amounts: optionalNativeField(transfer.amounts),
-    logIndex: optionalNativeField(transfer.logIndex),
+    amounts: transfer.amounts,
+    logIndex: transfer.logIndex,
     amountsUSD: optionalNativeField(transfer.amountsUSD),
     pricesUSD: optionalNativeField(transfer.pricesUSD),
     contractInfo:
@@ -456,8 +489,21 @@ function hydrateTransactionTransfer(
     tokenMetadata:
       transfer.tokenMetadata == null
         ? undefined
-        : hydrateObject(transfer.tokenMetadata),
+        : hydrateTokenMetadataRecord(transfer.tokenMetadata),
   };
+}
+
+function hydrateTokenMetadataRecord(
+  metadata: object
+): Record<string, TokenMetadata> {
+  return Object.fromEntries(
+    Object.entries(metadata as Record<string, unknown>).map(
+      ([tokenId, value]) => [
+        tokenId,
+        hydrateTokenMetadata(value as OmsNativeTokenMetadata),
+      ]
+    )
+  );
 }
 
 function hydrateTransaction(transaction: OmsNativeTransaction): Transaction {
@@ -483,7 +529,11 @@ function hydrateTransaction(transaction: OmsNativeTransaction): Transaction {
       'indexer transaction'
     ),
     metaTxnId: optionalNativeField(transaction.metaTxnId),
-    transfers: transaction.transfers?.map(hydrateTransactionTransfer),
+    transfers: requireNativeField(
+      transaction.transfers,
+      'transfers',
+      'indexer transaction'
+    ).map(hydrateTransactionTransfer),
     timestamp: requireNativeField(
       transaction.timestamp,
       'timestamp',
@@ -560,7 +610,10 @@ function hydrateSessionState(
     return {
       walletAddress: optionalNativeField(session.walletAddress),
       expiresAt: optionalNativeField(session.expiresAt),
-      auth: { type: 'email', email: optionalNativeField(auth.email) },
+      auth: {
+        type: 'email',
+        email: requireNativeField(auth.email, 'email', 'email session auth'),
+      },
     };
   }
   if (auth.type === 'oidc') {
@@ -1079,8 +1132,10 @@ export class OMSIndexerClient {
       status: result.status,
       page:
         result.page == null ? undefined : hydrateTokenBalancesPage(result.page),
-      nativeBalances: result.nativeBalances.map(hydrateTokenBalance),
-      balances: result.balances.map(hydrateTokenBalance),
+      nativeBalances: result.nativeBalances.map((balance) =>
+        hydrateTokenBalance(balance)
+      ),
+      balances: result.balances.map((balance) => hydrateTokenBalance(balance)),
     };
   }
 

@@ -691,20 +691,44 @@ test('serializes indexer balance and transaction history params for native', asy
   });
 });
 
-test('normalizes representative native nulls at public model boundaries', async () => {
-  const nativeBalance = {
-    contractType: null,
-    contractAddress: null,
-    accountAddress: null,
-    tokenId: null,
-    balance: null,
-    blockHash: null,
-    contractInfo: { name: null, extensions: null },
+test('normalizes optional native nulls at public model boundaries', async () => {
+  const contractBalance = {
+    contractType: 'ERC20',
+    contractAddress: '0xcontract',
+    accountAddress: '0xwallet',
+    tokenId: '0',
+    balance: '1',
+    blockHash: '0xblock',
+    blockNumber: 123,
+    chainId: 137,
+    balanceUSD: null,
+    priceUSD: null,
+    priceUpdatedAt: null,
+    contractInfo: {
+      chainId: 137,
+      address: '0xcontract',
+      source: 'metadata',
+      name: 'Token',
+      type: 'ERC20',
+      symbol: 'TKN',
+      decimals: null,
+      logoURI: null,
+      deployed: true,
+      bytecodeHash: '0xbytecode',
+      extensions: {},
+      updatedAt: '2026-07-14T00:00:00.000Z',
+      queuedAt: null,
+      status: 'AVAILABLE',
+    },
     tokenMetadata: {
-      name: null,
+      tokenId: '0',
+      source: 'metadata',
+      name: 'Token',
       properties: null,
-      attributes: null,
+      attributes: [],
       assets: [{ name: null }],
+      status: 'AVAILABLE',
+      queuedAt: null,
     },
   };
   const nativeTransaction = {
@@ -715,9 +739,29 @@ test('normalizes representative native nulls at public model boundaries', async 
     metaTxnId: null,
     transfers: [
       {
-        from: null,
-        contractInfo: { symbol: null, extensions: null },
-        tokenMetadata: null,
+        transferType: 'RECEIVE',
+        contractAddress: '0xcontract',
+        contractType: 'ERC20',
+        from: '0xfrom',
+        to: '0xwallet',
+        tokenIds: null,
+        amounts: ['1'],
+        logIndex: 0,
+        amountsUSD: null,
+        pricesUSD: null,
+        contractInfo: null,
+        tokenMetadata: {
+          0: {
+            tokenId: '0',
+            source: 'metadata',
+            name: 'Token',
+            properties: null,
+            attributes: [],
+            assets: null,
+            status: 'AVAILABLE',
+            queuedAt: null,
+          },
+        },
       },
     ],
     timestamp: '2026-07-14T00:00:00.000Z',
@@ -737,9 +781,9 @@ test('normalizes representative native nulls at public model boundaries', async 
     }),
     getBalances: async () => ({
       status: 200,
-      page: { page: null, pageSize: null, more: null },
+      page: { page: 0, pageSize: 40, more: false },
       nativeBalances: [],
-      balances: [nativeBalance],
+      balances: [contractBalance],
     }),
     getTransactionHistory: async () => ({
       status: 200,
@@ -794,13 +838,13 @@ test('normalizes representative native nulls at public model boundaries', async 
     walletAddress: '0xwallet',
   });
   assert.deepEqual(balances.page, {
-    page: undefined,
-    pageSize: undefined,
-    more: undefined,
+    page: 0,
+    pageSize: 40,
+    more: false,
   });
-  assert.equal(balances.balances[0].contractAddress, undefined);
-  assert.equal(balances.balances[0].contractInfo.name, undefined);
-  assert.equal(balances.balances[0].tokenMetadata.name, undefined);
+  assert.equal(balances.balances[0].balanceUSD, undefined);
+  assert.equal(balances.balances[0].contractInfo.decimals, undefined);
+  assert.equal(balances.balances[0].tokenMetadata.properties, undefined);
   assert.equal(balances.balances[0].tokenMetadata.assets[0].name, undefined);
 
   const history = await oms.indexer.getTransactionHistory({
@@ -808,12 +852,12 @@ test('normalizes representative native nulls at public model boundaries', async 
   });
   assert.equal(history.page, undefined);
   assert.equal(history.transactions[0].metaTxnId, undefined);
-  assert.equal(history.transactions[0].transfers[0].from, undefined);
+  assert.equal(history.transactions[0].transfers[0].tokenIds, undefined);
+  assert.equal(history.transactions[0].transfers[0].contractInfo, undefined);
   assert.equal(
-    history.transactions[0].transfers[0].contractInfo.symbol,
+    history.transactions[0].transfers[0].tokenMetadata['0'].properties,
     undefined
   );
-  assert.equal(history.transactions[0].transfers[0].tokenMetadata, undefined);
 });
 
 test('rejects indexer transactions missing required public fields', async () => {
@@ -822,6 +866,7 @@ test('rejects indexer transactions missing required public fields', async () => 
     blockNumber: 123,
     blockHash: '0xblock',
     chainId: 137,
+    transfers: [],
     timestamp: '2026-07-14T00:00:00.000Z',
   };
 
@@ -830,6 +875,7 @@ test('rejects indexer transactions missing required public fields', async () => 
     'blockNumber',
     'blockHash',
     'chainId',
+    'transfers',
     'timestamp',
   ]) {
     const { client } = loadClient({

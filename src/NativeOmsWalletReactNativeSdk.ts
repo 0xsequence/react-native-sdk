@@ -71,20 +71,52 @@ export type OmsNativeSessionExpiredEvent = {
 };
 
 export type OmsNativeTokenBalancesPage = {
-  page: number | null;
-  pageSize: number | null;
-  more: boolean | null;
+  page: number;
+  pageSize: number;
+  more: boolean;
 };
 
+export type OmsNativeNativeTokenBalance = {
+  contractType: 'NATIVE';
+  accountAddress: string;
+  name: string;
+  symbol: string;
+  balance: string;
+  chainId: number;
+  balanceUSD?: string | null;
+  priceUSD?: string | null;
+  priceUpdatedAt?: string | null;
+};
+
+export type OmsNativeContractTokenBalance = {
+  contractType: string;
+  contractAddress: string;
+  accountAddress: string;
+  tokenId: string;
+  balance: string;
+  blockHash: string;
+  blockNumber: number;
+  chainId: number;
+  balanceUSD?: string | null;
+  priceUSD?: string | null;
+  priceUpdatedAt?: string | null;
+  uniqueCollectibles?: string | null;
+  isSummary?: boolean | null;
+  contractInfo?: OmsNativeTokenContractInfo | null;
+  tokenMetadata?: OmsNativeTokenMetadata | null;
+};
+
+// React Native Codegen does not support unions of object types. This flat
+// bridge-only shape is hydrated into the public native/contract union.
 export type OmsNativeTokenBalance = {
-  contractType: string | null;
-  contractAddress: string | null;
-  accountAddress: string | null;
-  tokenId: string | null;
-  balance: string | null;
-  blockHash: string | null;
+  contractType: string;
+  contractAddress?: string | null;
+  accountAddress: string;
+  tokenId?: string | null;
+  balance: string;
+  blockHash?: string | null;
   blockNumber?: number | null;
-  chainId?: number | null;
+  chainId: number;
   name?: string | null;
   symbol?: string | null;
   balanceUSD?: string | null;
@@ -97,20 +129,20 @@ export type OmsNativeTokenBalance = {
 };
 
 export type OmsNativeTokenContractInfo = {
-  chainId?: number | null;
-  address?: string | null;
-  source?: string | null;
-  name?: string | null;
-  type?: string | null;
-  symbol?: string | null;
+  chainId: number;
+  address: string;
+  source: string;
+  name: string;
+  type: string;
+  symbol: string;
   decimals?: number | null;
   logoURI?: string | null;
-  deployed?: boolean | null;
-  bytecodeHash?: string | null;
-  extensions?: CodegenTypes.UnsafeObject | null;
-  updatedAt?: string | null;
+  deployed: boolean;
+  bytecodeHash: string;
+  extensions: CodegenTypes.UnsafeObject;
+  updatedAt: string;
   queuedAt?: string | null;
-  status?: string | null;
+  status: string;
 };
 
 export type OmsNativeTokenMetadataAsset = {
@@ -130,15 +162,15 @@ export type OmsNativeTokenMetadataAsset = {
 export type OmsNativeTokenMetadata = {
   chainId?: number | null;
   contractAddress?: string | null;
-  tokenId?: string | null;
-  source?: string | null;
-  name?: string | null;
+  tokenId: string;
+  source: string;
+  name: string;
   description?: string | null;
   image?: string | null;
   video?: string | null;
   audio?: string | null;
   properties?: CodegenTypes.UnsafeObject | null;
-  attributes?: CodegenTypes.UnsafeObject[] | null;
+  attributes: CodegenTypes.UnsafeObject[];
   imageData?: string | null;
   externalUrl?: string | null;
   backgroundColor?: string | null;
@@ -146,7 +178,7 @@ export type OmsNativeTokenMetadata = {
   decimals?: number | null;
   updatedAt?: string | null;
   assets?: OmsNativeTokenMetadataAsset[] | null;
-  status?: string | null;
+  status: string;
   queuedAt?: string | null;
   lastFetched?: string | null;
 };
@@ -154,19 +186,19 @@ export type OmsNativeTokenMetadata = {
 export type OmsNativeBalancesResult = {
   status: number;
   page?: OmsNativeTokenBalancesPage | null;
-  nativeBalances: OmsNativeTokenBalance[];
-  balances: OmsNativeTokenBalance[];
+  nativeBalances: OmsNativeNativeTokenBalance[];
+  balances: OmsNativeContractTokenBalance[];
 };
 
 export type OmsNativeTransactionTransfer = {
-  transferType?: string | null;
-  contractAddress?: string | null;
-  contractType?: string | null;
-  from?: string | null;
-  to?: string | null;
+  transferType: string;
+  contractAddress: string;
+  contractType: string;
+  from: string;
+  to: string;
   tokenIds?: string[] | null;
-  amounts?: string[] | null;
-  logIndex?: number | null;
+  amounts: string[];
+  logIndex: number;
   amountsUSD?: string[] | null;
   pricesUSD?: string[] | null;
   contractInfo?: OmsNativeTokenContractInfo | null;
@@ -174,13 +206,13 @@ export type OmsNativeTransactionTransfer = {
 };
 
 export type OmsNativeTransaction = {
-  txnHash: string | null;
-  blockNumber: number | null;
-  blockHash: string | null;
-  chainId: number | null;
+  txnHash: string;
+  blockNumber: number;
+  blockHash: string;
+  chainId: number;
   metaTxnId?: string | null;
-  transfers?: OmsNativeTransactionTransfer[] | null;
-  timestamp?: string | null;
+  transfers: OmsNativeTransactionTransfer[];
+  timestamp: string;
 };
 
 export type OmsNativeTransactionHistoryResult = {

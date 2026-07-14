@@ -2,10 +2,12 @@ import type {
   FeeOptionSelector,
   FeeToken,
   GetBalancesParams,
+  NativeTokenBalance,
   OMSWalletSessionState,
   SendTransactionParams,
   SendTransactionResponse,
   StartEmailAuthParams,
+  ContractTokenBalance,
   TokenBalance,
   Transaction,
   WalletAccount,
@@ -26,20 +28,34 @@ export type PublicOutputsExcludeNull = Assert<
   ExcludesNull<OMSWalletSessionState['walletAddress']> &
     ExcludesNull<WalletAccount['reference']> &
     ExcludesNull<SendTransactionResponse['txnHash']> &
-    ExcludesNull<TokenBalance['contractAddress']> &
+    ExcludesNull<ContractTokenBalance['contractAddress']> &
     ExcludesNull<Awaited<ReturnType<FeeOptionSelector>>>
 >;
 
 export type OptionalOutputFieldsRemainOptional = Assert<
   IsOptional<WalletAccount, 'reference'> &
     IsOptional<FeeToken, 'decimals'> &
-    IsOptional<TokenBalance, 'contractAddress'> &
+    IsOptional<TokenBalance, 'balanceUSD'> &
     IsOptional<SendTransactionResponse, 'txnHash'>
 >;
 
 export type RequiredTransactionFieldsRemainRequired = Assert<
   IsOptional<Transaction, 'txnHash'> extends false ? true : false
 >;
+
+export function narrowTokenBalance(
+  tokenBalance: TokenBalance
+): string | undefined {
+  if (tokenBalance.contractAddress === undefined) {
+    const nativeBalance: NativeTokenBalance = tokenBalance;
+    const nativeTokenId: undefined = nativeBalance.tokenId;
+    return nativeTokenId;
+  }
+
+  const contractBalance: ContractTokenBalance = tokenBalance;
+  const contractAddress: string = contractBalance.contractAddress;
+  return contractAddress;
+}
 
 export type PublicErrorsExcludeNull = Assert<
   ExcludesNull<OMSWalletError['operation']> &

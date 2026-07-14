@@ -6,7 +6,7 @@ export type WalletSelectionBehavior = 'automatic' | 'manual';
 
 export type OMSWalletEmailSessionAuth = {
   type: 'email';
-  email: string | undefined;
+  email: string;
 };
 
 export type OMSWalletOidcSessionAuthFlow = 'redirect' | 'id-token';
@@ -243,26 +243,26 @@ export type FeeOptionSelection = {
 };
 
 export type TokenBalancesPage = {
-  page?: number;
-  pageSize?: number;
-  more?: boolean;
+  page: number;
+  pageSize: number;
+  more: boolean;
 };
 
 export type TokenContractInfo = {
-  chainId?: number;
-  address?: string;
-  source?: string;
-  name?: string;
-  type?: string;
-  symbol?: string;
+  chainId: number;
+  address: string;
+  source: string;
+  name: string;
+  type: string;
+  symbol: string;
   decimals?: number;
   logoURI?: string;
-  deployed?: boolean;
-  bytecodeHash?: string;
-  extensions?: Record<string, unknown>;
-  updatedAt?: string;
+  deployed: boolean;
+  bytecodeHash: string;
+  extensions: Record<string, unknown>;
+  updatedAt: string;
   queuedAt?: string;
-  status?: string;
+  status: string;
 };
 
 export type TokenMetadataAsset = {
@@ -282,15 +282,15 @@ export type TokenMetadataAsset = {
 export type TokenMetadata = {
   chainId?: number;
   contractAddress?: string;
-  tokenId?: string;
-  source?: string;
-  name?: string;
+  tokenId: string;
+  source: string;
+  name: string;
   description?: string;
   image?: string;
   video?: string;
   audio?: string;
   properties?: Record<string, unknown>;
-  attributes?: Record<string, unknown>[];
+  attributes: Record<string, unknown>[];
   imageData?: string;
   externalUrl?: string;
   backgroundColor?: string;
@@ -298,22 +298,34 @@ export type TokenMetadata = {
   decimals?: number;
   updatedAt?: string;
   assets?: TokenMetadataAsset[];
-  status?: string;
+  status: string;
   queuedAt?: string;
   lastFetched?: string;
 };
 
-export type TokenBalance = {
-  contractType?: string;
-  contractAddress?: string;
-  accountAddress?: string;
-  tokenId?: string;
-  balance?: string;
-  blockHash?: string;
-  blockNumber?: number;
-  chainId?: number;
-  name?: string;
-  symbol?: string;
+export type NativeTokenBalance = {
+  contractType: 'NATIVE';
+  contractAddress?: undefined;
+  accountAddress: string;
+  tokenId?: undefined;
+  name: string;
+  symbol: string;
+  balance: string;
+  chainId: number;
+  balanceUSD?: string;
+  priceUSD?: string;
+  priceUpdatedAt?: string;
+};
+
+export type ContractTokenBalance = {
+  contractType: string;
+  contractAddress: string;
+  accountAddress: string;
+  tokenId: string;
+  balance: string;
+  blockHash: string;
+  blockNumber: number;
+  chainId: number;
   balanceUSD?: string;
   priceUSD?: string;
   priceUpdatedAt?: string;
@@ -322,6 +334,8 @@ export type TokenBalance = {
   contractInfo?: TokenContractInfo;
   tokenMetadata?: TokenMetadata;
 };
+
+export type TokenBalance = NativeTokenBalance | ContractTokenBalance;
 
 export type FeeOptionWithBalance = {
   feeOption: FeeOption;
@@ -376,8 +390,8 @@ export type TokenBalancesPageRequest = {
 export type BalancesResult = {
   status: number;
   page?: TokenBalancesPage;
-  nativeBalances: TokenBalance[];
-  balances: TokenBalance[];
+  nativeBalances: NativeTokenBalance[];
+  balances: ContractTokenBalance[];
 };
 
 export type GetBalancesParams = {
@@ -393,18 +407,18 @@ export type GetBalancesParams = {
 };
 
 export type TransactionTransfer = {
-  transferType?: string;
-  contractAddress?: string;
-  contractType?: string;
-  from?: string;
-  to?: string;
+  transferType: string;
+  contractAddress: string;
+  contractType: string;
+  from: string;
+  to: string;
   tokenIds?: string[];
-  amounts?: string[];
-  logIndex?: number;
+  amounts: string[];
+  logIndex: number;
   amountsUSD?: string[];
   pricesUSD?: string[];
   contractInfo?: TokenContractInfo;
-  tokenMetadata?: Record<string, unknown>;
+  tokenMetadata?: Record<string, TokenMetadata>;
 };
 
 export type Transaction = {
@@ -413,7 +427,7 @@ export type Transaction = {
   blockHash: string;
   chainId: number;
   metaTxnId?: string;
-  transfers?: TransactionTransfer[];
+  transfers: TransactionTransfer[];
   timestamp: string;
 };
 

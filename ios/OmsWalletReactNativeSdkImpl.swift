@@ -818,7 +818,7 @@ public final class OmsWalletReactNativeSdkImpl: NSObject, @unchecked Sendable {
     case .email(let value):
       return [
         "type": "email",
-        "email": nullableString(value.email)
+        "email": value.email
       ]
     case .oidc(let value):
       return [
@@ -856,8 +856,8 @@ public final class OmsWalletReactNativeSdkImpl: NSObject, @unchecked Sendable {
     let dictionary: [String: Any] = [
       "status": result.status,
       "page": result.page.map(tokenBalancesPageDictionary) ?? NSNull(),
-      "nativeBalances": result.nativeBalances.map(tokenBalanceDictionary),
-      "balances": result.balances.map(tokenBalanceDictionary)
+      "nativeBalances": result.nativeBalances.map(nativeTokenBalanceDictionary),
+      "balances": result.balances.map(contractTokenBalanceDictionary)
     ]
 
     return dictionary
@@ -873,27 +873,46 @@ public final class OmsWalletReactNativeSdkImpl: NSObject, @unchecked Sendable {
 
   private func tokenBalancesPageDictionary(_ page: TokenBalancesPage) -> [String: Any] {
     [
-      "page": page.page.map(NSNumber.init(value:)) ?? NSNull(),
-      "pageSize": page.pageSize.map(NSNumber.init(value:)) ?? NSNull(),
-      "more": page.more.map(NSNumber.init(value:)) ?? NSNull()
+      "page": NSNumber(value: page.page),
+      "pageSize": NSNumber(value: page.pageSize),
+      "more": NSNumber(value: page.more)
     ]
   }
 
   private func tokenBalanceDictionary(_ balance: TokenBalance) -> [String: Any] {
+    switch balance {
+    case .native(let value): return nativeTokenBalanceDictionary(value)
+    case .contract(let value): return contractTokenBalanceDictionary(value)
+    }
+  }
+
+  private func nativeTokenBalanceDictionary(_ balance: NativeTokenBalance) -> [String: Any] {
+    [
+      "contractType": balance.contractType,
+      "accountAddress": balance.accountAddress,
+      "name": balance.name,
+      "symbol": balance.symbol,
+      "balance": balance.balance,
+      "chainId": NSNumber(value: balance.chainId),
+      "balanceUSD": balance.balanceUSD ?? NSNull(),
+      "priceUSD": balance.priceUSD ?? NSNull(),
+      "priceUpdatedAt": balance.priceUpdatedAt ?? NSNull()
+    ]
+  }
+
+  private func contractTokenBalanceDictionary(_ balance: ContractTokenBalance) -> [String: Any] {
     var dictionary: [String: Any] = [:]
-    dictionary["contractType"] = balance.contractType ?? NSNull()
-    dictionary["contractAddress"] = balance.contractAddress ?? NSNull()
-    dictionary["accountAddress"] = balance.accountAddress ?? NSNull()
-    dictionary["tokenId"] = balance.tokenId ?? NSNull()
-    dictionary["balance"] = balance.balance ?? NSNull()
-    dictionary["name"] = balance.name ?? NSNull()
-    dictionary["symbol"] = balance.symbol ?? NSNull()
+    dictionary["contractType"] = balance.contractType
+    dictionary["contractAddress"] = balance.contractAddress
+    dictionary["accountAddress"] = balance.accountAddress
+    dictionary["tokenId"] = balance.tokenId
+    dictionary["balance"] = balance.balance
     dictionary["balanceUSD"] = balance.balanceUSD ?? NSNull()
     dictionary["priceUSD"] = balance.priceUSD ?? NSNull()
     dictionary["priceUpdatedAt"] = balance.priceUpdatedAt ?? NSNull()
-    dictionary["blockHash"] = balance.blockHash ?? NSNull()
-    dictionary["blockNumber"] = balance.blockNumber.map(NSNumber.init(value:)) ?? NSNull()
-    dictionary["chainId"] = balance.chainId.map(NSNumber.init(value:)) ?? NSNull()
+    dictionary["blockHash"] = balance.blockHash
+    dictionary["blockNumber"] = NSNumber(value: balance.blockNumber)
+    dictionary["chainId"] = NSNumber(value: balance.chainId)
     dictionary["uniqueCollectibles"] = balance.uniqueCollectibles ?? NSNull()
     dictionary["isSummary"] = balance.isSummary.map(NSNumber.init(value:)) ?? NSNull()
     dictionary["contractInfo"] = balance.contractInfo.map(tokenContractInfoDictionary) ?? NSNull()
@@ -903,20 +922,20 @@ public final class OmsWalletReactNativeSdkImpl: NSObject, @unchecked Sendable {
 
   private func tokenContractInfoDictionary(_ info: TokenContractInfo) -> [String: Any] {
     [
-      "chainId": info.chainId.map(NSNumber.init(value:)) ?? NSNull(),
-      "address": info.address ?? NSNull(),
-      "source": info.source ?? NSNull(),
-      "name": info.name ?? NSNull(),
-      "type": info.type ?? NSNull(),
-      "symbol": info.symbol ?? NSNull(),
+      "chainId": NSNumber(value: info.chainId),
+      "address": info.address,
+      "source": info.source,
+      "name": info.name,
+      "type": info.type,
+      "symbol": info.symbol,
       "decimals": info.decimals.map(NSNumber.init(value:)) ?? NSNull(),
       "logoURI": info.logoURI ?? NSNull(),
-      "deployed": info.deployed.map(NSNumber.init(value:)) ?? NSNull(),
-      "bytecodeHash": info.bytecodeHash ?? NSNull(),
-      "extensions": info.extensions.map(webRPCJSONObject) ?? NSNull(),
-      "updatedAt": info.updatedAt ?? NSNull(),
+      "deployed": NSNumber(value: info.deployed),
+      "bytecodeHash": info.bytecodeHash,
+      "extensions": webRPCJSONObject(info.extensions),
+      "updatedAt": info.updatedAt,
       "queuedAt": info.queuedAt ?? NSNull(),
-      "status": info.status ?? NSNull()
+      "status": info.status
     ]
   }
 
@@ -927,21 +946,21 @@ public final class OmsWalletReactNativeSdkImpl: NSObject, @unchecked Sendable {
       "blockHash": transaction.blockHash,
       "chainId": NSNumber(value: transaction.chainId),
       "metaTxnId": transaction.metaTxnId ?? NSNull(),
-      "transfers": transaction.transfers?.map(transactionTransferDictionary) ?? NSNull(),
+      "transfers": transaction.transfers.map(transactionTransferDictionary),
       "timestamp": transaction.timestamp
     ]
   }
 
   private func transactionTransferDictionary(_ transfer: TransactionTransfer) -> [String: Any] {
     [
-      "transferType": transfer.transferType ?? NSNull(),
-      "contractAddress": transfer.contractAddress ?? NSNull(),
-      "contractType": transfer.contractType ?? NSNull(),
-      "from": transfer.from ?? NSNull(),
-      "to": transfer.to ?? NSNull(),
+      "transferType": transfer.transferType,
+      "contractAddress": transfer.contractAddress,
+      "contractType": transfer.contractType,
+      "from": transfer.from,
+      "to": transfer.to,
       "tokenIds": transfer.tokenIds ?? NSNull(),
-      "amounts": transfer.amounts ?? NSNull(),
-      "logIndex": transfer.logIndex.map(NSNumber.init(value:)) ?? NSNull(),
+      "amounts": transfer.amounts,
+      "logIndex": NSNumber(value: transfer.logIndex),
       "amountsUSD": transfer.amountsUSD ?? NSNull(),
       "pricesUSD": transfer.pricesUSD ?? NSNull(),
       "contractInfo": transfer.contractInfo.map(tokenContractInfoDictionary) ?? NSNull(),
@@ -953,15 +972,15 @@ public final class OmsWalletReactNativeSdkImpl: NSObject, @unchecked Sendable {
     [
       "chainId": metadata.chainId.map(NSNumber.init(value:)) ?? NSNull(),
       "contractAddress": metadata.contractAddress ?? NSNull(),
-      "tokenId": metadata.tokenId ?? NSNull(),
-      "source": metadata.source ?? NSNull(),
-      "name": metadata.name ?? NSNull(),
+      "tokenId": metadata.tokenId,
+      "source": metadata.source,
+      "name": metadata.name,
       "description": metadata.description ?? NSNull(),
       "image": metadata.image ?? NSNull(),
       "video": metadata.video ?? NSNull(),
       "audio": metadata.audio ?? NSNull(),
       "properties": metadata.properties.map(webRPCJSONObject) ?? NSNull(),
-      "attributes": metadata.attributes?.map(webRPCJSONObject) ?? NSNull(),
+      "attributes": metadata.attributes.map(webRPCJSONObject),
       "imageData": metadata.imageData ?? NSNull(),
       "externalUrl": metadata.externalUrl ?? NSNull(),
       "backgroundColor": metadata.backgroundColor ?? NSNull(),
@@ -969,7 +988,7 @@ public final class OmsWalletReactNativeSdkImpl: NSObject, @unchecked Sendable {
       "decimals": metadata.decimals.map(NSNumber.init(value:)) ?? NSNull(),
       "updatedAt": metadata.updatedAt ?? NSNull(),
       "assets": metadata.assets?.map(tokenMetadataAssetDictionary) ?? NSNull(),
-      "status": metadata.status ?? NSNull(),
+      "status": metadata.status,
       "queuedAt": metadata.queuedAt ?? NSNull(),
       "lastFetched": metadata.lastFetched ?? NSNull()
     ]
