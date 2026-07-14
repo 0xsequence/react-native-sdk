@@ -60,17 +60,21 @@
 
 - (void)startEmailAuth:(NSString *)clientId
                  email:(NSString *)email
+sessionLifetimeSeconds:(nullable NSString *)sessionLifetimeSeconds
                resolve:(RCTPromiseResolveBlock)resolve
                 reject:(RCTPromiseRejectBlock)reject
 {
-  [_impl startEmailAuthWithClientId:clientId email:email resolve:resolve reject:reject];
+  [_impl startEmailAuthWithClientId:clientId
+                              email:email
+             sessionLifetimeSeconds:sessionLifetimeSeconds
+                            resolve:resolve
+                             reject:reject];
 }
 
 - (void)completeEmailAuth:(NSString *)clientId
                      code:(NSString *)code
           walletSelection:(nullable NSString *)walletSelection
                walletType:(nullable NSString *)walletType
-   sessionLifetimeSeconds:(nullable NSString *)sessionLifetimeSeconds
                   resolve:(RCTPromiseResolveBlock)resolve
                    reject:(RCTPromiseRejectBlock)reject
 {
@@ -78,7 +82,6 @@
                                   code:code
                        walletSelection:walletSelection
                             walletType:walletType
-                 sessionLifetimeSeconds:sessionLifetimeSeconds
                                resolve:resolve
                                 reject:reject];
 }
@@ -132,7 +135,7 @@
 }
 
 - (void)handleOidcRedirectCallback:(NSString *)clientId
-                       callbackUrl:(nullable NSString *)callbackUrl
+                       callbackUrl:(NSString *)callbackUrl
                    walletSelection:(nullable NSString *)walletSelection
              sessionLifetimeSeconds:(nullable NSString *)sessionLifetimeSeconds
                             resolve:(RCTPromiseResolveBlock)resolve

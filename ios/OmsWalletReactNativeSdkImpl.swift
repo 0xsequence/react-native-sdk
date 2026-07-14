@@ -82,26 +82,29 @@ public final class OmsWalletReactNativeSdkImpl: NSObject, @unchecked Sendable {
     }
   }
 
-  @objc(startEmailAuthWithClientId:email:resolve:reject:)
+  @objc(startEmailAuthWithClientId:email:sessionLifetimeSeconds:resolve:reject:)
   public func startEmailAuth(
     clientId: String,
     email: String,
+    sessionLifetimeSeconds: String?,
     resolve: @escaping RCTPromiseResolveBlock,
     reject: @escaping RCTPromiseRejectBlock
   ) {
     run(clientId: clientId, resolve: resolve, reject: reject) { client in
-      try await client.wallet.startEmailAuth(email: email)
+      try await client.wallet.startEmailAuth(
+        email: email,
+        sessionLifetimeSeconds: try self.sessionLifetimeSeconds(sessionLifetimeSeconds)
+      )
       return nil
     }
   }
 
-  @objc(completeEmailAuthWithClientId:code:walletSelection:walletType:sessionLifetimeSeconds:resolve:reject:)
+  @objc(completeEmailAuthWithClientId:code:walletSelection:walletType:resolve:reject:)
   public func completeEmailAuth(
     clientId: String,
     code: String,
     walletSelection: String?,
     walletType: String?,
-    sessionLifetimeSeconds: String?,
     resolve: @escaping RCTPromiseResolveBlock,
     reject: @escaping RCTPromiseRejectBlock
   ) {
@@ -109,8 +112,7 @@ public final class OmsWalletReactNativeSdkImpl: NSObject, @unchecked Sendable {
       let result = try await client.wallet.completeEmailAuth(
         code: code,
         walletSelection: try self.walletSelectionBehavior(walletSelection),
-        walletType: try self.walletType(walletType),
-        sessionLifetimeSeconds: try self.sessionLifetimeSeconds(sessionLifetimeSeconds)
+        walletType: try self.walletType(walletType)
       )
       return try self.completeAuthResultDictionary(clientId: clientId, result)
     }
@@ -193,7 +195,7 @@ public final class OmsWalletReactNativeSdkImpl: NSObject, @unchecked Sendable {
   @objc(handleOIDCRedirectCallbackWithClientId:callbackUrl:walletSelection:sessionLifetimeSeconds:resolve:reject:)
   public func handleOIDCRedirectCallback(
     clientId: String,
-    callbackUrl: String?,
+    callbackUrl: String,
     walletSelection: String?,
     sessionLifetimeSeconds: String?,
     resolve: @escaping RCTPromiseResolveBlock,

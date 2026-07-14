@@ -1,40 +1,8 @@
-import type {
-  OmsCredentialInfo,
-  OmsFeeOptionSelection,
-  OmsFeeOptionWithBalance,
-  OmsTokenBalance,
-  OmsTokenBalancesPage,
-  WalletAccount,
-  OmsWalletActivationResult,
-} from './NativeOmsWalletReactNativeSdk';
 import type { Network } from './networks';
 
-export type {
-  OmsAccessPage,
-  OmsCredentialInfo,
-  OmsFeeOption,
-  OmsFeeOptionSelection,
-  OmsFeeOptionWithBalance,
-  OmsFeeToken,
-  OmsListAccessResponse,
-  OmsSendTransactionResponse,
-  OmsStartOidcRedirectAuthResult,
-  OmsTokenBalance,
-  OmsTokenBalancesPage,
-  OmsTokenContractInfo,
-  OmsTokenMetadata,
-  OmsTokenMetadataAsset,
-  OmsTransaction,
-  OmsTransactionHistoryResult,
-  OmsTransactionStatus,
-  OmsTransactionTransfer,
-  WalletAccount,
-  OmsWalletActivationResult,
-} from './NativeOmsWalletReactNativeSdk';
+export type WalletType = 'ethereum';
 
-export type OmsWalletType = 'ethereum';
-
-export type OmsWalletSelectionBehavior = 'automatic' | 'manual';
+export type WalletSelectionBehavior = 'automatic' | 'manual';
 
 export type OMSWalletEmailSessionAuth = {
   type: 'email';
@@ -71,40 +39,41 @@ export type OMSWalletParams = {
   publishableKey: string;
 };
 
-export type SendTransactionParams = {
-  network: Network;
-  to: string;
-  value: string;
-  data?: string | null;
-  mode?: OmsTransactionMode;
-  selectFeeOption?: OmsFeeOptionSelector | null;
-  waitForStatus?: boolean;
-  statusPolling?: OmsTransactionStatusPollingOptions;
+export type WalletAccount = {
+  id: string;
+  type: WalletType;
+  address: string;
+  reference: string | null;
 };
 
-export type OmsTransactionMode = 'native' | 'relayer';
+export type WalletActivationResult = {
+  walletAddress: string;
+  wallet: WalletAccount;
+};
 
-export type OmsFeeOptionSelector = (
-  feeOptions: OmsFeeOptionWithBalance[]
-) => OmsFeeOptionSelection | null | Promise<OmsFeeOptionSelection | null>;
+export type CredentialInfo = {
+  credentialId: string;
+  expiresAt: string;
+  isCaller: boolean;
+};
 
-export type OmsPendingWalletSelection = {
-  walletType: OmsWalletType;
+export type PendingWalletSelection = {
+  walletType: WalletType;
   wallets: WalletAccount[];
-  credential: OmsCredentialInfo;
-  selectWallet(walletId: string): Promise<OmsWalletActivationResult>;
+  credential: CredentialInfo;
+  selectWallet(walletId: string): Promise<WalletActivationResult>;
   createAndSelectWallet(
     reference?: string | null
-  ): Promise<OmsWalletActivationResult>;
+  ): Promise<WalletActivationResult>;
 };
 
-export type OmsCompleteAuthResult =
+export type CompleteAuthResult =
   | {
       type: 'walletSelected';
       walletAddress: string;
       wallet: WalletAccount;
       wallets: WalletAccount[];
-      credential: OmsCredentialInfo;
+      credential: CredentialInfo;
       pendingSelection?: undefined;
     }
   | {
@@ -112,33 +81,38 @@ export type OmsCompleteAuthResult =
       walletAddress: null;
       wallet: null;
       wallets: WalletAccount[];
-      credential: OmsCredentialInfo;
-      pendingSelection: OmsPendingWalletSelection;
+      credential: CredentialInfo;
+      pendingSelection: PendingWalletSelection;
     };
 
-export type OmsOidcRedirectAuthResult =
-  | {
-      type: 'completed';
-      result: OmsCompleteAuthResult;
-    }
+export type StartOidcRedirectAuthResult = {
+  authorizationUrl: string;
+};
+
+export type OidcRedirectAuthResult =
+  | { type: 'completed'; result: CompleteAuthResult }
   | {
       type: 'notOidcRedirectCallback' | 'noPendingAuth';
       result?: undefined;
     };
 
+export type StartEmailAuthParams = {
+  email: string;
+  sessionLifetimeSeconds?: number | null;
+};
+
 export type CompleteEmailAuthParams = {
   code: string;
-  walletSelection?: OmsWalletSelectionBehavior;
-  walletType?: OmsWalletType;
-  sessionLifetimeSeconds?: number | null;
+  walletSelection?: WalletSelectionBehavior;
+  walletType?: WalletType;
 };
 
 export type SignInWithOidcIdTokenParams = {
   idToken: string;
   issuer: string;
   audience: string;
-  walletSelection?: OmsWalletSelectionBehavior;
-  walletType?: OmsWalletType;
+  walletSelection?: WalletSelectionBehavior;
+  walletType?: WalletType;
   sessionLifetimeSeconds?: number | null;
   provider?: string | null;
   providerLabel?: string | null;
@@ -170,8 +144,8 @@ export type OidcProviderConfig =
   | CustomOidcProviderConfig;
 
 type StartOidcRedirectAuthParamsBase = {
-  walletType?: OmsWalletType;
-  walletSelection?: OmsWalletSelectionBehavior | null;
+  walletType?: WalletType;
+  walletSelection?: WalletSelectionBehavior | null;
   sessionLifetimeSeconds?: number | null;
   loginHint?: string | null;
 };
@@ -191,13 +165,13 @@ export type StartOidcRedirectAuthParams = StartOidcRedirectAuthParamsBase &
   );
 
 export type HandleOidcRedirectCallbackParams = {
-  callbackUrl?: string | null;
-  walletSelection?: OmsWalletSelectionBehavior;
+  callbackUrl: string;
+  walletSelection?: WalletSelectionBehavior;
   sessionLifetimeSeconds?: number | null;
 };
 
 export type CreateWalletParams = {
-  walletType?: OmsWalletType;
+  walletType?: WalletType;
   reference?: string | null;
 };
 
@@ -216,11 +190,163 @@ export type CallContractArg = {
   value: unknown;
 };
 
-export type OmsTransactionStatusPollingOptions = {
+export type TransactionMode = 'native' | 'relayer';
+
+export type TransactionStatus =
+  | 'quoted'
+  | 'pending'
+  | 'executed'
+  | 'failed'
+  | 'unknown';
+
+export type TransactionStatusResolution =
+  | 'not-requested'
+  | 'resolved'
+  | 'timed-out';
+
+export type TransactionStatusPollingOptions = {
   timeoutMs?: number;
   intervalMs?: number;
   fastIntervalMs?: number;
   fastPollCount?: number;
+};
+
+export type SendTransactionResponse = {
+  txnId: string;
+  status: TransactionStatus;
+  txnHash: string | null;
+  statusResolution: TransactionStatusResolution;
+};
+
+export type TransactionStatusResponse = {
+  status: TransactionStatus;
+  txnHash: string | null;
+};
+
+export type FeeToken = {
+  network: string;
+  name: string;
+  symbol: string;
+  type: string;
+  decimals: number | null;
+  logoUrl: string | null;
+  contractAddress: string | null;
+  tokenId: string | null;
+};
+
+export type FeeOption = {
+  token: FeeToken;
+  value: string;
+  displayValue: string;
+};
+
+export type FeeOptionSelection = {
+  token: string;
+};
+
+export type TokenBalancesPage = {
+  page: number | null;
+  pageSize: number | null;
+  more: boolean | null;
+};
+
+export type TokenContractInfo = {
+  chainId?: number | null;
+  address?: string | null;
+  source?: string | null;
+  name?: string | null;
+  type?: string | null;
+  symbol?: string | null;
+  decimals?: number | null;
+  logoURI?: string | null;
+  deployed?: boolean | null;
+  bytecodeHash?: string | null;
+  extensions?: Record<string, unknown> | null;
+  updatedAt?: string | null;
+  queuedAt?: string | null;
+  status?: string | null;
+};
+
+export type TokenMetadataAsset = {
+  id?: number | null;
+  collectionId?: number | null;
+  tokenId?: string | null;
+  url?: string | null;
+  metadataField?: string | null;
+  name?: string | null;
+  filesize?: number | null;
+  mimeType?: string | null;
+  width?: number | null;
+  height?: number | null;
+  updatedAt?: string | null;
+};
+
+export type TokenMetadata = {
+  chainId?: number | null;
+  contractAddress?: string | null;
+  tokenId?: string | null;
+  source?: string | null;
+  name?: string | null;
+  description?: string | null;
+  image?: string | null;
+  video?: string | null;
+  audio?: string | null;
+  properties?: Record<string, unknown> | null;
+  attributes?: Record<string, unknown>[] | null;
+  imageData?: string | null;
+  externalUrl?: string | null;
+  backgroundColor?: string | null;
+  animationUrl?: string | null;
+  decimals?: number | null;
+  updatedAt?: string | null;
+  assets?: TokenMetadataAsset[] | null;
+  status?: string | null;
+  queuedAt?: string | null;
+  lastFetched?: string | null;
+};
+
+export type TokenBalance = {
+  contractType: string | null;
+  contractAddress: string | null;
+  accountAddress: string | null;
+  tokenId: string | null;
+  balance: string | null;
+  blockHash: string | null;
+  blockNumber?: number | null;
+  chainId?: number | null;
+  name?: string | null;
+  symbol?: string | null;
+  balanceUSD?: string | null;
+  priceUSD?: string | null;
+  priceUpdatedAt?: string | null;
+  uniqueCollectibles?: string | null;
+  isSummary?: boolean | null;
+  contractInfo?: TokenContractInfo | null;
+  tokenMetadata?: TokenMetadata | null;
+};
+
+export type FeeOptionWithBalance = {
+  feeOption: FeeOption;
+  selection: FeeOptionSelection;
+  balance: TokenBalance | null;
+  available: string | null;
+  availableRaw: string | null;
+  decimals: number | null;
+};
+
+export type FeeOptionSelector = (
+  feeOptions: FeeOptionWithBalance[]
+) => FeeOptionSelection | null | Promise<FeeOptionSelection | null>;
+
+export type SendTransactionParams = {
+  network: Network;
+  to: string;
+  value: string;
+  data?: string | null;
+  mode?: TransactionMode;
+  selectFeeOption?: FeeOptionSelector | null;
+  waitForStatus?: boolean;
+  statusPolling?: TransactionStatusPollingOptions;
 };
 
 export type CallContractParams = {
@@ -228,50 +354,81 @@ export type CallContractParams = {
   contractAddress: string;
   method: string;
   args?: CallContractArg[] | null;
-  mode?: OmsTransactionMode;
-  selectFeeOption?: OmsFeeOptionSelector | null;
+  mode?: TransactionMode;
+  selectFeeOption?: FeeOptionSelector | null;
   waitForStatus?: boolean;
-  statusPolling?: OmsTransactionStatusPollingOptions;
+  statusPolling?: TransactionStatusPollingOptions;
 };
 
-export type OmsIndexerNetworkType = 'MAINNETS' | 'TESTNETS' | 'ALL';
+export type IndexerNetworkType = 'MAINNETS' | 'TESTNETS' | 'ALL';
 
-export type OmsContractVerificationStatus = 'VERIFIED' | 'UNVERIFIED' | 'ALL';
+export type ContractVerificationStatus = 'VERIFIED' | 'UNVERIFIED' | 'ALL';
 
-export type OmsMetadataOptions = {
+export type MetadataOptions = {
   verifiedOnly?: boolean;
   unverifiedOnly?: boolean;
   includeContracts?: string[];
 };
 
-export type OmsTokenBalancesPageRequest = {
+export type TokenBalancesPageRequest = {
   page?: number;
   pageSize?: number;
 };
 
-export type OmsBalancesResult = {
+export type BalancesResult = {
   status: number;
-  page?: OmsTokenBalancesPage | null;
-  nativeBalances: OmsTokenBalance[];
-  balances: OmsTokenBalance[];
+  page?: TokenBalancesPage | null;
+  nativeBalances: TokenBalance[];
+  balances: TokenBalance[];
 };
 
 export type GetBalancesParams = {
   walletAddress: string;
   networks?: Network[];
-  networkType?: OmsIndexerNetworkType;
+  networkType?: IndexerNetworkType;
   contractAddresses?: string[];
   includeMetadata?: boolean;
   omitPrices?: boolean | null;
   tokenIds?: string[];
-  contractStatus?: OmsContractVerificationStatus | null;
-  page?: OmsTokenBalancesPageRequest;
+  contractStatus?: ContractVerificationStatus | null;
+  page?: TokenBalancesPageRequest;
+};
+
+export type TransactionTransfer = {
+  transferType?: string | null;
+  contractAddress?: string | null;
+  contractType?: string | null;
+  from?: string | null;
+  to?: string | null;
+  tokenIds?: string[] | null;
+  amounts?: string[] | null;
+  logIndex?: number | null;
+  amountsUSD?: string[] | null;
+  pricesUSD?: string[] | null;
+  contractInfo?: TokenContractInfo | null;
+  tokenMetadata?: Record<string, unknown> | null;
+};
+
+export type Transaction = {
+  txnHash: string | null;
+  blockNumber: number | null;
+  blockHash: string | null;
+  chainId: number | null;
+  metaTxnId?: string | null;
+  transfers?: TransactionTransfer[] | null;
+  timestamp?: string | null;
+};
+
+export type TransactionHistoryResult = {
+  status: number;
+  page?: TokenBalancesPage | null;
+  transactions: Transaction[];
 };
 
 export type GetTransactionHistoryParams = {
   walletAddress: string;
   networks?: Network[];
-  networkType?: OmsIndexerNetworkType;
+  networkType?: IndexerNetworkType;
   contractAddresses?: string[];
   transactionHashes?: string[];
   metaTransactionIds?: string[];
@@ -280,8 +437,8 @@ export type GetTransactionHistoryParams = {
   tokenId?: string | null;
   includeMetadata?: boolean;
   omitPrices?: boolean | null;
-  metadataOptions?: OmsMetadataOptions | null;
-  page?: OmsTokenBalancesPageRequest;
+  metadataOptions?: MetadataOptions | null;
+  page?: TokenBalancesPageRequest;
 };
 
 export type IsValidMessageSignatureParams = {
@@ -299,6 +456,16 @@ export type IsValidTypedDataSignatureParams = {
 export type GetIdTokenParams = {
   ttlSeconds?: number | null;
   customClaims?: Record<string, unknown> | null;
+};
+
+export type AccessPage = {
+  limit: number | null;
+  cursor: string | null;
+};
+
+export type ListAccessResponse = {
+  credentials: CredentialInfo[];
+  page: AccessPage | null;
 };
 
 export type ListAccessParams = {

@@ -1,4 +1,4 @@
-import type { OmsFeeOptionSelector } from './types';
+import type { FeeOptionSelector } from './types';
 
 function normalizedUnsignedDecimal(value: string): string | null {
   const trimmed = value.trim();
@@ -20,7 +20,7 @@ function hasEnoughBalance(availableRaw: string, feeValue: string): boolean {
   return available >= fee;
 }
 
-const firstAvailable: OmsFeeOptionSelector = (options) =>
+const firstAvailable: FeeOptionSelector = (options) =>
   options.find(
     (option) =>
       option.availableRaw != null &&

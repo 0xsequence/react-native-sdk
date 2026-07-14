@@ -24,12 +24,12 @@ import {
   OmsRelayOidcProviders,
   type OMSWalletSessionExpiredEvent,
   type OMSWalletSessionState,
-  type OmsFeeOptionSelection,
-  type OmsFeeOptionWithBalance,
+  type FeeOptionSelection,
+  type FeeOptionWithBalance,
   type Network,
-  type OmsPendingWalletSelection,
+  type PendingWalletSelection,
   type WalletAccount,
-  type OmsWalletActivationResult,
+  type WalletActivationResult,
 } from '@0xsequence/oms-react-native-sdk';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -235,10 +235,10 @@ function FeeOptionPickerModal({
   onCancel,
   onSelect,
 }: {
-  options: OmsFeeOptionWithBalance[];
+  options: FeeOptionWithBalance[];
   visible: boolean;
   onCancel: () => void;
-  onSelect: (selection: OmsFeeOptionSelection) => void;
+  onSelect: (selection: FeeOptionSelection) => void;
 }) {
   return (
     <Modal
@@ -385,7 +385,7 @@ export default function App() {
   const [expiredSessionEvent, setExpiredSessionEvent] =
     useState<OMSWalletSessionExpiredEvent | null>(null);
   const [pendingWalletSelection, setPendingWalletSelection] =
-    useState<OmsPendingWalletSelection | null>(null);
+    useState<PendingWalletSelection | null>(null);
   const [message, setMessage] = useState('test');
   const [lastSignedMessage, setLastSignedMessage] = useState<string | null>(
     null
@@ -406,12 +406,12 @@ export default function App() {
   const [logLines, setLogLines] = useState(['Ready.']);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [feeOptionPickerOptions, setFeeOptionPickerOptions] = useState<
-    OmsFeeOptionWithBalance[]
+    FeeOptionWithBalance[]
   >([]);
   const handledRedirectUrlsRef = useRef(new Set<string>());
   const handlingRedirectUrlRef = useRef<string | null>(null);
   const feeOptionSelectionResolverRef = useRef<
-    ((selection: OmsFeeOptionSelection | null) => void) | null
+    ((selection: FeeOptionSelection | null) => void) | null
   >(null);
 
   const selectedNetwork = useMemo(
@@ -426,7 +426,7 @@ export default function App() {
   }, []);
 
   const resolveFeeOptionSelection = useCallback(
-    (selection: OmsFeeOptionSelection | null) => {
+    (selection: FeeOptionSelection | null) => {
       const resolver = feeOptionSelectionResolverRef.current;
       feeOptionSelectionResolverRef.current = null;
       setFeeOptionPickerOptions([]);
@@ -437,8 +437,8 @@ export default function App() {
 
   const selectFeeOption = useCallback(
     async (
-      feeOptions: OmsFeeOptionWithBalance[]
-    ): Promise<OmsFeeOptionSelection | null> => {
+      feeOptions: FeeOptionWithBalance[]
+    ): Promise<FeeOptionSelection | null> => {
       if (feeOptions.length === 0) {
         appendLog('No fee options available.');
         return null;
@@ -456,7 +456,7 @@ export default function App() {
   );
 
   const chooseFeeOption = useCallback(
-    (selection: OmsFeeOptionSelection) => {
+    (selection: FeeOptionSelection) => {
       appendLog(`Selected fee option: ${selection.token}`);
       resolveFeeOptionSelection(selection);
     },
@@ -546,7 +546,7 @@ export default function App() {
   );
 
   const activateWallet = useCallback(
-    async (result: OmsWalletActivationResult) => {
+    async (result: WalletActivationResult) => {
       const nextSession = await omsWallet.wallet.getSession();
       const address = nextSession.walletAddress ?? result.walletAddress;
       clearExpiredSessionState();
@@ -730,7 +730,10 @@ export default function App() {
         if (!emailForSignIn) {
           throw new Error('Email is required');
         }
-        await omsWallet.wallet.startEmailAuth(emailForSignIn);
+        await omsWallet.wallet.startEmailAuth({
+          email: emailForSignIn,
+          sessionLifetimeSeconds: requestedSessionLifetimeSeconds(),
+        });
         setEmail('');
         setAuthStage('code');
         setAuthStatus(`Code requested for ${emailForSignIn}`);
@@ -749,7 +752,6 @@ export default function App() {
         const authResult = await omsWallet.wallet.completeEmailAuth({
           code: requireText(code, 'Verification code'),
           walletSelection: manualWalletSelection ? 'manual' : 'automatic',
-          sessionLifetimeSeconds: requestedSessionLifetimeSeconds(),
         });
 
         if (authResult.type === 'walletSelection') {
@@ -1316,12 +1318,12 @@ function expiredSessionEmail(
   return email ? email : null;
 }
 
-function feeOptionTitle(option: OmsFeeOptionWithBalance): string {
+function feeOptionTitle(option: FeeOptionWithBalance): string {
   const symbol = feeOptionSymbol(option);
   return `${symbol} fee`;
 }
 
-function feeOptionSubtitle(option: OmsFeeOptionWithBalance): string {
+function feeOptionSubtitle(option: FeeOptionWithBalance): string {
   const symbol = feeOptionSymbol(option);
   const fee = `${option.feeOption.displayValue} ${symbol}`;
   const available = option.available
@@ -1331,11 +1333,11 @@ function feeOptionSubtitle(option: OmsFeeOptionWithBalance): string {
   return `Fee ${fee} · Available ${available}`;
 }
 
-function feeOptionSymbol(option: OmsFeeOptionWithBalance): string {
+function feeOptionSymbol(option: FeeOptionWithBalance): string {
   return option.feeOption.token.symbol || option.selection.token;
 }
 
-function feeOptionIsSelectable(option: OmsFeeOptionWithBalance): boolean {
+function feeOptionIsSelectable(option: FeeOptionWithBalance): boolean {
   const available = optionalBigInt(option.availableRaw);
   const fee = optionalBigInt(option.feeOption.value);
   return available == null || fee == null || available >= fee;

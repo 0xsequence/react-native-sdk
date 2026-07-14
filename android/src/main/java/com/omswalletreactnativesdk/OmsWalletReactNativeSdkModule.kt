@@ -135,9 +135,17 @@ class OmsWalletReactNativeSdkModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  override fun startEmailAuth(clientId: String, email: String, promise: Promise) {
+  override fun startEmailAuth(
+    clientId: String,
+    email: String,
+    sessionLifetimeSeconds: String?,
+    promise: Promise
+  ) {
     launch(promise) {
-      requireClient(clientId).wallet.startEmailAuth(email)
+      requireClient(clientId).wallet.startEmailAuth(
+        email = email,
+        sessionLifetimeSeconds = sessionLifetimeSeconds.toSessionLifetimeSeconds()
+      )
       null
     }
   }
@@ -147,7 +155,6 @@ class OmsWalletReactNativeSdkModule(reactContext: ReactApplicationContext) :
     code: String,
     walletSelection: String?,
     walletType: String?,
-    sessionLifetimeSeconds: String?,
     promise: Promise
   ) {
     launch(promise) {
@@ -156,8 +163,7 @@ class OmsWalletReactNativeSdkModule(reactContext: ReactApplicationContext) :
         requireClient(clientId).wallet.completeEmailAuth(
           code = code,
           walletSelection = walletSelection.toWalletSelectionBehavior(),
-          walletType = walletType.toWalletType(),
-          sessionLifetimeSeconds = sessionLifetimeSeconds.toSessionLifetimeSeconds()
+          walletType = walletType.toWalletType()
         )
       )
     }
@@ -234,7 +240,7 @@ class OmsWalletReactNativeSdkModule(reactContext: ReactApplicationContext) :
 
   override fun handleOidcRedirectCallback(
     clientId: String,
-    callbackUrl: String?,
+    callbackUrl: String,
     walletSelection: String?,
     sessionLifetimeSeconds: String?,
     promise: Promise

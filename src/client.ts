@@ -10,24 +10,25 @@ import type {
   ListAccessPageParams,
   ListAccessPagesParams,
   ListAccessParams,
-  OmsBalancesResult,
+  BalancesResult,
   OMSWalletParams,
   OMSWalletSessionExpiredEvent,
   OMSWalletSessionState,
-  OmsCompleteAuthResult,
-  OmsCredentialInfo,
-  OmsListAccessResponse,
-  OmsOidcRedirectAuthResult,
-  OmsSendTransactionResponse,
-  OmsStartOidcRedirectAuthResult,
-  OmsTransactionHistoryResult,
-  OmsTransactionStatus,
+  CompleteAuthResult,
+  CredentialInfo,
+  ListAccessResponse,
+  OidcRedirectAuthResult,
+  SendTransactionResponse,
+  StartOidcRedirectAuthResult,
+  TransactionHistoryResult,
+  TransactionStatusResponse,
   WalletAccount,
-  OmsWalletActivationResult,
+  WalletActivationResult,
   SendTransactionParams,
   SignMessageParams,
   SignInWithOidcIdTokenParams,
   SignTypedDataParams,
+  StartEmailAuthParams,
   StartOidcRedirectAuthParams,
   IsValidMessageSignatureParams,
   IsValidTypedDataSignatureParams,
@@ -64,31 +65,31 @@ export class OMSWalletClient {
     unsupported();
   }
 
-  startEmailAuth(_email: string): Promise<void> {
+  startEmailAuth(_params: StartEmailAuthParams): Promise<void> {
     unsupported();
   }
 
   completeEmailAuth(
     _params: CompleteEmailAuthParams
-  ): Promise<OmsCompleteAuthResult> {
+  ): Promise<CompleteAuthResult> {
     unsupported();
   }
 
   signInWithOidcIdToken(
     _params: SignInWithOidcIdTokenParams
-  ): Promise<OmsCompleteAuthResult> {
+  ): Promise<CompleteAuthResult> {
     unsupported();
   }
 
   startOidcRedirectAuth(
     _params: StartOidcRedirectAuthParams
-  ): Promise<OmsStartOidcRedirectAuthResult> {
+  ): Promise<StartOidcRedirectAuthResult> {
     unsupported();
   }
 
   handleOidcRedirectCallback(
-    _params: HandleOidcRedirectCallbackParams = {}
-  ): Promise<OmsOidcRedirectAuthResult> {
+    _params: HandleOidcRedirectCallbackParams
+  ): Promise<OidcRedirectAuthResult> {
     unsupported();
   }
 
@@ -96,13 +97,13 @@ export class OMSWalletClient {
     unsupported();
   }
 
-  useWallet(_walletId: string): Promise<OmsWalletActivationResult> {
+  useWallet(_walletId: string): Promise<WalletActivationResult> {
     unsupported();
   }
 
   createWallet(
     _params: CreateWalletParams = {}
-  ): Promise<OmsWalletActivationResult> {
+  ): Promise<WalletActivationResult> {
     unsupported();
   }
 
@@ -120,17 +121,15 @@ export class OMSWalletClient {
 
   sendTransaction(
     _params: SendTransactionParams
-  ): Promise<OmsSendTransactionResponse> {
+  ): Promise<SendTransactionResponse> {
     unsupported();
   }
 
-  callContract(
-    _params: CallContractParams
-  ): Promise<OmsSendTransactionResponse> {
+  callContract(_params: CallContractParams): Promise<SendTransactionResponse> {
     unsupported();
   }
 
-  getTransactionStatus(_txnId: string): Promise<OmsTransactionStatus> {
+  getTransactionStatus(_txnId: string): Promise<TransactionStatusResponse> {
     unsupported();
   }
 
@@ -150,19 +149,19 @@ export class OMSWalletClient {
     unsupported();
   }
 
-  listAccess(_params: ListAccessParams = {}): Promise<OmsCredentialInfo[]> {
+  listAccess(_params: ListAccessParams = {}): Promise<CredentialInfo[]> {
     unsupported();
   }
 
   async *listAccessPages(
     _params: ListAccessPagesParams = {}
-  ): AsyncGenerator<OmsListAccessResponse, void, void> {
+  ): AsyncGenerator<ListAccessResponse, void, void> {
     unsupported();
   }
 
   listAccessPage(
     _params: ListAccessPageParams = {}
-  ): Promise<OmsListAccessResponse> {
+  ): Promise<ListAccessResponse> {
     unsupported();
   }
 
@@ -172,13 +171,13 @@ export class OMSWalletClient {
 }
 
 export class OMSIndexerClient {
-  getBalances(_params: GetBalancesParams): Promise<OmsBalancesResult> {
+  getBalances(_params: GetBalancesParams): Promise<BalancesResult> {
     unsupported();
   }
 
   getTransactionHistory(
     _params: GetTransactionHistoryParams
-  ): Promise<OmsTransactionHistoryResult> {
+  ): Promise<TransactionHistoryResult> {
     unsupported();
   }
 }

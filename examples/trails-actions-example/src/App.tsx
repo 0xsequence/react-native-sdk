@@ -50,7 +50,7 @@ import {
   type OMSWalletSessionExpiredEvent,
   type OMSWalletSessionState,
   type Network,
-  type OmsSendTransactionResponse,
+  type SendTransactionResponse,
 } from '@0xsequence/oms-react-native-sdk';
 import {
   encodeFunctionData,
@@ -652,7 +652,7 @@ function requireWalletAddress(address: string | null): `0x${string}` {
   return address as `0x${string}`;
 }
 
-function transactionResultLabel(result: OmsSendTransactionResponse): string {
+function transactionResultLabel(result: SendTransactionResponse): string {
   return result.txnHash
     ? shortHash(result.txnHash)
     : `${result.txnId} (${result.status})`;
@@ -1761,7 +1761,7 @@ export default function App() {
           throw new Error('Email is required');
         }
         setAuthStatus('Requesting email code...');
-        await omsWallet.wallet.startEmailAuth(emailForSignIn);
+        await omsWallet.wallet.startEmailAuth({ email: emailForSignIn });
         setEmail('');
         setAuthStage('code');
         setAuthStatus(`Code requested for ${emailForSignIn}`);

@@ -210,8 +210,9 @@ function loadClient(overrides = {}) {
     overrides.sendTransaction ??
       (async () => ({
         txnId: 'txn-1',
-        status: 'sent',
+        status: 'pending',
         txnHash: '0xtxn',
+        statusResolution: 'resolved',
       }))
   );
   native.getBalances = makeRecorder(
@@ -275,7 +276,7 @@ async function expectReplayCleared(action) {
   const { client, native } = loadClient();
   const oms = createOms(client);
   const staleEvent = sessionExpiredEvent('stale');
-  emitSessionExpired(native, 'oms-wallet-1', staleEvent);
+  emitSessionExpired(native, 'oms-wallet', staleEvent);
 
   await action(oms, native);
 
@@ -290,10 +291,10 @@ test('creates a native client and routes instance calls with its client id', asy
   await oms.wallet.getSession();
 
   assert.deepEqual(calls.createClient[0], [
-    'oms-wallet-1',
+    'oms-wallet',
     'test-publishable-key',
   ]);
-  assert.deepEqual(calls.getSession[0], ['oms-wallet-1']);
+  assert.deepEqual(calls.getSession[0], ['oms-wallet']);
 });
 
 test('exposes supported network metadata aligned with native SDKs', () => {
@@ -369,36 +370,39 @@ test('normalizes native OMS errors into the public error shape', async () => {
   });
 });
 
-test('replays native session expiry only to matching client subscribers', () => {
-  const { client, native } = loadClient();
+test('replaces the single native client without retaining stale subscribers', async () => {
+  const { calls, client, native } = loadClient();
   const firstOms = createOms(client);
-  const secondOms = createOms(client);
   const firstEvent = sessionExpiredEvent('first');
   const secondEvent = sessionExpiredEvent('second');
-  const thirdEvent = sessionExpiredEvent('third');
 
-  emitSessionExpired(native, 'oms-wallet-1', firstEvent);
-
+  emitSessionExpired(native, 'oms-wallet', firstEvent);
   const firstSubscriber = subscribe(firstOms);
-  const secondSubscriber = subscribe(secondOms);
   assert.deepEqual(firstSubscriber.events, [firstEvent]);
-  assert.deepEqual(secondSubscriber.events, []);
 
-  emitSessionExpired(native, 'oms-wallet-1', secondEvent);
-  assert.deepEqual(firstSubscriber.events, [firstEvent, secondEvent]);
+  const secondOms = createOms(client);
+  const secondSubscriber = subscribe(secondOms);
   assert.deepEqual(secondSubscriber.events, []);
+  await assert.rejects(
+    firstOms.wallet.getSession(),
+    /This OMSWallet instance has been replaced/
+  );
 
-  emitSessionExpired(native, 'oms-wallet-2', thirdEvent);
-  assert.deepEqual(secondSubscriber.events, [thirdEvent]);
+  emitSessionExpired(native, 'oms-wallet', secondEvent);
+  assert.deepEqual(firstSubscriber.events, [firstEvent]);
+  assert.deepEqual(secondSubscriber.events, [secondEvent]);
+  assert.deepEqual(calls.createClient, [
+    ['oms-wallet', 'test-publishable-key'],
+    ['oms-wallet', 'test-publishable-key'],
+  ]);
 
   firstSubscriber.subscription.remove();
-  emitSessionExpired(native, 'oms-wallet-1', thirdEvent);
-  assert.deepEqual(firstSubscriber.events, [firstEvent, secondEvent]);
+  secondSubscriber.subscription.remove();
 });
 
 test('clears cached session expiry when auth or session state is reset', async () => {
   await expectReplayCleared((oms) =>
-    oms.wallet.startEmailAuth('user@example.com')
+    oms.wallet.startEmailAuth({ email: 'user@example.com' })
   );
   await expectReplayCleared((oms) =>
     oms.wallet.startOidcRedirectAuth({
@@ -443,19 +447,19 @@ test('routes pending wallet selection activation with the owning client id', asy
     });
     assert.equal('id' in result.pendingSelection, false);
     const staleEvent = sessionExpiredEvent(selectionAction);
-    emitSessionExpired(native, 'oms-wallet-1', staleEvent);
+    emitSessionExpired(native, 'oms-wallet', staleEvent);
 
     if (selectionAction === 'selectWallet') {
       await result.pendingSelection.selectWallet('wallet-1');
       assert.deepEqual(calls.selectWalletForPendingSelection[0], [
-        'oms-wallet-1',
+        'oms-wallet',
         'pending-1',
         'wallet-1',
       ]);
     } else {
       await result.pendingSelection.createAndSelectWallet('reference');
       assert.deepEqual(calls.createAndSelectWalletForPendingSelection[0], [
-        'oms-wallet-1',
+        'oms-wallet',
         'pending-1',
         'reference',
       ]);
@@ -473,9 +477,14 @@ test('does not clear cached session expiry for ignored OIDC redirect callbacks',
     });
     const oms = createOms(client);
     const staleEvent = sessionExpiredEvent(type);
-    emitSessionExpired(native, 'oms-wallet-1', staleEvent);
+    emitSessionExpired(native, 'oms-wallet', staleEvent);
 
-    assert.deepEqual(await oms.wallet.handleOidcRedirectCallback(), { type });
+    assert.deepEqual(
+      await oms.wallet.handleOidcRedirectCallback({
+        callbackUrl: 'example://auth?code=ignored',
+      }),
+      { type }
+    );
 
     const { events } = subscribe(oms);
     assert.deepEqual(events, [staleEvent]);
@@ -486,25 +495,32 @@ test('passes auth session lifetime and login hint parameters to native', async (
   const { calls, client } = loadClient();
   const oms = createOms(client);
 
+  await oms.wallet.startEmailAuth({
+    email: 'first@example.com',
+    sessionLifetimeSeconds: 3600,
+  });
+  await oms.wallet.startEmailAuth({ email: 'second@example.com' });
+  assert.deepEqual(calls.startEmailAuth, [
+    ['oms-wallet', 'first@example.com', '3600'],
+    ['oms-wallet', 'second@example.com', null],
+  ]);
+
   await oms.wallet.completeEmailAuth({
     code: '123456',
     walletSelection: 'manual',
     walletType: 'ethereum',
-    sessionLifetimeSeconds: 3600,
   });
   await oms.wallet.completeEmailAuth({ code: '654321' });
 
   assert.deepEqual(calls.completeEmailAuth[0], [
-    'oms-wallet-1',
+    'oms-wallet',
     '123456',
     'manual',
     'ethereum',
-    '3600',
   ]);
   assert.deepEqual(calls.completeEmailAuth[1], [
-    'oms-wallet-1',
+    'oms-wallet',
     '654321',
-    null,
     null,
     null,
   ]);
@@ -520,7 +536,7 @@ test('passes auth session lifetime and login hint parameters to native', async (
     providerLabel: 'Google',
   });
   assert.deepEqual(calls.signInWithOidcIdToken[0], [
-    'oms-wallet-1',
+    'oms-wallet',
     'id-token',
     'https://issuer.example.com',
     'audience',
@@ -536,16 +552,18 @@ test('passes auth session lifetime and login hint parameters to native', async (
     walletSelection: 'manual',
     sessionLifetimeSeconds: 1800,
   });
-  await oms.wallet.handleOidcRedirectCallback();
+  await oms.wallet.handleOidcRedirectCallback({
+    callbackUrl: 'example://auth?code=def',
+  });
   assert.deepEqual(calls.handleOidcRedirectCallback[0], [
-    'oms-wallet-1',
+    'oms-wallet',
     'example://auth?code=abc',
     'manual',
     '1800',
   ]);
   assert.deepEqual(calls.handleOidcRedirectCallback[1], [
-    'oms-wallet-1',
-    null,
+    'oms-wallet',
+    'example://auth?code=def',
     null,
     null,
   ]);
@@ -571,7 +589,7 @@ test('passes auth session lifetime and login hint parameters to native', async (
   });
 
   assert.deepEqual(calls.startOidcRedirectAuth[0], [
-    'oms-wallet-1',
+    'oms-wallet',
     JSON.stringify({ ...provider, type: 'custom' }),
     null,
     'ethereum',
@@ -581,7 +599,7 @@ test('passes auth session lifetime and login hint parameters to native', async (
     'user@example.com',
   ]);
   assert.deepEqual(calls.startOidcRedirectAuth[1], [
-    'oms-wallet-1',
+    'oms-wallet',
     JSON.stringify({ type: 'oms-relay', provider: 'google' }),
     'example://auth',
     null,
@@ -603,7 +621,7 @@ test('serializes indexer balance and transaction history params for native', asy
     includeMetadata: false,
     page: { page: 1, pageSize: 25 },
   });
-  assert.equal(calls.getBalances[0][0], 'oms-wallet-1');
+  assert.equal(calls.getBalances[0][0], 'oms-wallet');
   assert.deepEqual(JSON.parse(calls.getBalances[0][1]), {
     walletAddress: '0xwallet',
     networks: ['137'],
@@ -617,7 +635,7 @@ test('serializes indexer balance and transaction history params for native', asy
     transactionHashes: ['0xtxn'],
     metadataOptions: { includeContracts: ['0xcontract'] },
   });
-  assert.equal(calls.getTransactionHistory[0][0], 'oms-wallet-1');
+  assert.equal(calls.getTransactionHistory[0][0], 'oms-wallet');
   assert.deepEqual(JSON.parse(calls.getTransactionHistory[0][1]), {
     walletAddress: '0xwallet',
     networks: ['137'],
@@ -668,7 +686,7 @@ test('round-trips fee option selection token from native request', async () => {
       });
       return {
         txnId: 'txn-1',
-        status: 'sent',
+        status: 'pending',
         txnHash: '0xtxn',
         statusResolution: 'resolved',
       };
@@ -689,7 +707,7 @@ test('round-trips fee option selection token from native request', async () => {
 
   assert.deepEqual(result, {
     txnId: 'txn-1',
-    status: 'sent',
+    status: 'pending',
     txnHash: '0xtxn',
     statusResolution: 'resolved',
   });
@@ -700,7 +718,7 @@ test('round-trips fee option selection token from native request', async () => {
     null,
   ]);
   assert.deepEqual(calls.sendTransaction[0].slice(0, 8), [
-    'oms-wallet-1',
+    'oms-wallet',
     '137',
     '0xrecipient',
     '0',
@@ -709,4 +727,26 @@ test('round-trips fee option selection token from native request', async () => {
     'fee-option-selector-1',
     true,
   ]);
+});
+
+test('rejects transaction statuses outside the public contract', async () => {
+  const { client } = loadClient({
+    sendTransaction: async () => ({
+      txnId: 'txn-1',
+      status: 'sent',
+      txnHash: null,
+      statusResolution: 'resolved',
+    }),
+  });
+  const oms = createOms(client);
+  const { Networks } = require(networksModulePath);
+
+  await assert.rejects(
+    oms.wallet.sendTransaction({
+      network: Networks.polygon,
+      to: '0xrecipient',
+      value: '0',
+    }),
+    /Unsupported transaction status from native SDK: sent/
+  );
 });
