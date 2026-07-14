@@ -25,6 +25,6 @@ const firstAvailable: FeeOptionSelector = (options) =>
     (option) =>
       option.availableRaw != null &&
       hasEnoughBalance(option.availableRaw, option.feeOption.value)
-  )?.selection ?? null;
+  )?.selection;
 
 export const FeeOptionSelectors = Object.freeze({ firstAvailable });

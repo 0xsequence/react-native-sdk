@@ -29,7 +29,7 @@ type OMSWalletParams = {
 ```ts
 omsWallet.wallet.startEmailAuth({
   email: string;
-  sessionLifetimeSeconds?: number | null;
+  sessionLifetimeSeconds?: number;
 }): Promise<void>
 
 omsWallet.wallet.completeEmailAuth({
@@ -48,9 +48,9 @@ omsWallet.wallet.signInWithOidcIdToken({
   audience: string;
   walletSelection?: 'automatic' | 'manual';
   walletType?: 'ethereum';
-  sessionLifetimeSeconds?: number | null;
-  provider?: string | null;
-  providerLabel?: string | null;
+  sessionLifetimeSeconds?: number;
+  provider?: string;
+  providerLabel?: string;
 }): Promise<CompleteAuthResult>
 ```
 
@@ -66,9 +66,9 @@ omsWallet.wallet.startOidcRedirectAuth({
   provider: OmsRelayOidcProviders.google;
   omsRelayReturnUri: string;
   walletType?: 'ethereum';
-  walletSelection?: 'automatic' | 'manual' | null;
-  sessionLifetimeSeconds?: number | null;
-  loginHint?: string | null;
+  walletSelection?: 'automatic' | 'manual';
+  sessionLifetimeSeconds?: number;
+  loginHint?: string;
 }): Promise<{ authorizationUrl: string }>
 ```
 
@@ -80,8 +80,8 @@ type CustomOidcProviderConfig = {
   clientId: string;
   authorizationUrl: string;
   providerRedirectUri: string;
-  provider?: string | null;
-  providerLabel?: string | null;
+  provider?: string;
+  providerLabel?: string;
   scopes?: string[];
   authorizeParams?: Record<string, string>;
   authMode?: 'auth-code' | 'auth-code-pkce';
@@ -89,11 +89,11 @@ type CustomOidcProviderConfig = {
 
 omsWallet.wallet.startOidcRedirectAuth({
   provider: CustomOidcProviderConfig;
-  authorizeParams?: Record<string, string> | null;
+  authorizeParams?: Record<string, string>;
   walletType?: 'ethereum';
-  walletSelection?: 'automatic' | 'manual' | null;
-  sessionLifetimeSeconds?: number | null;
-  loginHint?: string | null;
+  walletSelection?: 'automatic' | 'manual';
+  sessionLifetimeSeconds?: number;
+  loginHint?: string;
 }): Promise<{ authorizationUrl: string }>
 ```
 
@@ -103,7 +103,7 @@ Complete a redirect after the app receives the callback URI:
 omsWallet.wallet.handleOidcRedirectCallback({
   callbackUrl: string;
   walletSelection?: 'automatic' | 'manual';
-  sessionLifetimeSeconds?: number | null;
+  sessionLifetimeSeconds?: number;
 }): Promise<OidcRedirectAuthResult>
 
 type OidcRedirectAuthResult =
@@ -125,8 +125,8 @@ type CompleteAuthResult =
     }
   | {
       type: 'walletSelection';
-      walletAddress: null;
-      wallet: null;
+      walletAddress: undefined;
+      wallet: undefined;
       wallets: WalletAccount[];
       credential: CredentialInfo;
       pendingSelection: PendingWalletSelection;
@@ -137,9 +137,7 @@ type PendingWalletSelection = {
   wallets: WalletAccount[];
   credential: CredentialInfo;
   selectWallet(walletId: string): Promise<WalletActivationResult>;
-  createAndSelectWallet(
-    reference?: string | null
-  ): Promise<WalletActivationResult>;
+  createAndSelectWallet(reference?: string): Promise<WalletActivationResult>;
 };
 ```
 
@@ -148,7 +146,7 @@ The native pending-selection identifier is intentionally not public. Use the met
 ## Session
 
 ```ts
-omsWallet.wallet.getWalletAddress(): Promise<string | null>
+omsWallet.wallet.getWalletAddress(): Promise<string | undefined>
 omsWallet.wallet.getSession(): Promise<OMSWalletSessionState>
 omsWallet.wallet.onSessionExpired(
   listener: (event: OMSWalletSessionExpiredEvent) => void
@@ -158,19 +156,19 @@ omsWallet.wallet.signOut(): Promise<void>
 
 ```ts
 type OMSWalletSessionState = {
-  walletAddress: string | null;
-  expiresAt: string | null;
+  walletAddress: string | undefined;
+  expiresAt: string | undefined;
   auth:
-    | { type: 'email'; email: string | null }
+    | { type: 'email'; email: string | undefined }
     | {
         type: 'oidc';
         flow: 'redirect' | 'id-token';
         issuer: string;
-        provider: string | null;
-        providerLabel: string | null;
-        email: string | null;
+        provider: string | undefined;
+        providerLabel: string | undefined;
+        email: string | undefined;
       }
-    | null;
+    | undefined;
 };
 
 type OMSWalletSessionExpiredEvent = {
@@ -186,14 +184,14 @@ type WalletAccount = {
   id: string;
   type: 'ethereum';
   address: string;
-  reference: string | null;
+  reference?: string;
 };
 
 omsWallet.wallet.listWallets(): Promise<WalletAccount[]>
 omsWallet.wallet.useWallet(walletId: string): Promise<WalletActivationResult>
 omsWallet.wallet.createWallet({
   walletType?: 'ethereum';
-  reference?: string | null;
+  reference?: string;
 } = {}): Promise<WalletActivationResult>
 ```
 
@@ -268,9 +266,9 @@ omsWallet.wallet.sendTransaction({
   network: Network;
   to: string;
   value: string;
-  data?: string | null;
+  data?: string;
   mode?: 'native' | 'relayer';
-  selectFeeOption?: FeeOptionSelector | null;
+  selectFeeOption?: FeeOptionSelector;
   waitForStatus?: boolean;
   statusPolling?: TransactionStatusPollingOptions;
 }): Promise<SendTransactionResponse>
@@ -279,9 +277,9 @@ omsWallet.wallet.callContract({
   network: Network;
   contractAddress: string;
   method: string;
-  args?: { type: string; value: unknown }[] | null;
+  args?: { type: string; value: unknown }[];
   mode?: 'native' | 'relayer';
-  selectFeeOption?: FeeOptionSelector | null;
+  selectFeeOption?: FeeOptionSelector;
   waitForStatus?: boolean;
   statusPolling?: TransactionStatusPollingOptions;
 }): Promise<SendTransactionResponse>
@@ -297,7 +295,7 @@ omsWallet.wallet.getTransactionStatus(
 type SendTransactionResponse = {
   txnId: string;
   status: TransactionStatus;
-  txnHash: string | null;
+  txnHash?: string;
   statusResolution: 'not-requested' | 'resolved' | 'timed-out';
 };
 
@@ -310,7 +308,7 @@ type TransactionStatus =
 
 type TransactionStatusResponse = {
   status: TransactionStatus;
-  txnHash: string | null;
+  txnHash?: string;
 };
 
 type TransactionStatusPollingOptions = {
@@ -326,32 +324,32 @@ type TransactionStatusPollingOptions = {
 ```ts
 type FeeOptionSelector = (
   feeOptions: FeeOptionWithBalance[]
-) => FeeOptionSelection | null | Promise<FeeOptionSelection | null>;
+) => FeeOptionSelection | undefined | Promise<FeeOptionSelection | undefined>;
 
 FeeOptionSelectors.firstAvailable
 ```
 
-`firstAvailable` returns the first quoted option whose raw available balance covers the fee, or `null` when no option is affordable.
+`firstAvailable` returns the first quoted option whose raw available balance covers the fee, or `undefined` when no option is affordable.
 
 ## Wallet ID Tokens And Access
 
 ```ts
 omsWallet.wallet.getIdToken({
-  ttlSeconds?: number | null;
-  customClaims?: Record<string, unknown> | null;
+  ttlSeconds?: number;
+  customClaims?: Record<string, unknown>;
 } = {}): Promise<string>
 
 omsWallet.wallet.listAccess({
-  pageSize?: number | null;
+  pageSize?: number;
 } = {}): Promise<CredentialInfo[]>
 
 omsWallet.wallet.listAccessPages({
-  pageSize?: number | null;
+  pageSize?: number;
 } = {}): AsyncGenerator<ListAccessResponse, void, void>
 
 omsWallet.wallet.listAccessPage({
-  pageSize?: number | null;
-  cursor?: string | null;
+  pageSize?: number;
+  cursor?: string;
 } = {}): Promise<ListAccessResponse>
 
 omsWallet.wallet.revokeAccess(targetCredentialId: string): Promise<void>
@@ -366,9 +364,9 @@ omsWallet.indexer.getBalances({
   networkType?: 'MAINNETS' | 'TESTNETS' | 'ALL';
   contractAddresses?: string[];
   includeMetadata?: boolean;
-  omitPrices?: boolean | null;
+  omitPrices?: boolean;
   tokenIds?: string[];
-  contractStatus?: 'VERIFIED' | 'UNVERIFIED' | 'ALL' | null;
+  contractStatus?: 'VERIFIED' | 'UNVERIFIED' | 'ALL';
   page?: { page?: number; pageSize?: number };
 }): Promise<BalancesResult>
 
@@ -379,12 +377,12 @@ omsWallet.indexer.getTransactionHistory({
   contractAddresses?: string[];
   transactionHashes?: string[];
   metaTransactionIds?: string[];
-  fromBlock?: number | null;
-  toBlock?: number | null;
-  tokenId?: string | null;
+  fromBlock?: number;
+  toBlock?: number;
+  tokenId?: string;
   includeMetadata?: boolean;
-  omitPrices?: boolean | null;
-  metadataOptions?: MetadataOptions | null;
+  omitPrices?: boolean;
+  metadataOptions?: MetadataOptions;
   page?: { page?: number; pageSize?: number };
 }): Promise<TransactionHistoryResult>
 ```
@@ -404,13 +402,13 @@ type CredentialInfo = {
 };
 
 type AccessPage = {
-  limit: number | null;
-  cursor: string | null;
+  limit?: number;
+  cursor?: string;
 };
 
 type ListAccessResponse = {
   credentials: CredentialInfo[];
-  page: AccessPage | null;
+  page?: AccessPage;
 };
 ```
 
@@ -422,10 +420,10 @@ type FeeToken = {
   name: string;
   symbol: string;
   type: string;
-  decimals: number | null;
-  logoUrl: string | null;
-  contractAddress: string | null;
-  tokenId: string | null;
+  decimals?: number;
+  logoUrl?: string;
+  contractAddress?: string;
+  tokenId?: string;
 };
 
 type FeeOption = {
@@ -439,10 +437,10 @@ type FeeOptionSelection = { token: string };
 type FeeOptionWithBalance = {
   feeOption: FeeOption;
   selection: FeeOptionSelection;
-  balance: TokenBalance | null;
-  available: string | null;
-  availableRaw: string | null;
-  decimals: number | null;
+  balance?: TokenBalance;
+  available?: string;
+  availableRaw?: string;
+  decimals?: number;
 };
 ```
 
@@ -450,122 +448,122 @@ Indexer responses use the following models:
 
 ```ts
 type TokenBalancesPage = {
-  page: number | null;
-  pageSize: number | null;
-  more: boolean | null;
+  page?: number;
+  pageSize?: number;
+  more?: boolean;
 };
 
 type TokenBalance = {
-  contractType: string | null;
-  contractAddress: string | null;
-  accountAddress: string | null;
-  tokenId: string | null;
-  balance: string | null;
-  blockHash: string | null;
-  blockNumber?: number | null;
-  chainId?: number | null;
-  name?: string | null;
-  symbol?: string | null;
-  balanceUSD?: string | null;
-  priceUSD?: string | null;
-  priceUpdatedAt?: string | null;
-  uniqueCollectibles?: string | null;
-  isSummary?: boolean | null;
-  contractInfo?: TokenContractInfo | null;
-  tokenMetadata?: TokenMetadata | null;
+  contractType?: string;
+  contractAddress?: string;
+  accountAddress?: string;
+  tokenId?: string;
+  balance?: string;
+  blockHash?: string;
+  blockNumber?: number;
+  chainId?: number;
+  name?: string;
+  symbol?: string;
+  balanceUSD?: string;
+  priceUSD?: string;
+  priceUpdatedAt?: string;
+  uniqueCollectibles?: string;
+  isSummary?: boolean;
+  contractInfo?: TokenContractInfo;
+  tokenMetadata?: TokenMetadata;
 };
 
 type TokenContractInfo = {
-  chainId?: number | null;
-  address?: string | null;
-  source?: string | null;
-  name?: string | null;
-  type?: string | null;
-  symbol?: string | null;
-  decimals?: number | null;
-  logoURI?: string | null;
-  deployed?: boolean | null;
-  bytecodeHash?: string | null;
-  extensions?: Record<string, unknown> | null;
-  updatedAt?: string | null;
-  queuedAt?: string | null;
-  status?: string | null;
+  chainId?: number;
+  address?: string;
+  source?: string;
+  name?: string;
+  type?: string;
+  symbol?: string;
+  decimals?: number;
+  logoURI?: string;
+  deployed?: boolean;
+  bytecodeHash?: string;
+  extensions?: Record<string, unknown>;
+  updatedAt?: string;
+  queuedAt?: string;
+  status?: string;
 };
 
 type TokenMetadataAsset = {
-  id?: number | null;
-  collectionId?: number | null;
-  tokenId?: string | null;
-  url?: string | null;
-  metadataField?: string | null;
-  name?: string | null;
-  filesize?: number | null;
-  mimeType?: string | null;
-  width?: number | null;
-  height?: number | null;
-  updatedAt?: string | null;
+  id?: number;
+  collectionId?: number;
+  tokenId?: string;
+  url?: string;
+  metadataField?: string;
+  name?: string;
+  filesize?: number;
+  mimeType?: string;
+  width?: number;
+  height?: number;
+  updatedAt?: string;
 };
 
 type TokenMetadata = {
-  chainId?: number | null;
-  contractAddress?: string | null;
-  tokenId?: string | null;
-  source?: string | null;
-  name?: string | null;
-  description?: string | null;
-  image?: string | null;
-  video?: string | null;
-  audio?: string | null;
-  properties?: Record<string, unknown> | null;
-  attributes?: Record<string, unknown>[] | null;
-  imageData?: string | null;
-  externalUrl?: string | null;
-  backgroundColor?: string | null;
-  animationUrl?: string | null;
-  decimals?: number | null;
-  updatedAt?: string | null;
-  assets?: TokenMetadataAsset[] | null;
-  status?: string | null;
-  queuedAt?: string | null;
-  lastFetched?: string | null;
+  chainId?: number;
+  contractAddress?: string;
+  tokenId?: string;
+  source?: string;
+  name?: string;
+  description?: string;
+  image?: string;
+  video?: string;
+  audio?: string;
+  properties?: Record<string, unknown>;
+  attributes?: Record<string, unknown>[];
+  imageData?: string;
+  externalUrl?: string;
+  backgroundColor?: string;
+  animationUrl?: string;
+  decimals?: number;
+  updatedAt?: string;
+  assets?: TokenMetadataAsset[];
+  status?: string;
+  queuedAt?: string;
+  lastFetched?: string;
 };
 
 type BalancesResult = {
   status: number;
-  page?: TokenBalancesPage | null;
+  page?: TokenBalancesPage;
   nativeBalances: TokenBalance[];
   balances: TokenBalance[];
 };
 
 type TransactionHistoryResult = {
   status: number;
-  page?: TokenBalancesPage | null;
+  page?: TokenBalancesPage;
   transactions: Transaction[];
 };
 
 type Transaction = {
-  txnHash: string | null;
-  blockNumber: number | null;
-  blockHash: string | null;
-  chainId: number | null;
-  metaTxnId?: string | null;
-  transfers?: TransactionTransfer[] | null;
-  timestamp?: string | null;
+  txnHash: string;
+  blockNumber: number;
+  blockHash: string;
+  chainId: number;
+  metaTxnId?: string;
+  transfers?: TransactionTransfer[];
+  timestamp: string;
 };
 
 type TransactionTransfer = {
-  transferType?: string | null;
-  contractAddress?: string | null;
-  contractType?: string | null;
-  from?: string | null;
-  to?: string | null;
-  tokenIds?: string[] | null;
-  amounts?: string[] | null;
-  logIndex?: number | null;
-  amountsUSD?: string[] | null;
-  pricesUSD?: string[] | null;
-  contractInfo?: TokenContractInfo | null;
-  tokenMetadata?: Record<string, unknown> | null;
+  transferType?: string;
+  contractAddress?: string;
+  contractType?: string;
+  from?: string;
+  to?: string;
+  tokenIds?: string[];
+  amounts?: string[];
+  logIndex?: number;
+  amountsUSD?: string[];
+  pricesUSD?: string[];
+  contractInfo?: TokenContractInfo;
+  tokenMetadata?: Record<string, unknown>;
 };
 ```
 
@@ -583,7 +581,26 @@ try {
 }
 ```
 
-`OMSWalletError` includes `code`, `operation`, `status`, `txnId`, `retryable`, and `upstreamError`. Bridge input validation and non-OMS native failures remain ordinary `Error` values.
+```ts
+type OMSWalletUpstreamError = {
+  service: 'waas' | 'indexer';
+  name?: string;
+  code?: string;
+  message?: string;
+  status?: number;
+};
+
+class OMSWalletError extends Error {
+  readonly code: OMSWalletErrorCode;
+  readonly operation?: string;
+  readonly status?: number;
+  readonly txnId?: string;
+  readonly retryable?: boolean;
+  readonly upstreamError?: OMSWalletUpstreamError;
+}
+```
+
+Bridge input validation and non-OMS native failures remain ordinary `Error` values.
 
 ## Unit Helpers
 

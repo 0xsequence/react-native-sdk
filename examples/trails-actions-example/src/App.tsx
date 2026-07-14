@@ -159,9 +159,9 @@ const SIGNED_OUT_BALANCES: BalanceState = {
   status: 'Sign in to load balances.',
 };
 const SIGNED_OUT_SESSION: OMSWalletSessionState = {
-  walletAddress: null,
-  expiresAt: null,
-  auth: null,
+  walletAddress: undefined,
+  expiresAt: undefined,
+  auth: undefined,
 };
 
 LogBox.ignoreLogs(['SafeAreaView has been deprecated']);
@@ -640,12 +640,14 @@ function requireText(value: string, label: string): string {
 
 function expiredSessionEmail(
   event: OMSWalletSessionExpiredEvent | null
-): string | null {
-  const email = event == null ? null : sessionEmail(event.session)?.trim();
-  return email ? email : null;
+): string | undefined {
+  const email = event == null ? undefined : sessionEmail(event.session)?.trim();
+  return email || undefined;
 }
 
-function requireWalletAddress(address: string | null): `0x${string}` {
+function requireWalletAddress(
+  address: string | null | undefined
+): `0x${string}` {
   if (!address?.startsWith('0x')) {
     throw new Error('Sign in before preparing a Trails action.');
   }
@@ -728,8 +730,8 @@ function formatTokenAmount(
   }
 }
 
-function sessionEmail(session: OMSWalletSessionState): string | null {
-  return session.auth?.email ?? null;
+function sessionEmail(session: OMSWalletSessionState): string | undefined {
+  return session.auth?.email;
 }
 
 function formatSessionAuth(session: OMSWalletSessionState): string {
@@ -742,7 +744,9 @@ function formatSessionAuth(session: OMSWalletSessionState): string {
   return 'Unknown';
 }
 
-function formatSessionExpiration(expiresAt: number | string | null): string {
+function formatSessionExpiration(
+  expiresAt: number | string | null | undefined
+): string {
   if (!expiresAt) return 'Unknown';
   return new Date(expiresAt).toLocaleString();
 }
@@ -1983,7 +1987,7 @@ export default function App() {
           data: prepared.data,
         });
         const txLabel = transactionResultLabel(txResult);
-        setLastSwapTransactionHash(txResult.txnHash);
+        setLastSwapTransactionHash(txResult.txnHash ?? null);
         setSwapStatus(
           `Swap status: submitted ${txLabel}. Waiting for USDC and POL balance updates...`
         );
@@ -2030,7 +2034,7 @@ export default function App() {
             data: transaction.data,
           });
           txLabel = transactionResultLabel(txResult);
-          setLastDepositTransactionHash(txResult.txnHash);
+          setLastDepositTransactionHash(txResult.txnHash ?? null);
           setDepositStatus(`Deposit status: submitted ${label} ${txLabel}.`);
         }
 
@@ -2090,7 +2094,7 @@ export default function App() {
           data: prepared.data,
         });
         const txLabel = transactionResultLabel(txResult);
-        setLastEarnTransactionHash(txResult.txnHash);
+        setLastEarnTransactionHash(txResult.txnHash ?? null);
         setEarnStatus(
           `Swap and Deposit status: submitted ${txLabel}. Waiting for POL balance update...`
         );
@@ -2153,7 +2157,7 @@ export default function App() {
             data: transaction.data,
           });
           lastTxLabel = transactionResultLabel(txResult);
-          setLastWithdrawTransactionHash(txResult.txnHash);
+          setLastWithdrawTransactionHash(txResult.txnHash ?? null);
           setEarnPositionsStatus(
             `Submitted ${lastTxLabel}. Waiting for withdraw position update...`
           );

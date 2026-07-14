@@ -5,6 +5,8 @@ import { isOmsRelayOidcProvider } from './oidcProviders';
 import type {
   OmsNativeFeeOptionSelectionRequest,
   OmsNativeCompleteAuthResult,
+  OmsNativeListAccessResponse,
+  OmsNativeFeeOption,
   OmsNativeFeeOptionWithBalance,
   OmsNativeOidcRedirectAuthResult,
   OmsNativePendingWalletSelection,
@@ -13,8 +15,10 @@ import type {
   OmsNativeSessionState,
   OmsNativeTransactionStatus,
   OmsNativeTokenBalance,
+  OmsNativeTokenBalancesPage,
   OmsNativeTokenContractInfo,
   OmsNativeTokenMetadata,
+  OmsNativeTokenMetadataAsset,
   OmsNativeTransaction,
   OmsNativeTransactionTransfer,
   OmsNativeWalletAccount,
@@ -37,6 +41,7 @@ import type {
   OMSWalletSessionState,
   CompleteAuthResult,
   CredentialInfo,
+  FeeOption,
   FeeOptionWithBalance,
   FeeOptionSelector,
   ListAccessResponse,
@@ -56,8 +61,10 @@ import type {
   StartOidcRedirectAuthParams,
   TransactionStatus,
   TokenBalance,
+  TokenBalancesPage,
   TokenContractInfo,
   TokenMetadata,
+  TokenMetadataAsset,
   Transaction,
   TransactionTransfer,
   IsValidMessageSignatureParams,
@@ -101,18 +108,14 @@ function stringifyRequiredJson(value: unknown, name: string): string {
   return json;
 }
 
-function stringifyOptionalJson(
-  value: unknown | null | undefined
-): string | null {
+function stringifyOptionalJson(value: unknown | undefined): string | null {
   if (value == null) {
     return null;
   }
   return stringifyRequiredJson(value, 'value');
 }
 
-function stringifyOptionalNumber(
-  value: number | null | undefined
-): string | null {
+function stringifyOptionalNumber(value: number | undefined): string | null {
   return value == null ? null : String(value);
 }
 
@@ -159,11 +162,19 @@ function serializeIndexerParams(params: IndexerParamsWithNetworks): string {
   );
 }
 
-function requireNativeField<T>(value: T | null | undefined, name: string): T {
+function requireNativeField<T>(
+  value: T | null | undefined,
+  name: string,
+  source = 'auth result'
+): T {
   if (value == null) {
-    throw new Error(`Native auth result is missing ${name}`);
+    throw new Error(`Native ${source} is missing ${name}`);
   }
   return value;
+}
+
+function optionalNativeField<T>(value: T | null | undefined): T | undefined {
+  return value == null ? undefined : value;
 }
 
 const nativeClientIdValue = 'oms-wallet';
@@ -283,43 +294,130 @@ function hydrateObject(value: object): Record<string, unknown> {
   return Object.fromEntries(Object.entries(value));
 }
 
+function hydrateTokenBalancesPage(
+  page: OmsNativeTokenBalancesPage
+): TokenBalancesPage {
+  return {
+    page: optionalNativeField(page.page),
+    pageSize: optionalNativeField(page.pageSize),
+    more: optionalNativeField(page.more),
+  };
+}
+
 function hydrateTokenContractInfo(
   info: OmsNativeTokenContractInfo
 ): TokenContractInfo {
   return {
-    ...info,
+    chainId: optionalNativeField(info.chainId),
+    address: optionalNativeField(info.address),
+    source: optionalNativeField(info.source),
+    name: optionalNativeField(info.name),
+    type: optionalNativeField(info.type),
+    symbol: optionalNativeField(info.symbol),
+    decimals: optionalNativeField(info.decimals),
+    logoURI: optionalNativeField(info.logoURI),
+    deployed: optionalNativeField(info.deployed),
+    bytecodeHash: optionalNativeField(info.bytecodeHash),
     extensions:
-      info.extensions == null
-        ? info.extensions
-        : hydrateObject(info.extensions),
+      info.extensions == null ? undefined : hydrateObject(info.extensions),
+    updatedAt: optionalNativeField(info.updatedAt),
+    queuedAt: optionalNativeField(info.queuedAt),
+    status: optionalNativeField(info.status),
+  };
+}
+
+function hydrateTokenMetadataAsset(
+  asset: OmsNativeTokenMetadataAsset
+): TokenMetadataAsset {
+  return {
+    id: optionalNativeField(asset.id),
+    collectionId: optionalNativeField(asset.collectionId),
+    tokenId: optionalNativeField(asset.tokenId),
+    url: optionalNativeField(asset.url),
+    metadataField: optionalNativeField(asset.metadataField),
+    name: optionalNativeField(asset.name),
+    filesize: optionalNativeField(asset.filesize),
+    mimeType: optionalNativeField(asset.mimeType),
+    width: optionalNativeField(asset.width),
+    height: optionalNativeField(asset.height),
+    updatedAt: optionalNativeField(asset.updatedAt),
   };
 }
 
 function hydrateTokenMetadata(metadata: OmsNativeTokenMetadata): TokenMetadata {
   return {
-    ...metadata,
+    chainId: optionalNativeField(metadata.chainId),
+    contractAddress: optionalNativeField(metadata.contractAddress),
+    tokenId: optionalNativeField(metadata.tokenId),
+    source: optionalNativeField(metadata.source),
+    name: optionalNativeField(metadata.name),
+    description: optionalNativeField(metadata.description),
+    image: optionalNativeField(metadata.image),
+    video: optionalNativeField(metadata.video),
+    audio: optionalNativeField(metadata.audio),
     properties:
       metadata.properties == null
-        ? metadata.properties
+        ? undefined
         : hydrateObject(metadata.properties),
     attributes:
       metadata.attributes == null
-        ? metadata.attributes
+        ? undefined
         : metadata.attributes.map(hydrateObject),
+    imageData: optionalNativeField(metadata.imageData),
+    externalUrl: optionalNativeField(metadata.externalUrl),
+    backgroundColor: optionalNativeField(metadata.backgroundColor),
+    animationUrl: optionalNativeField(metadata.animationUrl),
+    decimals: optionalNativeField(metadata.decimals),
+    updatedAt: optionalNativeField(metadata.updatedAt),
+    assets: metadata.assets?.map(hydrateTokenMetadataAsset),
+    status: optionalNativeField(metadata.status),
+    queuedAt: optionalNativeField(metadata.queuedAt),
+    lastFetched: optionalNativeField(metadata.lastFetched),
   };
 }
 
 function hydrateTokenBalance(balance: OmsNativeTokenBalance): TokenBalance {
   return {
-    ...balance,
+    contractType: optionalNativeField(balance.contractType),
+    contractAddress: optionalNativeField(balance.contractAddress),
+    accountAddress: optionalNativeField(balance.accountAddress),
+    tokenId: optionalNativeField(balance.tokenId),
+    balance: optionalNativeField(balance.balance),
+    blockHash: optionalNativeField(balance.blockHash),
+    blockNumber: optionalNativeField(balance.blockNumber),
+    chainId: optionalNativeField(balance.chainId),
+    name: optionalNativeField(balance.name),
+    symbol: optionalNativeField(balance.symbol),
+    balanceUSD: optionalNativeField(balance.balanceUSD),
+    priceUSD: optionalNativeField(balance.priceUSD),
+    priceUpdatedAt: optionalNativeField(balance.priceUpdatedAt),
+    uniqueCollectibles: optionalNativeField(balance.uniqueCollectibles),
+    isSummary: optionalNativeField(balance.isSummary),
     contractInfo:
       balance.contractInfo == null
-        ? balance.contractInfo
+        ? undefined
         : hydrateTokenContractInfo(balance.contractInfo),
     tokenMetadata:
       balance.tokenMetadata == null
-        ? balance.tokenMetadata
+        ? undefined
         : hydrateTokenMetadata(balance.tokenMetadata),
+  };
+}
+
+function hydrateFeeOption(option: OmsNativeFeeOption): FeeOption {
+  return {
+    token: {
+      network: option.token.network,
+      name: option.token.name,
+      symbol: option.token.symbol,
+      type: option.token.type,
+      decimals: optionalNativeField(option.token.decimals),
+      logoUrl: optionalNativeField(option.token.logoUrl),
+      contractAddress: optionalNativeField(option.token.contractAddress),
+      tokenId: optionalNativeField(option.token.tokenId),
+    },
+    value: option.value,
+    displayValue: option.displayValue,
   };
 }
 
@@ -327,9 +425,13 @@ function hydrateFeeOptionWithBalance(
   option: OmsNativeFeeOptionWithBalance
 ): FeeOptionWithBalance {
   return {
-    ...option,
+    feeOption: hydrateFeeOption(option.feeOption),
+    selection: option.selection,
     balance:
-      option.balance == null ? null : hydrateTokenBalance(option.balance),
+      option.balance == null ? undefined : hydrateTokenBalance(option.balance),
+    available: optionalNativeField(option.available),
+    availableRaw: optionalNativeField(option.availableRaw),
+    decimals: optionalNativeField(option.decimals),
   };
 }
 
@@ -337,27 +439,66 @@ function hydrateTransactionTransfer(
   transfer: OmsNativeTransactionTransfer
 ): TransactionTransfer {
   return {
-    ...transfer,
+    transferType: optionalNativeField(transfer.transferType),
+    contractAddress: optionalNativeField(transfer.contractAddress),
+    contractType: optionalNativeField(transfer.contractType),
+    from: optionalNativeField(transfer.from),
+    to: optionalNativeField(transfer.to),
+    tokenIds: optionalNativeField(transfer.tokenIds),
+    amounts: optionalNativeField(transfer.amounts),
+    logIndex: optionalNativeField(transfer.logIndex),
+    amountsUSD: optionalNativeField(transfer.amountsUSD),
+    pricesUSD: optionalNativeField(transfer.pricesUSD),
     contractInfo:
       transfer.contractInfo == null
-        ? transfer.contractInfo
+        ? undefined
         : hydrateTokenContractInfo(transfer.contractInfo),
     tokenMetadata:
       transfer.tokenMetadata == null
-        ? transfer.tokenMetadata
+        ? undefined
         : hydrateObject(transfer.tokenMetadata),
   };
 }
 
 function hydrateTransaction(transaction: OmsNativeTransaction): Transaction {
   return {
-    ...transaction,
+    txnHash: requireNativeField(
+      transaction.txnHash,
+      'txnHash',
+      'indexer transaction'
+    ),
+    blockNumber: requireNativeField(
+      transaction.blockNumber,
+      'blockNumber',
+      'indexer transaction'
+    ),
+    blockHash: requireNativeField(
+      transaction.blockHash,
+      'blockHash',
+      'indexer transaction'
+    ),
+    chainId: requireNativeField(
+      transaction.chainId,
+      'chainId',
+      'indexer transaction'
+    ),
+    metaTxnId: optionalNativeField(transaction.metaTxnId),
     transfers: transaction.transfers?.map(hydrateTransactionTransfer),
+    timestamp: requireNativeField(
+      transaction.timestamp,
+      'timestamp',
+      'indexer transaction'
+    ),
   };
 }
 
 function hydrateWalletAccount(wallet: OmsNativeWalletAccount): WalletAccount {
-  return { ...wallet, type: hydrateWalletType(wallet.type) };
+  return {
+    id: wallet.id,
+    type: hydrateWalletType(wallet.type),
+    address: wallet.address,
+    reference: optionalNativeField(wallet.reference),
+  };
 }
 
 function hydrateWalletActivationResult(
@@ -387,13 +528,21 @@ function hydrateTransactionStatus(value: string): TransactionStatus {
 function hydrateSendTransactionResponse(
   response: OmsNativeSendTransactionResponse
 ): SendTransactionResponse {
-  return { ...response, status: hydrateTransactionStatus(response.status) };
+  return {
+    txnId: response.txnId,
+    status: hydrateTransactionStatus(response.status),
+    txnHash: optionalNativeField(response.txnHash),
+    statusResolution: response.statusResolution,
+  };
 }
 
 function hydrateTransactionStatusResponse(
   response: OmsNativeTransactionStatus
 ): TransactionStatusResponse {
-  return { ...response, status: hydrateTransactionStatus(response.status) };
+  return {
+    status: hydrateTransactionStatus(response.status),
+    txnHash: optionalNativeField(response.txnHash),
+  };
 }
 
 function hydrateSessionState(
@@ -401,12 +550,17 @@ function hydrateSessionState(
 ): OMSWalletSessionState {
   const auth = session.auth;
   if (auth == null) {
-    return { ...session, auth: null };
+    return {
+      walletAddress: optionalNativeField(session.walletAddress),
+      expiresAt: optionalNativeField(session.expiresAt),
+      auth: undefined,
+    };
   }
   if (auth.type === 'email') {
     return {
-      ...session,
-      auth: { type: 'email', email: auth.email },
+      walletAddress: optionalNativeField(session.walletAddress),
+      expiresAt: optionalNativeField(session.expiresAt),
+      auth: { type: 'email', email: optionalNativeField(auth.email) },
     };
   }
   if (auth.type === 'oidc') {
@@ -419,14 +573,15 @@ function hydrateSessionState(
       throw new Error('Native OIDC session is missing issuer');
     }
     return {
-      ...session,
+      walletAddress: optionalNativeField(session.walletAddress),
+      expiresAt: optionalNativeField(session.expiresAt),
       auth: {
         type: 'oidc',
         flow: auth.flow,
         issuer: auth.issuer,
-        provider: auth.provider ?? null,
-        providerLabel: auth.providerLabel ?? null,
-        email: auth.email,
+        provider: optionalNativeField(auth.provider),
+        providerLabel: optionalNativeField(auth.providerLabel),
+        email: optionalNativeField(auth.email),
       },
     };
   }
@@ -436,7 +591,7 @@ function hydrateSessionState(
 }
 
 async function withFeeOptionSelector<T>(
-  selector: FeeOptionSelector | null | undefined,
+  selector: FeeOptionSelector | undefined,
   operation: (selectorId: string | null) => Promise<T>
 ): Promise<T> {
   if (selector == null) {
@@ -473,7 +628,7 @@ function hydratePendingWalletSelection(
       resetSessionExpiredReplay(owner);
       return hydrateWalletActivationResult(result);
     },
-    async createAndSelectWallet(reference?: string | null) {
+    async createAndSelectWallet(reference?: string) {
       await ensureReady(owner);
       const result =
         await OmsWalletReactNativeSdk.createAndSelectWalletForPendingSelection(
@@ -515,8 +670,8 @@ function hydrateCompleteAuthResult(
       );
       return {
         type: 'walletSelection',
-        walletAddress: null,
-        wallet: null,
+        walletAddress: undefined,
+        wallet: undefined,
         wallets: pendingSelection.wallets,
         credential: pendingSelection.credential,
         pendingSelection,
@@ -550,6 +705,21 @@ function hydrateOidcRedirectAuthResult(
   }
 }
 
+function hydrateListAccessResponse(
+  response: OmsNativeListAccessResponse
+): ListAccessResponse {
+  return {
+    credentials: response.credentials,
+    page:
+      response.page == null
+        ? undefined
+        : {
+            limit: optionalNativeField(response.page.limit),
+            cursor: optionalNativeField(response.page.cursor),
+          },
+  };
+}
+
 export class OMSWallet {
   public readonly wallet: OMSWalletClient;
   public readonly indexer: OMSIndexerClient;
@@ -576,9 +746,11 @@ export class OMSWallet {
 export class OMSWalletClient {
   constructor(private readonly owner: OMSWallet) {}
 
-  async getWalletAddress(): Promise<string | null> {
+  async getWalletAddress(): Promise<string | undefined> {
     await ensureReady(this.owner);
-    return OmsWalletReactNativeSdk.getWalletAddress(nativeClientId(this.owner));
+    return optionalNativeField(
+      await OmsWalletReactNativeSdk.getWalletAddress(nativeClientId(this.owner))
+    );
   }
 
   async getSession(): Promise<OMSWalletSessionState> {
@@ -860,7 +1032,7 @@ export class OMSWalletClient {
   async *listAccessPages(
     params: ListAccessPagesParams = {}
   ): AsyncGenerator<ListAccessResponse, void, void> {
-    let cursor: string | null = null;
+    let cursor: string | undefined;
 
     do {
       const response = await this.listAccessPage({
@@ -868,18 +1040,20 @@ export class OMSWalletClient {
         cursor,
       });
       yield response;
-      cursor = response.page?.cursor ?? null;
-    } while (cursor != null);
+      cursor = response.page?.cursor;
+    } while (cursor !== undefined);
   }
 
   async listAccessPage(
     params: ListAccessPageParams = {}
   ): Promise<ListAccessResponse> {
     await ensureReady(this.owner);
-    return OmsWalletReactNativeSdk.listAccessPage(
-      nativeClientId(this.owner),
-      params.pageSize == null ? null : String(params.pageSize),
-      params.cursor ?? null
+    return hydrateListAccessResponse(
+      await OmsWalletReactNativeSdk.listAccessPage(
+        nativeClientId(this.owner),
+        params.pageSize == null ? null : String(params.pageSize),
+        params.cursor ?? null
+      )
     );
   }
 
@@ -902,7 +1076,9 @@ export class OMSIndexerClient {
       serializeIndexerParams(params)
     );
     return {
-      ...result,
+      status: result.status,
+      page:
+        result.page == null ? undefined : hydrateTokenBalancesPage(result.page),
       nativeBalances: result.nativeBalances.map(hydrateTokenBalance),
       balances: result.balances.map(hydrateTokenBalance),
     };
@@ -917,7 +1093,9 @@ export class OMSIndexerClient {
       serializeIndexerParams(params)
     );
     return {
-      ...result,
+      status: result.status,
+      page:
+        result.page == null ? undefined : hydrateTokenBalancesPage(result.page),
       transactions: result.transactions.map(hydrateTransaction),
     };
   }

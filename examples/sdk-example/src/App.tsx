@@ -40,9 +40,9 @@ const DEFAULT_TRANSACTION_TO = '0xE5E8B483FfC05967FcFed58cc98D053265af6D99';
 const PREFERRED_NETWORK_ORDER = ['80002', '137'];
 const DEFAULT_SESSION_LIFETIME_SECONDS = '604800';
 const SIGNED_OUT_SESSION: OMSWalletSessionState = {
-  walletAddress: null,
-  expiresAt: null,
-  auth: null,
+  walletAddress: undefined,
+  expiresAt: undefined,
+  auth: undefined,
 };
 
 LogBox.ignoreLogs(['SafeAreaView has been deprecated']);
@@ -409,7 +409,7 @@ export default function App() {
   const handledRedirectUrlsRef = useRef(new Set<string>());
   const handlingRedirectUrlRef = useRef<string | null>(null);
   const feeOptionSelectionResolverRef = useRef<
-    ((selection: FeeOptionSelection | null) => void) | null
+    ((selection: FeeOptionSelection | undefined) => void) | null
   >(null);
 
   const selectedNetwork = useMemo(
@@ -424,7 +424,7 @@ export default function App() {
   }, []);
 
   const resolveFeeOptionSelection = useCallback(
-    (selection: FeeOptionSelection | null) => {
+    (selection: FeeOptionSelection | undefined) => {
       const resolver = feeOptionSelectionResolverRef.current;
       feeOptionSelectionResolverRef.current = null;
       setFeeOptionPickerOptions([]);
@@ -436,13 +436,13 @@ export default function App() {
   const selectFeeOption = useCallback(
     async (
       feeOptions: FeeOptionWithBalance[]
-    ): Promise<FeeOptionSelection | null> => {
+    ): Promise<FeeOptionSelection | undefined> => {
       if (feeOptions.length === 0) {
         appendLog('No fee options available.');
-        return null;
+        return undefined;
       }
 
-      feeOptionSelectionResolverRef.current?.(null);
+      feeOptionSelectionResolverRef.current?.(undefined);
       setFeeOptionPickerOptions(feeOptions);
       appendLog(`Fee options available: ${feeOptions.length}`);
 
@@ -463,12 +463,12 @@ export default function App() {
 
   const cancelFeeOptionSelection = useCallback(() => {
     appendLog('Fee option selection cancelled.');
-    resolveFeeOptionSelection(null);
+    resolveFeeOptionSelection(undefined);
   }, [appendLog, resolveFeeOptionSelection]);
 
   useEffect(() => {
     return () => {
-      feeOptionSelectionResolverRef.current?.(null);
+      feeOptionSelectionResolverRef.current?.(undefined);
       feeOptionSelectionResolverRef.current = null;
     };
   }, []);
@@ -944,7 +944,7 @@ export default function App() {
           value: decimalToBaseUnits(transactionValue, 18),
           selectFeeOption,
         });
-        setLastTransactionHash(txResult.txnHash);
+        setLastTransactionHash(txResult.txnHash ?? null);
         setTransactionStatus(
           txResult.txnHash
             ? `Transaction status: sent on chain ${network.id}.`
@@ -1306,10 +1306,10 @@ function requireText(value: string | null, label: string): string {
   return trimmed;
 }
 
-function parseSessionLifetimeSeconds(value: string): number | null {
+function parseSessionLifetimeSeconds(value: string): number | undefined {
   const trimmed = value.trim();
   if (!trimmed) {
-    return null;
+    return undefined;
   }
 
   if (!/^\d+$/.test(trimmed)) {
@@ -1326,9 +1326,9 @@ function parseSessionLifetimeSeconds(value: string): number | null {
 
 function expiredSessionEmail(
   event: OMSWalletSessionExpiredEvent | null
-): string | null {
-  const email = event == null ? null : sessionEmail(event.session)?.trim();
-  return email ? email : null;
+): string | undefined {
+  const email = event == null ? undefined : sessionEmail(event.session)?.trim();
+  return email || undefined;
 }
 
 function feeOptionTitle(option: FeeOptionWithBalance): string {
@@ -1368,8 +1368,8 @@ function optionalBigInt(value: string | null | undefined): bigint | null {
   }
 }
 
-function sessionEmail(session: OMSWalletSessionState): string | null {
-  return session.auth?.email ?? null;
+function sessionEmail(session: OMSWalletSessionState): string | undefined {
+  return session.auth?.email;
 }
 
 function formatSessionAuth(session: OMSWalletSessionState): string {
@@ -1386,7 +1386,7 @@ function formatSessionAuth(session: OMSWalletSessionState): string {
   }
 }
 
-function formatSessionExpiration(expiresAt: string | null): string {
+function formatSessionExpiration(expiresAt: string | undefined): string {
   if (!expiresAt) {
     return 'Unavailable';
   }

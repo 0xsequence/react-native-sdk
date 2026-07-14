@@ -51,7 +51,7 @@ export class OMSWallet {
 }
 
 export class OMSWalletClient {
-  getWalletAddress(): Promise<string | null> {
+  getWalletAddress(): Promise<string | undefined> {
     unsupported();
   }
 

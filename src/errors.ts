@@ -15,18 +15,18 @@ export type OMSWalletErrorCode =
 
 export type OMSWalletUpstreamError = {
   service: 'waas' | 'indexer';
-  name: string | null;
-  code: string | null;
-  message: string | null;
-  status: number | null;
+  name?: string;
+  code?: string;
+  message?: string;
+  status?: number;
 };
 
 export type OMSWalletErrorDetails = {
-  operation: string | null;
-  status: number | null;
-  txnId: string | null;
-  retryable: boolean | null;
-  upstreamError: OMSWalletUpstreamError | null;
+  operation?: string;
+  status?: number;
+  txnId?: string;
+  retryable?: boolean;
+  upstreamError?: OMSWalletUpstreamError;
 };
 
 const errorCodes = new Set<OMSWalletErrorCode>([
@@ -47,11 +47,11 @@ const errorCodes = new Set<OMSWalletErrorCode>([
 
 export class OMSWalletError extends Error {
   readonly code: OMSWalletErrorCode;
-  readonly operation: string | null;
-  readonly status: number | null;
-  readonly txnId: string | null;
-  readonly retryable: boolean | null;
-  readonly upstreamError: OMSWalletUpstreamError | null;
+  readonly operation?: string;
+  readonly status?: number;
+  readonly txnId?: string;
+  readonly retryable?: boolean;
+  readonly upstreamError?: OMSWalletUpstreamError;
 
   constructor(
     code: OMSWalletErrorCode,
@@ -62,11 +62,11 @@ export class OMSWalletError extends Error {
     super(message, options);
     this.name = 'OMSWalletError';
     this.code = code;
-    this.operation = details.operation ?? null;
-    this.status = details.status ?? null;
-    this.txnId = details.txnId ?? null;
-    this.retryable = details.retryable ?? null;
-    this.upstreamError = details.upstreamError ?? null;
+    this.operation = details.operation;
+    this.status = details.status;
+    this.txnId = details.txnId;
+    this.retryable = details.retryable;
+    this.upstreamError = details.upstreamError;
   }
 }
 
@@ -86,48 +86,48 @@ export function normalizeNativeError(error: unknown): Error {
     code as OMSWalletErrorCode,
     error instanceof Error ? error.message : String(error),
     {
-      operation: nullableString(userInfo?.operation),
-      status: nullableNumber(userInfo?.status),
-      txnId: nullableString(userInfo?.txnId),
-      retryable: nullableBoolean(userInfo?.retryable),
+      operation: optionalString(userInfo?.operation),
+      status: optionalNumber(userInfo?.status),
+      txnId: optionalString(userInfo?.txnId),
+      retryable: optionalBoolean(userInfo?.retryable),
       upstreamError: upstreamError(userInfo?.upstreamError),
     },
     error instanceof Error ? { cause: error } : undefined
   );
 }
 
-function record(value: unknown): Record<string, unknown> | null {
+function record(value: unknown): Record<string, unknown> | undefined {
   return typeof value === 'object' && value != null
     ? (value as Record<string, unknown>)
-    : null;
+    : undefined;
 }
 
-function stringValue(value: unknown): string | null {
-  return typeof value === 'string' ? value : null;
+function stringValue(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
 }
 
-function nullableString(value: unknown): string | null {
-  return value == null ? null : stringValue(value);
+function optionalString(value: unknown): string | undefined {
+  return value == null ? undefined : stringValue(value);
 }
 
-function nullableNumber(value: unknown): number | null {
-  return value == null || typeof value !== 'number' ? null : value;
+function optionalNumber(value: unknown): number | undefined {
+  return value == null || typeof value !== 'number' ? undefined : value;
 }
 
-function nullableBoolean(value: unknown): boolean | null {
-  return value == null || typeof value !== 'boolean' ? null : value;
+function optionalBoolean(value: unknown): boolean | undefined {
+  return value == null || typeof value !== 'boolean' ? undefined : value;
 }
 
-function upstreamError(value: unknown): OMSWalletUpstreamError | null {
+function upstreamError(value: unknown): OMSWalletUpstreamError | undefined {
   const item = record(value);
   if (item == null || (item.service !== 'waas' && item.service !== 'indexer')) {
-    return null;
+    return undefined;
   }
   return {
     service: item.service,
-    name: nullableString(item.name),
-    code: nullableString(item.code),
-    message: nullableString(item.message),
-    status: nullableNumber(item.status),
+    name: optionalString(item.name),
+    code: optionalString(item.code),
+    message: optionalString(item.message),
+    status: optionalNumber(item.status),
   };
 }

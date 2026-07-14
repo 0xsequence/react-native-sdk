@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 
@@ -18,6 +19,24 @@ const oidcProvidersModulePath = path.join(
   rootDir,
   'lib/commonjs/oidcProviders.js'
 );
+
+test('keeps nullability internal to the native transport declarations', () => {
+  const declarationsDir = path.join(rootDir, 'lib/typescript/commonjs/src');
+  const publicDeclarations = fs
+    .readdirSync(declarationsDir)
+    .filter(
+      (file) =>
+        file.endsWith('.d.ts') && file !== 'NativeOmsWalletReactNativeSdk.d.ts'
+    );
+
+  for (const file of publicDeclarations) {
+    const declaration = fs.readFileSync(
+      path.join(declarationsDir, file),
+      'utf8'
+    );
+    assert.doesNotMatch(declaration, /\| null\b/, file);
+  }
+});
 
 const config = {
   publishableKey: 'test-publishable-key',
@@ -145,6 +164,11 @@ function loadClient(overrides = {}) {
         auth: null,
       }))
   );
+  native.getWalletAddress = makeRecorder(
+    calls,
+    'getWalletAddress',
+    overrides.getWalletAddress ?? (async () => null)
+  );
   native.startEmailAuth = makeRecorder(
     calls,
     'startEmailAuth',
@@ -176,6 +200,11 @@ function loadClient(overrides = {}) {
         type: 'completed',
         result: walletSelectedResult(),
       }))
+  );
+  native.listWallets = makeRecorder(
+    calls,
+    'listWallets',
+    overrides.listWallets ?? (async () => [wallet()])
   );
   native.useWallet = makeRecorder(
     calls,
@@ -231,6 +260,18 @@ function loadClient(overrides = {}) {
     'getTransactionHistory',
     overrides.getTransactionHistory ??
       (async () => ({ status: 200, page: null, transactions: [] }))
+  );
+  native.getTransactionStatus = makeRecorder(
+    calls,
+    'getTransactionStatus',
+    overrides.getTransactionStatus ??
+      (async () => ({ status: 'pending', txnHash: null }))
+  );
+  native.listAccessPage = makeRecorder(
+    calls,
+    'listAccessPage',
+    overrides.listAccessPage ??
+      (async () => ({ credentials: [credential()], page: null }))
   );
   native.respondToFeeOptionSelection = makeRecorder(
     calls,
@@ -336,7 +377,7 @@ test('selects the first fee option covered by the available balance', async () =
   assert.deepEqual(selected, { token: 'USDC' });
   assert.equal(
     await FeeOptionSelectors.firstAvailable([option('POL', '101', '100')]),
-    null
+    undefined
   );
 });
 
@@ -365,6 +406,9 @@ test('normalizes native OMS errors into the public error shape', async () => {
     assert.equal(error.code, 'OMS_SESSION_MISSING');
     assert.equal(error.operation, 'wallet.getSession');
     assert.equal(error.retryable, false);
+    assert.equal(error.status, undefined);
+    assert.equal(error.txnId, undefined);
+    assert.equal(error.upstreamError, undefined);
     assert.equal(error.cause, nativeError);
     return true;
   });
@@ -446,6 +490,9 @@ test('routes pending wallet selection activation with the owning client id', asy
       walletSelection: 'manual',
     });
     assert.equal('id' in result.pendingSelection, false);
+    assert.equal(result.walletAddress, undefined);
+    assert.equal(result.wallet, undefined);
+    assert.equal(result.wallets[0].reference, undefined);
     const staleEvent = sessionExpiredEvent(selectionAction);
     emitSessionExpired(native, 'oms-wallet', staleEvent);
 
@@ -644,6 +691,163 @@ test('serializes indexer balance and transaction history params for native', asy
   });
 });
 
+test('normalizes representative native nulls at public model boundaries', async () => {
+  const nativeBalance = {
+    contractType: null,
+    contractAddress: null,
+    accountAddress: null,
+    tokenId: null,
+    balance: null,
+    blockHash: null,
+    contractInfo: { name: null, extensions: null },
+    tokenMetadata: {
+      name: null,
+      properties: null,
+      attributes: null,
+      assets: [{ name: null }],
+    },
+  };
+  const nativeTransaction = {
+    txnHash: '0xtransaction',
+    blockNumber: 123,
+    blockHash: '0xblock',
+    chainId: 137,
+    metaTxnId: null,
+    transfers: [
+      {
+        from: null,
+        contractInfo: { symbol: null, extensions: null },
+        tokenMetadata: null,
+      },
+    ],
+    timestamp: '2026-07-14T00:00:00.000Z',
+  };
+  const { client } = loadClient({
+    getSession: async () => ({
+      walletAddress: null,
+      expiresAt: null,
+      auth: {
+        type: 'oidc',
+        flow: 'id-token',
+        issuer: 'https://issuer.example.com',
+        provider: null,
+        providerLabel: null,
+        email: null,
+      },
+    }),
+    getBalances: async () => ({
+      status: 200,
+      page: { page: null, pageSize: null, more: null },
+      nativeBalances: [],
+      balances: [nativeBalance],
+    }),
+    getTransactionHistory: async () => ({
+      status: 200,
+      page: null,
+      transactions: [nativeTransaction],
+    }),
+    sendTransaction: async () => ({
+      txnId: 'txn-1',
+      status: 'pending',
+      txnHash: null,
+      statusResolution: 'timed-out',
+    }),
+    listAccessPage: async () => ({
+      credentials: [credential()],
+      page: { limit: null, cursor: null },
+    }),
+  });
+  const oms = createOms(client);
+  const { Networks } = require(networksModulePath);
+
+  assert.equal(await oms.wallet.getWalletAddress(), undefined);
+  assert.deepEqual(await oms.wallet.getSession(), {
+    walletAddress: undefined,
+    expiresAt: undefined,
+    auth: {
+      type: 'oidc',
+      flow: 'id-token',
+      issuer: 'https://issuer.example.com',
+      provider: undefined,
+      providerLabel: undefined,
+      email: undefined,
+    },
+  });
+  assert.equal((await oms.wallet.listWallets())[0].reference, undefined);
+  assert.deepEqual(await oms.wallet.getTransactionStatus('txn-1'), {
+    status: 'pending',
+    txnHash: undefined,
+  });
+  assert.deepEqual(await oms.wallet.listAccessPage(), {
+    credentials: [credential()],
+    page: { limit: undefined, cursor: undefined },
+  });
+
+  const sent = await oms.wallet.sendTransaction({
+    network: Networks.polygon,
+    to: '0xrecipient',
+    value: '0',
+  });
+  assert.equal(sent.txnHash, undefined);
+
+  const balances = await oms.indexer.getBalances({
+    walletAddress: '0xwallet',
+  });
+  assert.deepEqual(balances.page, {
+    page: undefined,
+    pageSize: undefined,
+    more: undefined,
+  });
+  assert.equal(balances.balances[0].contractAddress, undefined);
+  assert.equal(balances.balances[0].contractInfo.name, undefined);
+  assert.equal(balances.balances[0].tokenMetadata.name, undefined);
+  assert.equal(balances.balances[0].tokenMetadata.assets[0].name, undefined);
+
+  const history = await oms.indexer.getTransactionHistory({
+    walletAddress: '0xwallet',
+  });
+  assert.equal(history.page, undefined);
+  assert.equal(history.transactions[0].metaTxnId, undefined);
+  assert.equal(history.transactions[0].transfers[0].from, undefined);
+  assert.equal(
+    history.transactions[0].transfers[0].contractInfo.symbol,
+    undefined
+  );
+  assert.equal(history.transactions[0].transfers[0].tokenMetadata, undefined);
+});
+
+test('rejects indexer transactions missing required public fields', async () => {
+  const transaction = {
+    txnHash: '0xtransaction',
+    blockNumber: 123,
+    blockHash: '0xblock',
+    chainId: 137,
+    timestamp: '2026-07-14T00:00:00.000Z',
+  };
+
+  for (const field of [
+    'txnHash',
+    'blockNumber',
+    'blockHash',
+    'chainId',
+    'timestamp',
+  ]) {
+    const { client } = loadClient({
+      getTransactionHistory: async () => ({
+        status: 200,
+        page: null,
+        transactions: [{ ...transaction, [field]: null }],
+      }),
+    });
+    const oms = createOms(client);
+
+    await assert.rejects(
+      oms.indexer.getTransactionHistory({ walletAddress: '0xwallet' }),
+      new RegExp(`Native indexer transaction is missing ${field}`)
+    );
+  }
+});
+
 test('round-trips fee option selection token from native request', async () => {
   let capturedFeeOptions;
   const feeOption = {
@@ -711,7 +915,29 @@ test('round-trips fee option selection token from native request', async () => {
     txnHash: '0xtxn',
     statusResolution: 'resolved',
   });
-  assert.deepEqual(capturedFeeOptions, [feeOption]);
+  assert.deepEqual(capturedFeeOptions, [
+    {
+      feeOption: {
+        token: {
+          network: '137',
+          name: 'Polygon',
+          symbol: 'POL',
+          type: 'native',
+          decimals: 18,
+          logoUrl: undefined,
+          contractAddress: undefined,
+          tokenId: 'fee-token-id',
+        },
+        value: '100',
+        displayValue: '0.0000000000000001',
+      },
+      selection: { token: 'canonical-selection-token' },
+      balance: undefined,
+      available: '1',
+      availableRaw: '1000000000000000000',
+      decimals: 18,
+    },
+  ]);
   assert.deepEqual(calls.respondToFeeOptionSelection[0], [
     'fee-request-1',
     'canonical-selection-token',
