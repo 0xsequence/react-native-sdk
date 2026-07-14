@@ -4,7 +4,7 @@ import type {
   OmsFeeOptionWithBalance,
   OmsTokenBalance,
   OmsTokenBalancesPage,
-  OmsWallet,
+  WalletAccount,
   OmsWalletActivationResult,
 } from './NativeOmsWalletReactNativeSdk';
 import type { Network } from './networks';
@@ -28,7 +28,7 @@ export type {
   OmsTransactionHistoryResult,
   OmsTransactionStatus,
   OmsTransactionTransfer,
-  OmsWallet,
+  WalletAccount,
   OmsWalletActivationResult,
 } from './NativeOmsWalletReactNativeSdk';
 
@@ -90,7 +90,7 @@ export type OmsFeeOptionSelector = (
 
 export type OmsPendingWalletSelection = {
   walletType: OmsWalletType;
-  wallets: OmsWallet[];
+  wallets: WalletAccount[];
   credential: OmsCredentialInfo;
   selectWallet(walletId: string): Promise<OmsWalletActivationResult>;
   createAndSelectWallet(
@@ -102,8 +102,8 @@ export type OmsCompleteAuthResult =
   | {
       type: 'walletSelected';
       walletAddress: string;
-      wallet: OmsWallet;
-      wallets: OmsWallet[];
+      wallet: WalletAccount;
+      wallets: WalletAccount[];
       credential: OmsCredentialInfo;
       pendingSelection?: undefined;
     }
@@ -111,7 +111,7 @@ export type OmsCompleteAuthResult =
       type: 'walletSelection';
       walletAddress: null;
       wallet: null;
-      wallets: OmsWallet[];
+      wallets: WalletAccount[];
       credential: OmsCredentialInfo;
       pendingSelection: OmsPendingWalletSelection;
     };

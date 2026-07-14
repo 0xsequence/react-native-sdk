@@ -12,7 +12,7 @@ export type OmsNetwork = {
   displayName: string;
 };
 
-export type OmsWallet = {
+export type WalletAccount = {
   id: string;
   type: string;
   address: string;
@@ -21,21 +21,21 @@ export type OmsWallet = {
 
 export type OmsWalletActivationResult = {
   walletAddress: string;
-  wallet: OmsWallet;
+  wallet: WalletAccount;
 };
 
 export type OmsNativePendingWalletSelection = {
   id: string;
   walletType: string;
-  wallets: OmsWallet[];
+  wallets: WalletAccount[];
   credential: OmsCredentialInfo;
 };
 
 export type OmsNativeCompleteAuthResult = {
   type: string;
   walletAddress: string | null;
-  wallet?: OmsWallet;
-  wallets: OmsWallet[];
+  wallet?: WalletAccount;
+  wallets: WalletAccount[];
   credential: OmsCredentialInfo;
   pendingSelection?: OmsNativePendingWalletSelection;
 };
@@ -295,7 +295,7 @@ export interface Spec extends TurboModule {
     walletSelection: string | null,
     sessionLifetimeSeconds: string | null
   ): Promise<OmsNativeOidcRedirectAuthResult>;
-  listWallets(clientId: string): Promise<OmsWallet[]>;
+  listWallets(clientId: string): Promise<WalletAccount[]>;
   useWallet(
     clientId: string,
     walletId: string

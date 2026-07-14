@@ -34,7 +34,7 @@ import type {
   OmsStartOidcRedirectAuthResult,
   OmsTransactionHistoryResult,
   OmsTransactionStatus,
-  OmsWallet,
+  WalletAccount,
   OmsWalletActivationResult,
   SendTransactionParams,
   SignMessageParams,
@@ -508,7 +508,7 @@ export class OMSWalletClient {
     return result;
   }
 
-  async listWallets(): Promise<OmsWallet[]> {
+  async listWallets(): Promise<WalletAccount[]> {
     await ensureReady(this.owner);
     return OmsWalletReactNativeSdk.listWallets(nativeClientId(this.owner));
   }

@@ -28,7 +28,7 @@ import {
   type OmsFeeOptionWithBalance,
   type Network,
   type OmsPendingWalletSelection,
-  type OmsWallet,
+  type WalletAccount,
   type OmsWalletActivationResult,
 } from '@0xsequence/oms-react-native-sdk';
 
@@ -201,7 +201,7 @@ function WalletSelectionOption({
   disabled,
   onPress,
 }: {
-  wallet: OmsWallet;
+  wallet: WalletAccount;
   disabled: boolean;
   onPress: () => void;
 }) {
@@ -835,7 +835,7 @@ export default function App() {
     });
   };
 
-  const selectPendingWallet = (wallet: OmsWallet) => {
+  const selectPendingWallet = (wallet: WalletAccount) => {
     const selection = pendingWalletSelection;
     if (!selection) return;
     runAction(

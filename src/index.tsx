@@ -61,7 +61,7 @@ export type {
   OmsTransactionStatus,
   OmsTransactionStatusPollingOptions,
   OmsTransactionTransfer,
-  OmsWallet,
+  WalletAccount,
   OmsWalletActivationResult,
   OmsWalletSelectionBehavior,
   OmsWalletType,

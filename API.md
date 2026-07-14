@@ -117,22 +117,22 @@ type OmsCompleteAuthResult =
   | {
       type: 'walletSelected';
       walletAddress: string;
-      wallet: OmsWallet;
-      wallets: OmsWallet[];
+      wallet: WalletAccount;
+      wallets: WalletAccount[];
       credential: OmsCredentialInfo;
     }
   | {
       type: 'walletSelection';
       walletAddress: null;
       wallet: null;
-      wallets: OmsWallet[];
+      wallets: WalletAccount[];
       credential: OmsCredentialInfo;
       pendingSelection: OmsPendingWalletSelection;
     };
 
 type OmsPendingWalletSelection = {
   walletType: 'ethereum';
-  wallets: OmsWallet[];
+  wallets: WalletAccount[];
   credential: OmsCredentialInfo;
   selectWallet(walletId: string): Promise<OmsWalletActivationResult>;
   createAndSelectWallet(
@@ -180,7 +180,14 @@ type OMSWalletSessionExpiredEvent = {
 ## Wallet Management
 
 ```ts
-omsWallet.wallet.listWallets(): Promise<OmsWallet[]>
+type WalletAccount = {
+  id: string;
+  type: string;
+  address: string;
+  reference: string | null;
+};
+
+omsWallet.wallet.listWallets(): Promise<WalletAccount[]>
 omsWallet.wallet.useWallet(walletId: string): Promise<OmsWalletActivationResult>
 omsWallet.wallet.createWallet({
   walletType?: 'ethereum';

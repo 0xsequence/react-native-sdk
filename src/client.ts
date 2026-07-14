@@ -22,7 +22,7 @@ import type {
   OmsStartOidcRedirectAuthResult,
   OmsTransactionHistoryResult,
   OmsTransactionStatus,
-  OmsWallet,
+  WalletAccount,
   OmsWalletActivationResult,
   SendTransactionParams,
   SignMessageParams,
@@ -92,7 +92,7 @@ export class OMSWalletClient {
     unsupported();
   }
 
-  listWallets(): Promise<OmsWallet[]> {
+  listWallets(): Promise<WalletAccount[]> {
     unsupported();
   }
 
