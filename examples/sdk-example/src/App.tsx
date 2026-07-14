@@ -27,14 +27,21 @@ import {
   type FeeOptionSelection,
   type FeeOptionWithBalance,
   type Network,
+  type OmsRelayOidcProvider,
   type PendingWalletSelection,
   type WalletAccount,
   type WalletActivationResult,
 } from '@0xsequence/oms-react-native-sdk';
+import GoogleIdTokenAuth from '../specs/NativeGoogleIdTokenAuth';
 
 const DEMO_PUBLISHABLE_KEY =
   'pk_dev_sdbx_01kqa06hyyetj_01kv5ceg4xefattzmm9fyx04ev';
 const DEMO_OIDC_REDIRECT_URI = 'omsclientrndemo://auth/callback';
+const DEMO_GOOGLE_ISSUER = 'https://accounts.google.com';
+const DEMO_GOOGLE_WEB_CLIENT_ID =
+  '970987756660-0dh5gubqfiugm452raf7mm39qaq639hn.apps.googleusercontent.com';
+const DEMO_GOOGLE_IOS_CLIENT_ID =
+  '970987756660-remcfkci9g8bh1gjd4alg14elgtnsukt.apps.googleusercontent.com';
 
 const DEFAULT_TRANSACTION_TO = '0xE5E8B483FfC05967FcFed58cc98D053265af6D99';
 const PREFERRED_NETWORK_ORDER = ['80002', '137'];
@@ -156,7 +163,7 @@ function AuthMethodSeparator() {
       style={styles.authMethodSeparator}
     >
       <View style={styles.authMethodSeparatorLine} />
-      <Text style={styles.authMethodSeparatorText}>or</Text>
+      <Text style={styles.authMethodSeparatorText}>or continue with email</Text>
       <View style={styles.authMethodSeparatorLine} />
     </View>
   );
@@ -556,7 +563,7 @@ export default function App() {
           ? nextSession
           : { ...SIGNED_OUT_SESSION, walletAddress: address }
       );
-      setAuthStatus('Email login complete');
+      setAuthStatus('Login complete');
       setSignatureStatus('Signature status: ready to sign.');
       setTransactionStatus('Transaction status: ready to send.');
       appendLog(`Wallet ready: ${address}`);
@@ -576,7 +583,7 @@ export default function App() {
       handlingRedirectUrlRef.current = callbackUrl;
       let callbackHandled = false;
       try {
-        setAuthStatus('Completing Google redirect sign-in...');
+        setAuthStatus('Completing redirect sign-in...');
         const result = await omsWallet.wallet.handleOidcRedirectCallback({
           callbackUrl,
         });
@@ -588,9 +595,9 @@ export default function App() {
               setPendingWalletSelection(result.result.pendingSelection);
               setCode('');
               setAuthStage('email');
-              setAuthStatus('Choose a wallet to finish Google sign-in.');
+              setAuthStatus('Choose a wallet to finish sign-in.');
               appendLog(
-                `Google redirect wallet selection available: ${result.result.pendingSelection.wallets.length} existing wallet(s)`
+                `Redirect wallet selection available: ${result.result.pendingSelection.wallets.length} existing wallet(s)`
               );
               break;
             }
@@ -598,13 +605,13 @@ export default function App() {
               walletAddress: result.result.walletAddress,
               wallet: result.result.wallet,
             });
-            setAuthStatus('Google redirect login complete');
+            setAuthStatus('Redirect login complete');
             appendLog(
-              `Google redirect sign-in complete: ${result.result.walletAddress}`
+              `Redirect sign-in complete: ${result.result.walletAddress}`
             );
             break;
           case 'noPendingAuth':
-            setAuthStatus('No pending Google redirect sign-in.');
+            setAuthStatus('No pending redirect sign-in.');
             await refreshSession();
             break;
           case 'notOidcRedirectCallback':
@@ -670,11 +677,11 @@ export default function App() {
     const subscription = Linking.addEventListener('url', ({ url }) => {
       if (isDemoOidcRedirectUrl(url)) {
         runAction(
-          'Handle Google redirect sign-in callback',
+          'Handle redirect sign-in callback',
           () => finishOidcRedirectSignIn(url),
           (error) => {
             setAuthStatus(
-              `Google redirect completion failed: ${describeError(error)}`
+              `Redirect completion failed: ${describeError(error)}`
             );
           }
         );
@@ -685,11 +692,11 @@ export default function App() {
       .then((url) => {
         if (url && isDemoOidcRedirectUrl(url)) {
           runAction(
-            'Handle Google redirect sign-in callback',
+            'Handle redirect sign-in callback',
             () => finishOidcRedirectSignIn(url),
             (error) => {
               setAuthStatus(
-                `Google redirect completion failed: ${describeError(error)}`
+                `Redirect completion failed: ${describeError(error)}`
               );
             }
           );
@@ -772,27 +779,77 @@ export default function App() {
     );
   };
 
-  const startGoogleRedirectSignIn = () => {
+  const startGoogleIdTokenSignIn = () => {
     runAction(
-      'Start Google redirect sign-in',
+      'Start Google ID token sign-in',
       async () => {
         setPendingWalletSelection(null);
-        setAuthStatus('Opening Google redirect sign-in...');
-        requestedSessionLifetimeSeconds();
-        const started = await omsWallet.wallet.startOidcRedirectAuth({
-          provider: OmsRelayOidcProviders.google,
-          omsRelayReturnUri: DEMO_OIDC_REDIRECT_URI,
+        setAuthStatus('Requesting Google ID token...');
+        const sessionLifetime = requestedSessionLifetimeSeconds();
+        const idToken = await GoogleIdTokenAuth.requestGoogleIdToken(
+          DEMO_GOOGLE_WEB_CLIENT_ID,
+          Platform.OS === 'ios' ? DEMO_GOOGLE_IOS_CLIENT_ID : null
+        );
+        const authResult = await omsWallet.wallet.signInWithOidcIdToken({
+          idToken,
+          issuer: DEMO_GOOGLE_ISSUER,
+          audience: DEMO_GOOGLE_WEB_CLIENT_ID,
           walletSelection: manualWalletSelection ? 'manual' : 'automatic',
-          sessionLifetimeSeconds: requestedSessionLifetimeSeconds(),
-          loginHint: expiredSessionEmail(expiredSessionEvent),
+          sessionLifetimeSeconds: sessionLifetime,
+          provider: 'google',
+          providerLabel: 'Google',
         });
-        appendLog('Google redirect auth started.');
 
+        if (authResult.type === 'walletSelection') {
+          setPendingWalletSelection(authResult.pendingSelection);
+          setAuthStatus('Choose a wallet to finish Google sign-in.');
+          appendLog(
+            `Google ID token wallet selection available: ${authResult.wallets.length} existing wallet(s)`
+          );
+          return;
+        }
+
+        await activateWallet({
+          walletAddress: authResult.walletAddress,
+          wallet: authResult.wallet,
+        });
+        setAuthStatus('Google ID token login complete');
+        appendLog(
+          `Google ID token sign-in complete: ${authResult.walletAddress}`
+        );
+      },
+      (error) => {
+        setAuthStatus(
+          `Google ID token sign-in failed: ${describeError(error)}`
+        );
+      }
+    );
+  };
+
+  const startRedirectSignIn = (
+    provider: OmsRelayOidcProvider,
+    providerLabel: string
+  ) => {
+    runAction(
+      `Start ${providerLabel} redirect sign-in`,
+      async () => {
+        setPendingWalletSelection(null);
+        setAuthStatus(`Opening ${providerLabel} redirect sign-in...`);
+        const sessionLifetime = requestedSessionLifetimeSeconds();
         if (!(await InAppBrowser.isAvailable())) {
           throw new Error('In-app browser is not available on this device');
         }
 
-        setAuthStatus('Waiting for Google redirect callback...');
+        const started = await omsWallet.wallet.startOidcRedirectAuth({
+          provider,
+          omsRelayReturnUri: DEMO_OIDC_REDIRECT_URI,
+          walletSelection: manualWalletSelection ? 'manual' : 'automatic',
+          sessionLifetimeSeconds: sessionLifetime,
+          loginHint: expiredSessionEmail(expiredSessionEvent),
+        });
+        appendLog(`${providerLabel} redirect auth started.`);
+
+        setAuthStatus(`Waiting for ${providerLabel} redirect callback...`);
         const result = await InAppBrowser.openAuth(
           started.authorizationUrl,
           DEMO_OIDC_REDIRECT_URI,
@@ -808,18 +865,22 @@ export default function App() {
             enableDefaultShare: false,
             forceCloseOnRedirection: true,
           }
-        );
+        ).catch(async (error: unknown) => {
+          await omsWallet.wallet.signOut();
+          throw error;
+        });
 
         if (result.type === 'success') {
           await finishOidcRedirectSignIn(result.url);
         } else {
-          setAuthStatus('Google redirect sign-in cancelled.');
-          appendLog(`Google redirect browser closed: ${result.type}`);
+          await omsWallet.wallet.signOut();
+          setAuthStatus(`${providerLabel} redirect sign-in cancelled.`);
+          appendLog(`${providerLabel} redirect browser closed: ${result.type}`);
         }
       },
       (error) => {
         setAuthStatus(
-          `Google redirect sign-in failed: ${describeError(error)}`
+          `${providerLabel} redirect sign-in failed: ${describeError(error)}`
         );
       }
     );
@@ -881,6 +942,13 @@ export default function App() {
       setLastTransactionHash(null);
       setTransactionStatus('Transaction status: waiting to send.');
       appendLog('Logged out.');
+      try {
+        await GoogleIdTokenAuth.clearCredentialState();
+      } catch (error) {
+        appendLog(
+          `!! Failed to clear Google credential state: ${describeError(error)}`
+        );
+      }
     });
   };
 
@@ -1045,6 +1113,37 @@ export default function App() {
                         importantForAccessibility="no-hide-descendants"
                         style={styles.fieldSeparator}
                       />
+                      <DemoButton
+                        disabled={isBusy}
+                        label="Continue with Google ID token"
+                        onPress={startGoogleIdTokenSignIn}
+                        style={styles.fullWidthButton}
+                      />
+                      <DemoButton
+                        disabled={isBusy}
+                        label="Continue with Google redirect"
+                        onPress={() =>
+                          startRedirectSignIn(
+                            OmsRelayOidcProviders.google,
+                            'Google'
+                          )
+                        }
+                        style={styles.fullWidthButton}
+                        variant="outline"
+                      />
+                      <DemoButton
+                        disabled={isBusy}
+                        label="Continue with Apple"
+                        onPress={() =>
+                          startRedirectSignIn(
+                            OmsRelayOidcProviders.apple,
+                            'Apple'
+                          )
+                        }
+                        style={styles.fullWidthButton}
+                        variant="outline"
+                      />
+                      <AuthMethodSeparator />
                       <Field
                         keyboardType="email-address"
                         label="Email"
@@ -1056,14 +1155,6 @@ export default function App() {
                         label="Send Login Code"
                         onPress={requestEmailCode}
                         style={styles.fullWidthButton}
-                      />
-                      <AuthMethodSeparator />
-                      <DemoButton
-                        disabled={isBusy}
-                        label="Sign In With Google"
-                        onPress={startGoogleRedirectSignIn}
-                        style={styles.fullWidthButton}
-                        variant="outline"
                       />
                     </>
                   ) : (
