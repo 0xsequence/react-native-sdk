@@ -1,7 +1,7 @@
 {
   "name": "@0xsequence/oms-react-native-sdk",
   "version": "0.1.0-alpha.4",
-  "description": "React Native SDK for the OMS platform.",
+  "description": "OMS Wallet SDK for React Native and Expo development builds.",
   "homepage": "https://github.com/0xsequence/react-native-sdk",
   "main": "./lib/commonjs/index.js",
   "module": "./lib/module/index.js",
@@ -52,6 +52,8 @@
     "expo-example:ios": "cd examples/expo-example && npm run ios",
     "expo-example:install": "bash scripts/install-expo-example-dependencies.sh",
     "expo-example:install:published": "bash scripts/install-expo-example-dependencies.sh --published",
+    "expo-example:prebuild": "cd examples/expo-example && npx expo prebuild --no-install --clean",
+    "expo-example:verify-autolinking": "node scripts/verify-expo-autolinking.mjs",
     "clean": "del-cli android/build examples/sdk-example/android/build examples/sdk-example/android/app/build examples/sdk-example/ios/build examples/trails-actions-example/android/build examples/trails-actions-example/android/app/build examples/trails-actions-example/ios/build lib",
     "prepare": "bob build",
     "test": "yarn prepare && node --test test/*.test.js",
@@ -61,6 +63,8 @@
   },
   "keywords": [
     "react-native",
+    "expo",
+    "wallet",
     "ios",
     "android"
   ],
@@ -89,8 +93,8 @@
     "typescript": "^6.0.2"
   },
   "peerDependencies": {
-    "react": "*",
-    "react-native": "*"
+    "react": ">=19.2.0",
+    "react-native": ">=0.85.0"
   },
   "workspaces": [
     "examples/*",

@@ -32,3 +32,6 @@ jobs:
 
       - name: Typecheck Expo example
         run: npm --prefix examples/expo-example run typecheck
+
+      - name: Prebuild and verify Expo native autolinking
+        run: yarn expo-example:prebuild && yarn expo-example:verify-autolinking
