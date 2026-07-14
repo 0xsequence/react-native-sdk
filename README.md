@@ -156,4 +156,4 @@ const balances = await omsWallet.indexer.getBalances({
 
 ## License
 
-MIT
+Apache-2.0
