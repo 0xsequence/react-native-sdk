@@ -32,5 +32,18 @@
   },
   "engines": {
     "node": ">= 22.11.0"
+  },
+  "codegenConfig": {
+    "name": "OmsClientReactNativeSdkExampleSpec",
+    "type": "modules",
+    "jsSrcsDir": "specs",
+    "android": {
+      "javaPackageName": "omsclientreactnativesdk.example"
+    },
+    "ios": {
+      "modulesProvider": {
+        "GoogleIdTokenAuth": "GoogleIdTokenAuth"
+      }
+    }
   }
 }

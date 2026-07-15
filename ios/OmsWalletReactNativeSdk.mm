@@ -1,30 +1,30 @@
-#import "OmsClientReactNativeSdk.h"
+#import "OmsWalletReactNativeSdk.h"
 #import <React/RCTUtils.h>
 
-#if __has_include("OmsClientReactNativeSdk-Swift.h")
-#import "OmsClientReactNativeSdk-Swift.h"
+#if __has_include("OmsWalletReactNativeSdk-Swift.h")
+#import "OmsWalletReactNativeSdk-Swift.h"
 #else
-#import <OmsClientReactNativeSdk/OmsClientReactNativeSdk-Swift.h>
+#import <OmsWalletReactNativeSdk/OmsWalletReactNativeSdk-Swift.h>
 #endif
 
-@implementation OmsClientReactNativeSdk {
-  OmsClientReactNativeSdkImpl *_impl;
+@implementation OmsWalletReactNativeSdk {
+  OmsWalletReactNativeSdkImpl *_impl;
 }
 
 - (instancetype)init
 {
   self = [super init];
   if (self) {
-    _impl = [OmsClientReactNativeSdkImpl new];
-    __weak OmsClientReactNativeSdk *weakSelf = self;
+    _impl = [OmsWalletReactNativeSdkImpl new];
+    __weak OmsWalletReactNativeSdk *weakSelf = self;
     [_impl setFeeOptionSelectionRequestEmitter:^(NSDictionary *payload) {
-      OmsClientReactNativeSdk *strongSelf = weakSelf;
+      OmsWalletReactNativeSdk *strongSelf = weakSelf;
       if (strongSelf) {
         [strongSelf emitOnFeeOptionSelectionRequest:payload];
       }
     }];
     [_impl setSessionExpiredEventEmitter:^(NSDictionary *payload) {
-      OmsClientReactNativeSdk *strongSelf = weakSelf;
+      OmsWalletReactNativeSdk *strongSelf = weakSelf;
       if (strongSelf) {
         [strongSelf emitOnSessionExpired:payload];
       }
@@ -60,17 +60,21 @@
 
 - (void)startEmailAuth:(NSString *)clientId
                  email:(NSString *)email
+sessionLifetimeSeconds:(nullable NSString *)sessionLifetimeSeconds
                resolve:(RCTPromiseResolveBlock)resolve
                 reject:(RCTPromiseRejectBlock)reject
 {
-  [_impl startEmailAuthWithClientId:clientId email:email resolve:resolve reject:reject];
+  [_impl startEmailAuthWithClientId:clientId
+                              email:email
+             sessionLifetimeSeconds:sessionLifetimeSeconds
+                            resolve:resolve
+                             reject:reject];
 }
 
 - (void)completeEmailAuth:(NSString *)clientId
                      code:(NSString *)code
           walletSelection:(nullable NSString *)walletSelection
                walletType:(nullable NSString *)walletType
-   sessionLifetimeSeconds:(nullable NSString *)sessionLifetimeSeconds
                   resolve:(RCTPromiseResolveBlock)resolve
                    reject:(RCTPromiseRejectBlock)reject
 {
@@ -78,7 +82,6 @@
                                   code:code
                        walletSelection:walletSelection
                             walletType:walletType
-                 sessionLifetimeSeconds:sessionLifetimeSeconds
                                resolve:resolve
                                 reject:reject];
 }
@@ -90,6 +93,8 @@
               walletSelection:(nullable NSString *)walletSelection
                    walletType:(nullable NSString *)walletType
        sessionLifetimeSeconds:(nullable NSString *)sessionLifetimeSeconds
+                     provider:(nullable NSString *)provider
+                providerLabel:(nullable NSString *)providerLabel
                       resolve:(RCTPromiseResolveBlock)resolve
                        reject:(RCTPromiseRejectBlock)reject
 {
@@ -100,25 +105,29 @@
                            walletSelection:walletSelection
                                 walletType:walletType
                      sessionLifetimeSeconds:sessionLifetimeSeconds
+                                  provider:provider
+                             providerLabel:providerLabel
                                    resolve:resolve
                                     reject:reject];
 }
 
 - (void)startOidcRedirectAuth:(NSString *)clientId
                  providerJson:(NSString *)providerJson
-                  redirectUri:(NSString *)redirectUri
+           omsRelayReturnUri:(nullable NSString *)omsRelayReturnUri
                    walletType:(nullable NSString *)walletType
-             relayRedirectUri:(nullable NSString *)relayRedirectUri
+              walletSelection:(nullable NSString *)walletSelection
+        sessionLifetimeSeconds:(nullable NSString *)sessionLifetimeSeconds
           authorizeParamsJson:(nullable NSString *)authorizeParamsJson
                     loginHint:(nullable NSString *)loginHint
                       resolve:(RCTPromiseResolveBlock)resolve
                        reject:(RCTPromiseRejectBlock)reject
 {
-  [_impl startOidcRedirectAuthWithClientId:clientId
+  [_impl startOIDCRedirectAuthWithClientId:clientId
                               providerJson:providerJson
-                               redirectUri:redirectUri
+                        omsRelayReturnUri:omsRelayReturnUri
                                 walletType:walletType
-                          relayRedirectUri:relayRedirectUri
+                       walletSelection:walletSelection
+                 sessionLifetimeSeconds:sessionLifetimeSeconds
                        authorizeParamsJson:authorizeParamsJson
                                  loginHint:loginHint
                                   resolve:resolve
@@ -126,13 +135,13 @@
 }
 
 - (void)handleOidcRedirectCallback:(NSString *)clientId
-                       callbackUrl:(nullable NSString *)callbackUrl
+                       callbackUrl:(NSString *)callbackUrl
                    walletSelection:(nullable NSString *)walletSelection
              sessionLifetimeSeconds:(nullable NSString *)sessionLifetimeSeconds
                             resolve:(RCTPromiseResolveBlock)resolve
                              reject:(RCTPromiseRejectBlock)reject
 {
-  [_impl handleOidcRedirectCallbackWithClientId:clientId
+  [_impl handleOIDCRedirectCallbackWithClientId:clientId
                                     callbackUrl:callbackUrl
                                 walletSelection:walletSelection
                          sessionLifetimeSeconds:sessionLifetimeSeconds
@@ -407,12 +416,12 @@ statusPollingFastPollCount:(nullable NSString *)statusPollingFastPollCount
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
     (const facebook::react::ObjCTurboModule::InitParams &)params
 {
-    return std::make_shared<facebook::react::NativeOmsClientReactNativeSdkSpecJSI>(params);
+    return std::make_shared<facebook::react::NativeOmsWalletReactNativeSdkSpecJSI>(params);
 }
 
 + (NSString *)moduleName
 {
-  return @"OmsClientReactNativeSdk";
+  return @"OmsWalletReactNativeSdk";
 }
 
 @end

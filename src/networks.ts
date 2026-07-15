@@ -1,116 +1,161 @@
-import type { OmsNetwork } from './types';
+declare const networkBrand: unique symbol;
 
-export const supportedNetworks: OmsNetwork[] = [
-  {
-    chainId: '1',
+/**
+ * An opaque SDK-owned registry value. It must come from `Networks`; object
+ * literals are invalid.
+ */
+export interface Network {
+  readonly id: number;
+  readonly name: string;
+  readonly nativeTokenSymbol: string;
+  readonly explorerUrl: string;
+  readonly displayName: string;
+  readonly [networkBrand]: true;
+}
+
+interface NetworkDefinition {
+  id: number;
+  name: string;
+  nativeTokenSymbol: string;
+  explorerUrl: string;
+  displayName: string;
+}
+
+function defineNetwork<const Definition extends NetworkDefinition>(
+  definition: Definition
+): Readonly<Definition> & Network {
+  return Object.freeze(definition) as Readonly<Definition> & Network;
+}
+
+export const Networks = Object.freeze({
+  mainnet: defineNetwork({
+    id: 1,
     name: 'mainnet',
     nativeTokenSymbol: 'ETH',
     explorerUrl: 'https://etherscan.io',
     displayName: 'Ethereum',
-  },
-  {
-    chainId: '11155111',
+  }),
+  sepolia: defineNetwork({
+    id: 11155111,
     name: 'sepolia',
     nativeTokenSymbol: 'ETH',
     explorerUrl: 'https://sepolia.etherscan.io',
     displayName: 'Sepolia',
-  },
-  {
-    chainId: '137',
+  }),
+  polygon: defineNetwork({
+    id: 137,
     name: 'polygon',
     nativeTokenSymbol: 'POL',
     explorerUrl: 'https://polygonscan.com',
     displayName: 'Polygon',
-  },
-  {
-    chainId: '80002',
+  }),
+  amoy: defineNetwork({
+    id: 80002,
     name: 'amoy',
     nativeTokenSymbol: 'POL',
     explorerUrl: 'https://amoy.polygonscan.com',
     displayName: 'Polygon Amoy',
-  },
-  {
-    chainId: '42161',
+  }),
+  arbitrum: defineNetwork({
+    id: 42161,
     name: 'arbitrum',
     nativeTokenSymbol: 'ETH',
     explorerUrl: 'https://arbiscan.io',
     displayName: 'Arbitrum',
-  },
-  {
-    chainId: '421614',
+  }),
+  arbitrumSepolia: defineNetwork({
+    id: 421614,
     name: 'arbitrum-sepolia',
     nativeTokenSymbol: 'ETH',
     explorerUrl: 'https://sepolia.arbiscan.io',
     displayName: 'Arbitrum Sepolia',
-  },
-  {
-    chainId: '10',
+  }),
+  optimism: defineNetwork({
+    id: 10,
     name: 'optimism',
     nativeTokenSymbol: 'ETH',
     explorerUrl: 'https://optimistic.etherscan.io',
     displayName: 'Optimism',
-  },
-  {
-    chainId: '11155420',
+  }),
+  optimismSepolia: defineNetwork({
+    id: 11155420,
     name: 'optimism-sepolia',
     nativeTokenSymbol: 'ETH',
     explorerUrl: 'https://sepolia-optimism.etherscan.io',
     displayName: 'Optimism Sepolia',
-  },
-  {
-    chainId: '8453',
+  }),
+  base: defineNetwork({
+    id: 8453,
     name: 'base',
     nativeTokenSymbol: 'ETH',
     explorerUrl: 'https://basescan.org',
     displayName: 'Base',
-  },
-  {
-    chainId: '84532',
+  }),
+  baseSepolia: defineNetwork({
+    id: 84532,
     name: 'base-sepolia',
     nativeTokenSymbol: 'ETH',
     explorerUrl: 'https://sepolia.basescan.org',
     displayName: 'Base Sepolia',
-  },
-  {
-    chainId: '56',
+  }),
+  bsc: defineNetwork({
+    id: 56,
     name: 'bsc',
     nativeTokenSymbol: 'BNB',
     explorerUrl: 'https://bscscan.com',
     displayName: 'BSC',
-  },
-  {
-    chainId: '97',
+  }),
+  bscTestnet: defineNetwork({
+    id: 97,
     name: 'bsc-testnet',
     nativeTokenSymbol: 'BNB',
     explorerUrl: 'https://testnet.bscscan.com',
     displayName: 'BSC Testnet',
-  },
-  {
-    chainId: '42170',
+  }),
+  arbitrumNova: defineNetwork({
+    id: 42170,
     name: 'arbitrum-nova',
     nativeTokenSymbol: 'ETH',
     explorerUrl: 'https://nova.arbiscan.io',
     displayName: 'Arbitrum Nova',
-  },
-  {
-    chainId: '43114',
+  }),
+  avalanche: defineNetwork({
+    id: 43114,
     name: 'avalanche',
     nativeTokenSymbol: 'AVAX',
     explorerUrl: 'https://subnets.avax.network/c-chain',
     displayName: 'Avalanche',
-  },
-  {
-    chainId: '43113',
+  }),
+  avalancheTestnet: defineNetwork({
+    id: 43113,
     name: 'avalanche-testnet',
     nativeTokenSymbol: 'AVAX',
     explorerUrl: 'https://subnets-test.avax.network/c-chain',
     displayName: 'Avalanche Testnet',
-  },
-  {
-    chainId: '747474',
+  }),
+  katana: defineNetwork({
+    id: 747474,
     name: 'katana',
     nativeTokenSymbol: 'ETH',
     explorerUrl: 'https://katanascan.com',
     displayName: 'Katana',
-  },
-];
+  }),
+});
+
+const supportedNetworks: readonly Network[] = Object.freeze(
+  Object.values(Networks)
+);
+const networksById = new Map(
+  supportedNetworks.map((network) => [network.id, network])
+);
+const networksByName = new Map(
+  supportedNetworks.map((network) => [network.name.toLowerCase(), network])
+);
+
+export function findNetworkById(chainId: number): Network | undefined {
+  return networksById.get(chainId);
+}
+
+export function findNetworkByName(name: string): Network | undefined {
+  return networksByName.get(name.trim().toLowerCase());
+}

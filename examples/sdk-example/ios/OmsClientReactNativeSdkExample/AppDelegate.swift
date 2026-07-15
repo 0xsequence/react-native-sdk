@@ -2,6 +2,7 @@ import UIKit
 import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
+import GoogleSignIn
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -37,7 +38,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     open url: URL,
     options: [UIApplication.OpenURLOptionsKey: Any] = [:]
   ) -> Bool {
-    RCTLinkingManager.application(application, open: url, options: options)
+    if GIDSignIn.sharedInstance.handle(url) {
+      return true
+    }
+    return RCTLinkingManager.application(application, open: url, options: options)
   }
 
   func application(

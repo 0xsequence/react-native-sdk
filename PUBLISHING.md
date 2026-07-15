@@ -6,7 +6,7 @@ Only maintainers with npm publish access should publish. Publish from `master` a
 
 ## 1. Choose The Version
 
-Pre-release versions use `0.x.y-alpha.N`, for example `0.1.0-alpha.3`.
+Use an exact semantic version. Add an `-alpha.N` suffix only for a prerelease.
 
 Check that the version is not already published:
 
@@ -21,11 +21,10 @@ An npm 404 means the version is available. If npm prints a version, choose a new
 Update:
 
 - `package.json` `version`
-- `examples/expo-example/package.json` SDK dependency version and lockfile
 - `CHANGELOG.md`
 - native SDK references if they changed:
   - `android/build.gradle`
-  - `OmsClientReactNativeSdk.podspec`
+  - `OmsWalletReactNativeSdk.podspec`
   - `README.md`
   - `API.md`
 
@@ -43,17 +42,15 @@ Run the standard checks from a clean worktree:
 
 ```sh
 git status --short
-yarn lint
-yarn typecheck
-yarn test
 yarn expo-example:install
+yarn verify
 npm --prefix examples/expo-example run typecheck
 yarn sdk-example build:android
 yarn sdk-example build:ios
 ```
 
-Do not publish if any command fails. `yarn expo-example:install` uses the published npm package
-when this SDK version exists, or a local tarball when it has not been published yet.
+Do not publish if any command fails. `yarn expo-example:install` packs the local SDK source so the
+standalone Expo example is checked against the release candidate.
 
 If native SDK versions changed, confirm those versions are already available from Maven Central and
 CocoaPods before merging the release PR.
@@ -64,11 +61,11 @@ Build the package and inspect what npm would publish:
 
 ```sh
 yarn prepare
-yarn npm publish --dry-run --access public --tag alpha
+yarn npm publish --dry-run --access public
 ```
 
 The dry run should include `lib`, `src`, `android`, `ios`, and
-`OmsClientReactNativeSdk.podspec`.
+`OmsWalletReactNativeSdk.podspec`.
 
 ## 5. Publish
 
@@ -76,10 +73,10 @@ Confirm the npm account, then publish:
 
 ```sh
 yarn npm whoami
-yarn npm publish --access public --tag alpha
+yarn npm publish --access public
 ```
 
-Use `--tag alpha` for alpha releases so prereleases do not become the default `latest` install.
+Add `--tag alpha` to both commands only for an alpha release. Stable releases publish to `latest`.
 
 ## 6. Confirm
 
@@ -89,14 +86,32 @@ Verify npm sees the published version:
 npm view @0xsequence/oms-react-native-sdk@<version> version dist.integrity
 ```
 
-Refresh and verify the standalone Expo example lockfile against the published npm tarball:
+## 7. Tag The Release
+
+From the same clean `master` commit used for the npm publication, create and push a signed tag:
 
 ```sh
-npm --prefix examples/expo-example install --package-lock-only --ignore-scripts
-git diff --exit-code examples/expo-example/package-lock.json
+VERSION=$(node -p "require('./package.json').version")
+git status --short
+git tag -s "v$VERSION" -m "v$VERSION"
+git push origin "v$VERSION"
+gh release create "v$VERSION" --verify-tag --generate-notes
 ```
 
-If the lockfile changes, commit the refreshed `examples/expo-example/package-lock.json`.
+Stop if the working tree is not clean or commit/tag signing is unavailable. Do not tag a later
+post-publication commit.
+
+## 8. Update The Expo Example
+
+Update the standalone Expo example to the newly published npm tarball:
+
+```sh
+yarn expo-example:install:published
+```
+
+Commit the updated `examples/expo-example/package.json` and
+`examples/expo-example/package-lock.json`. This happens after publication because npm cannot
+produce a valid registry lock entry for an unpublished version.
 
 If the package should become the default install later, move the npm dist-tag deliberately in a
 separate step.
