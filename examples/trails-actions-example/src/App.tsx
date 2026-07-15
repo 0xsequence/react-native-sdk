@@ -51,7 +51,7 @@ import {
   type OMSWalletSessionState,
   type Network,
   type SendTransactionResponse,
-} from '@0xsequence/oms-react-native-sdk';
+} from '@polygonlabs/oms-wallet-react-native';
 import {
   encodeFunctionData,
   formatUnits,

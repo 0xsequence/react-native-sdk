@@ -1,4 +1,4 @@
-# @0xsequence/oms-react-native-sdk
+# @polygonlabs/oms-wallet-react-native
 
 OMS Wallet SDK for bare React Native apps and Expo development builds on iOS and Android.
 
@@ -17,7 +17,7 @@ The package contains native code. Expo Go and React Native Web are not supported
 Install the package:
 
 ```sh
-npm install @0xsequence/oms-react-native-sdk
+npm install @polygonlabs/oms-wallet-react-native
 ```
 
 React Native autolinking connects the native modules. Install the iOS pods after adding the package:
@@ -31,7 +31,7 @@ npx pod-install
 Install the package in an Expo SDK 56 app:
 
 ```sh
-npx expo install @0xsequence/oms-react-native-sdk
+npx expo install @polygonlabs/oms-wallet-react-native
 ```
 
 Create a native development build with prebuild or EAS Build:
@@ -49,7 +49,7 @@ No SDK config plugin is required. Add your redirect scheme to the app's Expo con
 Create one `OMSWallet` and reuse it for the lifetime of the app:
 
 ```ts
-import { OMSWallet } from '@0xsequence/oms-react-native-sdk';
+import { OMSWallet } from '@polygonlabs/oms-wallet-react-native';
 
 const omsWallet = new OMSWallet({
   publishableKey: '<publishable-key>',
@@ -92,7 +92,7 @@ await omsWallet.wallet.signInWithOidcIdToken({
 The app presents the browser and passes the returned callback URI to OMS Wallet. For the fixed OMS Google and Apple configurations, use `OmsRelayOidcProviders`:
 
 ```ts
-import { OmsRelayOidcProviders } from '@0xsequence/oms-react-native-sdk';
+import { OmsRelayOidcProviders } from '@polygonlabs/oms-wallet-react-native';
 
 const callbackUri = 'com.example.app://auth/callback';
 const started = await omsWallet.wallet.startOidcRedirectAuth({
@@ -116,7 +116,7 @@ import {
   FeeOptionSelectors,
   Networks,
   parseUnits,
-} from '@0xsequence/oms-react-native-sdk';
+} from '@polygonlabs/oms-wallet-react-native';
 
 const signature = await omsWallet.wallet.signMessage({
   network: Networks.polygon,

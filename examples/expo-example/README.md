@@ -1,6 +1,6 @@
 # OMS Expo Example
 
-Expo development-build example for `@0xsequence/oms-react-native-sdk`.
+Expo development-build example for `@polygonlabs/oms-wallet-react-native`.
 
 This app mirrors the SDK demo flow with email login, Google redirect login,
 wallet selection, message signing, signature verification, and transaction
