@@ -86,6 +86,23 @@ Verify npm sees the published version:
 npm view @0xsequence/oms-react-native-sdk@<version> version dist.integrity
 ```
 
+## 7. Tag The Release
+
+From the same clean `master` commit used for the npm publication, create and push a signed tag:
+
+```sh
+VERSION=$(node -p "require('./package.json').version")
+git status --short
+git tag -s "v$VERSION" -m "v$VERSION"
+git push origin "v$VERSION"
+gh release create "v$VERSION" --verify-tag --generate-notes
+```
+
+Stop if the working tree is not clean or commit/tag signing is unavailable. Do not tag a later
+post-publication commit.
+
+## 8. Update The Expo Example
+
 Update the standalone Expo example to the newly published npm tarball:
 
 ```sh

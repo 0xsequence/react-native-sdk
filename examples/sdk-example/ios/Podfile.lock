@@ -3,10 +3,10 @@ PODS:
   - hermes-engine (250829098.0.10):
     - hermes-engine/Pre-built (= 250829098.0.10)
   - hermes-engine/Pre-built (250829098.0.10)
-  - oms-client-swift-sdk (0.1.0-alpha.4)
-  - OmsClientReactNativeSdk (0.1.0-alpha.4):
+  - oms-wallet-swift-sdk (0.2.0)
+  - OmsWalletReactNativeSdk (0.2.0):
     - hermes-engine
-    - oms-client-swift-sdk (= 0.1.0-alpha.4)
+    - oms-wallet-swift-sdk (= 0.2.0)
     - RCTRequired
     - RCTTypeSafety
     - React-Core
@@ -1818,7 +1818,7 @@ PODS:
 DEPENDENCIES:
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
-  - OmsClientReactNativeSdk (from `../../..`)
+  - OmsWalletReactNativeSdk (from `../../..`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
   - RCTRequired (from `../node_modules/react-native/Libraries/Required`)
   - RCTSwiftUI (from `../node_modules/react-native/ReactApple/RCTSwiftUI`)
@@ -1896,7 +1896,7 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
-    - oms-client-swift-sdk
+    - oms-wallet-swift-sdk
 
 EXTERNAL SOURCES:
   FBLazyVector:
@@ -1904,7 +1904,7 @@ EXTERNAL SOURCES:
   hermes-engine:
     :podspec: "../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec"
     :tag: hermes-v250829098.0.10
-  OmsClientReactNativeSdk:
+  OmsWalletReactNativeSdk:
     :path: "../../.."
   RCTDeprecation:
     :path: "../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation"
@@ -2056,8 +2056,8 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   FBLazyVector: 24e62c765683b8d89006a88a2c8f5cf019f0074d
   hermes-engine: 050bf0e0b60ac8f6b274d047bab7d63320f019cc
-  oms-client-swift-sdk: 974c7fcbb248c10514f62ec48a9459e5764915df
-  OmsClientReactNativeSdk: e4580188163ef8805e7aef91b1cbd6d49eec960c
+  oms-wallet-swift-sdk: 67bf35f19589899c94cb487e1112beb425bd22b6
+  OmsWalletReactNativeSdk: 7d986aaf155cad45cf3d78c69c964db5edaa3099
   RCTDeprecation: a4c521821fab57cbb125b36effe84d897d0dfa12
   RCTRequired: 9f3a7e5645d4bc3f551593de7550bb66ab6e42bc
   RCTSwiftUI: 239ed2eb9e73de5a6f518810630f0c95e01c8702
@@ -2126,7 +2126,7 @@ SPEC CHECKSUMS:
   React-utils: 2851415c698da4b18331f9a445825d260fffa32c
   React-webperformancenativemodule: 9f29ed34f6f6c01dac688b95fd2dfcbccf3aed7a
   ReactAppDependencyProvider: a54c0c9b976766e1b6d5e2bb4d1ad0d15913e9e1
-  ReactCodegen: 9af5798e943781fd2318dab7b60f25337388047c
+  ReactCodegen: a01d0d9f3b24b90dc70647230f552bb27042c2ea
   ReactCommon: 3ec2a55999d296af90c24beb66c8a77dc660d3ef
   ReactNativeDependencies: aa020a3b32eb01c8ad2837b6b1d592b9d4f3ba85
   RNInAppBrowser: b53e6f6072c931115bc22ac9dc9510ac2cbea62d
