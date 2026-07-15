@@ -45,6 +45,11 @@ const errorCodes = new Set<OMSWalletErrorCode>([
   'OMS_STORAGE_ERROR',
 ]);
 
+const nativeOperationAliases: Readonly<Record<string, string>> = {
+  'wallet.startOIDCRedirectAuth': 'wallet.startOidcRedirectAuth',
+  'wallet.handleOIDCRedirectCallback': 'wallet.handleOidcRedirectCallback',
+};
+
 export class OMSWalletError extends Error {
   readonly code: OMSWalletErrorCode;
   readonly operation?: string;
@@ -86,7 +91,7 @@ export function normalizeNativeError(error: unknown): Error {
     code as OMSWalletErrorCode,
     error instanceof Error ? error.message : String(error),
     {
-      operation: optionalString(userInfo?.operation),
+      operation: canonicalOperation(userInfo?.operation),
       status: optionalNumber(userInfo?.status),
       txnId: optionalString(userInfo?.txnId),
       retryable: optionalBoolean(userInfo?.retryable),
@@ -108,6 +113,13 @@ function stringValue(value: unknown): string | undefined {
 
 function optionalString(value: unknown): string | undefined {
   return value == null ? undefined : stringValue(value);
+}
+
+function canonicalOperation(value: unknown): string | undefined {
+  const operation = optionalString(value);
+  return operation == null
+    ? undefined
+    : (nativeOperationAliases[operation] ?? operation);
 }
 
 function optionalNumber(value: unknown): number | undefined {

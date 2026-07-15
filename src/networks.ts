@@ -1,5 +1,9 @@
 declare const networkBrand: unique symbol;
 
+/**
+ * An opaque SDK-owned registry value. It must come from `Networks`; object
+ * literals are invalid.
+ */
 export interface Network {
   readonly id: number;
   readonly name: string;

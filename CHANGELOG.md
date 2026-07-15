@@ -7,6 +7,20 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.2.0] - 2026-07-15
+
+### Added
+- Added the `OMSWallet` root client with wallet and indexer sub-clients aligned to the Swift and Kotlin SDKs.
+- Added email, OIDC ID-token, and OIDC redirect authentication with automatic or manual wallet selection.
+- Added session state and expiration events, wallet management, signing and verification, transactions, access management, balances, and transaction history.
+- Added bare React Native and Expo development-build guidance, native Google ID-token examples, and native autolinking checks.
+
+### Changed
+- Updated the native Swift and Kotlin dependencies to `0.2.0`.
+- Renamed public wallet records to `WalletAccount` and normalized absent JavaScript values to `undefined`.
+- Aligned public result unions, errors, networks, fee selection, and indexer models across Android and iOS.
+- Changed the package license to Apache 2.0.
+
 ## [0.1.0-alpha.4] — 2026-06-26
 
 ### Changed

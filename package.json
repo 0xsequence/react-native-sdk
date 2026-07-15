@@ -1,6 +1,6 @@
 {
   "name": "@0xsequence/oms-react-native-sdk",
-  "version": "0.1.0-alpha.4",
+  "version": "0.2.0",
   "description": "OMS Wallet SDK for React Native and Expo development builds.",
   "homepage": "https://github.com/0xsequence/react-native-sdk",
   "main": "./lib/commonjs/index.js",
@@ -56,10 +56,16 @@
     "expo-example:verify-autolinking": "node scripts/verify-expo-autolinking.mjs",
     "clean": "del-cli android/build examples/sdk-example/android/build examples/sdk-example/android/app/build examples/sdk-example/ios/build examples/trails-actions-example/android/build examples/trails-actions-example/android/app/build examples/trails-actions-example/ios/build lib",
     "prepare": "bob build",
-    "test": "yarn prepare && node --test test/*.test.js",
+    "prepack": "yarn prepare && yarn check:api:built",
+    "generate:api": "yarn prepare && yarn generate:api:built",
+    "generate:api:built": "node scripts/generate-api.mjs",
+    "check:api": "yarn prepare && yarn check:api:built",
+    "check:api:built": "node scripts/generate-api.mjs --check",
+    "test": "yarn prepare && yarn test:built",
+    "test:built": "node --test test/*.test.js",
     "typecheck": "tsc",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "verify": "yarn lint && yarn typecheck && yarn test"
+    "verify": "yarn lint && yarn typecheck && yarn prepare && yarn test:built && yarn check:api:built"
   },
   "keywords": [
     "react-native",

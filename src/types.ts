@@ -120,6 +120,10 @@ export type OidcAuthMode = 'auth-code' | 'auth-code-pkce';
 
 declare const omsRelayOidcProviderBrand: unique symbol;
 
+/**
+ * An opaque SDK-owned registry value. It must come from
+ * `OmsRelayOidcProviders`; object literals are invalid.
+ */
 export type OmsRelayOidcProvider = {
   readonly provider: 'google' | 'apple';
   readonly [omsRelayOidcProviderBrand]: true;

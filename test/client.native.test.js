@@ -414,6 +414,29 @@ test('normalizes native OMS errors into the public error shape', async () => {
   });
 });
 
+test('normalizes native operation names to the React Native API spelling', () => {
+  const { normalizeNativeError } = require(errorsModulePath);
+  const operations = [
+    ['wallet.startOIDCRedirectAuth', 'wallet.startOidcRedirectAuth'],
+    ['wallet.handleOIDCRedirectCallback', 'wallet.handleOidcRedirectCallback'],
+    ['wallet.startOidcRedirectAuth', 'wallet.startOidcRedirectAuth'],
+    ['wallet.futureOperation', 'wallet.futureOperation'],
+  ];
+
+  for (const [nativeOperation, expectedOperation] of operations) {
+    const nativeError = Object.assign(new Error('Request failed'), {
+      code: 'OMS_REQUEST_FAILED',
+      userInfo: {
+        code: 'OMS_REQUEST_FAILED',
+        operation: nativeOperation,
+      },
+    });
+
+    const error = normalizeNativeError(nativeError);
+    assert.equal(error.operation, expectedOperation);
+  }
+});
+
 test('replaces the single native client without retaining stale subscribers', async () => {
   const { calls, client, native } = loadClient();
   const firstOms = createOms(client);

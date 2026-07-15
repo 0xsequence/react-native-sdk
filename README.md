@@ -2,6 +2,8 @@
 
 OMS Wallet SDK for bare React Native apps and Expo development builds on iOS and Android.
 
+[API reference](https://docs.polygon.technology/wallets/sdk/react-native/api-reference)
+
 ## Requirements
 
 - React Native 0.85 or newer with React 19.2 or newer
