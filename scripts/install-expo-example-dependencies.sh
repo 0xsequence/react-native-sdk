@@ -24,7 +24,7 @@ trap restore_manifest EXIT
 cp "$EXPO_DIR/package.json" "$TMP_DIR/package.json"
 cp "$EXPO_DIR/package-lock.json" "$TMP_DIR/package-lock.json"
 
-TARBALL="$TMP_DIR/oms-react-native-sdk-$PACKAGE_VERSION.tgz"
+TARBALL="$TMP_DIR/oms-wallet-react-native-$PACKAGE_VERSION.tgz"
 
 cd "$ROOT_DIR"
 yarn prepare

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@0xsequence/oms-react-native-sdk` are documented here.
+All notable changes to `@polygonlabs/oms-wallet-react-native` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -16,6 +16,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Added bare React Native and Expo development-build guidance, native Google ID-token examples, and native autolinking checks.
 
 ### Changed
+- Renamed the npm package to `@polygonlabs/oms-wallet-react-native`.
 - Updated the native Swift and Kotlin dependencies to `0.2.0`.
 - Renamed public wallet records to `WalletAccount` and normalized absent JavaScript values to `undefined`.
 - Aligned public result unions, errors, networks, fee selection, and indexer models across Android and iOS.

@@ -24,5 +24,5 @@ within 7 business days.
 
 ## Scope
 
-This policy covers the `@0xsequence/oms-react-native-sdk` npm package and the native bridge modules
+This policy covers the `@polygonlabs/oms-wallet-react-native` npm package and the native bridge modules
 in `android/` and `ios/`. Example apps (`examples/`) are not considered in scope.

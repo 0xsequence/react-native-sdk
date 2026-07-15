@@ -60,7 +60,7 @@ Key libraries in this repo to pull docs for: `react-native`, `react-native-build
 
 ## Project Overview
 
-`@0xsequence/oms-react-native-sdk` is a React Native SDK (Turbo Module) for the OMS platform,
+`@polygonlabs/oms-wallet-react-native` is a React Native SDK (Turbo Module) for the OMS platform,
 bridging native iOS (Swift) and Android (Kotlin) SDKs to TypeScript. It exposes wallet auth (email
 OTP, OIDC redirect), transaction signing, balance queries, and session management to React Native
 and Expo apps.

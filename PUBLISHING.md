@@ -1,6 +1,6 @@
 # Publishing
 
-Release process for `@0xsequence/oms-react-native-sdk`.
+Release process for `@polygonlabs/oms-wallet-react-native`.
 
 Only maintainers with npm publish access should publish. Publish from `master` after CI is green.
 
@@ -11,7 +11,7 @@ Use an exact semantic version. Add an `-alpha.N` suffix only for a prerelease.
 Check that the version is not already published:
 
 ```sh
-npm view @0xsequence/oms-react-native-sdk@<version> version
+npm view @polygonlabs/oms-wallet-react-native@<version> version
 ```
 
 An npm 404 means the version is available. If npm prints a version, choose a new version.
@@ -83,7 +83,7 @@ Add `--tag alpha` to both commands only for an alpha release. Stable releases pu
 Verify npm sees the published version:
 
 ```sh
-npm view @0xsequence/oms-react-native-sdk@<version> version dist.integrity
+npm view @polygonlabs/oms-wallet-react-native@<version> version dist.integrity
 ```
 
 ## 7. Tag The Release
@@ -109,9 +109,9 @@ Update the standalone Expo example to the newly published npm tarball:
 yarn expo-example:install:published
 ```
 
-Commit the updated `examples/expo-example/package.json` and
-`examples/expo-example/package-lock.json`. This happens after publication because npm cannot
-produce a valid registry lock entry for an unpublished version.
+Commit the updated `examples/expo-example/package-lock.json` and any manifest change produced by
+npm. The release PR can declare the new package name and version in `package.json`, but npm cannot
+produce its registry lock entry until that package has been published.
 
 If the package should become the default install later, move the npm dist-tag deliberately in a
 separate step.

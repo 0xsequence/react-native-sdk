@@ -36,7 +36,7 @@ import type {
 
 function unsupported(): never {
   throw new Error(
-    "'@0xsequence/oms-react-native-sdk' is only supported on native platforms."
+    "'@polygonlabs/oms-wallet-react-native' is only supported on native platforms."
   );
 }
 

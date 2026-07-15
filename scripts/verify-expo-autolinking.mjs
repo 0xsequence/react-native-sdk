@@ -10,7 +10,7 @@ const executable = path.join(
   '.bin',
   'expo-modules-autolinking'
 );
-const packageName = '@0xsequence/oms-react-native-sdk';
+const packageName = '@polygonlabs/oms-wallet-react-native';
 
 for (const platform of ['android', 'ios']) {
   const result = spawnSync(

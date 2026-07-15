@@ -31,7 +31,7 @@ import {
   type PendingWalletSelection,
   type WalletAccount,
   type WalletActivationResult,
-} from '@0xsequence/oms-react-native-sdk';
+} from '@polygonlabs/oms-wallet-react-native';
 import GoogleIdTokenAuth from '../specs/NativeGoogleIdTokenAuth';
 
 const DEMO_PUBLISHABLE_KEY =
