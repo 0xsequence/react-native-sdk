@@ -1,117 +1,93 @@
 # Publishing
 
-Release process for `@polygonlabs/oms-wallet-react-native`.
+> Publishing is CI-only. Never run `changeset version`, `changeset publish`, `npm publish`, or
+> `yarn npm publish` locally for a real release. Local publishing bypasses required verification,
+> signed release commits, and npm OIDC trusted-publishing provenance.
 
-Only maintainers with npm publish access should publish. Publish from `master` after CI is green.
+Releases are driven by Changesets. The only publishable package is the repository-root
+`@polygonlabs/oms-wallet-react-native`; the example workspaces are private and are never versioned
+or tagged.
 
-## 1. Choose The Version
+## Day-to-day changesets
 
-Use an exact semantic version. Add an `-alpha.N` suffix only for a prerelease.
-
-Check that the version is not already published:
+Every pull request must include a changeset:
 
 ```sh
-npm view @polygonlabs/oms-wallet-react-native@<version> version
+yarn changeset
 ```
 
-An npm 404 means the version is available. If npm prints a version, choose a new version.
-
-## 2. Prepare The Release Commit
-
-Update:
-
-- `package.json` `version`
-- `CHANGELOG.md`
-- native SDK references if they changed:
-  - `android/build.gradle`
-  - `OmsWalletReactNativeSdk.podspec`
-  - `README.md`
-  - `API.md`
-
-Install after editing package metadata:
+Choose the SemVer bump that matches the React Native package's public impact and write a
+user-facing changelog entry. Use an empty changeset when the pull request changes only
+documentation, CI, tooling, or examples:
 
 ```sh
-yarn install
+yarn changeset add --empty
 ```
 
-Commit the release changes before publishing.
+Commit the changeset with the rest of the pull request. The Changeset check blocks pull requests
+that omit it.
 
-## 3. Verify
+## Automated release flow
 
-Run the standard checks from a clean worktree:
+1. Merge changes, including their changesets, into `master`.
+2. After JavaScript, package, Expo, Android, and iOS verification succeeds, the Release workflow
+   opens or updates `chore(release): publish package`.
+3. Review and merge that release pull request.
+4. The same workflow verifies the release commit, publishes through npm OIDC trusted publishing,
+   creates the signed `v<version>` tag, and creates the GitHub Release from `CHANGELOG.md`.
+5. After publication, the workflow opens a follow-up pull request that updates the standalone Expo
+   example to the registry-published version and refreshes its npm lockfile.
+
+The release workflow uses a GitHub App token and Changesets' `github-api` commit mode. Release
+commits and follow-up Expo commits must remain GitHub-verified; do not fall back to unsigned local
+commits.
+
+## Native dependency version policy
+
+The npm wrapper version is independent of the native SDK version:
+
+- `android/build.gradle` and `OmsWalletReactNativeSdk.podspec` normally pin the same native SDK
+  version.
+- A native SDK bump requires confirming that both Maven Central and CocoaPods artifacts exist,
+  running Android and iOS builds, and adding a changeset based on the React Native consumer impact.
+- React Native-only changes may release npm without changing either native dependency.
+- Release automation never changes native dependency versions.
+- Any intentional Swift/Kotlin version divergence requires explicit approval and documentation.
+
+## Local release-readiness checks
+
+Use local dry runs only:
 
 ```sh
-git status --short
-yarn expo-example:install
+yarn install --immutable
 yarn verify
+yarn check:package
+yarn expo-example:install
 npm --prefix examples/expo-example run typecheck
-yarn sdk-example build:android
-yarn sdk-example build:ios
+yarn expo-example:prebuild
+yarn expo-example:verify-autolinking
 ```
 
-Do not publish if any command fails. `yarn expo-example:install` packs the local SDK source so the
-standalone Expo example is checked against the release candidate.
+Native Android and iOS builds run in CI. Do not publish when any required check is failing.
 
-If native SDK versions changed, confirm those versions are already available from Maven Central and
-CocoaPods before merging the release PR.
+## Snapshot releases
 
-## 4. Dry Run
+The Release workflow can publish a throwaway snapshot under a non-semver npm dist-tag:
 
-Build the package and inspect what npm would publish:
+1. Open GitHub Actions → Release → Run workflow.
+2. Enter a tag such as `canary` or `pre-0.3.0`.
 
-```sh
-yarn prepare
-yarn npm publish --dry-run --access public
-```
+Snapshots version only the runner state, publish through OIDC, and skip git tags, GitHub Releases,
+and Expo follow-up pull requests. SemVer-shaped snapshot tags are rejected.
 
-The dry run should include `lib`, `src`, `android`, `ios`, and
-`OmsWalletReactNativeSdk.podspec`.
+## External configuration
 
-## 5. Publish
+The npm package must trust the exact release workflow:
 
-Confirm the npm account, then publish:
+- Organization: `0xPolygon`
+- Repository: `oms-wallet-react-native-sdk`
+- Workflow: `release.yml`
+- Allowed operation: `npm publish`
 
-```sh
-yarn npm whoami
-yarn npm publish --access public
-```
-
-Add `--tag alpha` to both commands only for an alpha release. Stable releases publish to `latest`.
-
-## 6. Confirm
-
-Verify npm sees the published version:
-
-```sh
-npm view @polygonlabs/oms-wallet-react-native@<version> version dist.integrity
-```
-
-## 7. Tag The Release
-
-From the same clean `master` commit used for the npm publication, create and push a signed tag:
-
-```sh
-VERSION=$(node -p "require('./package.json').version")
-git status --short
-git tag -s "v$VERSION" -m "v$VERSION"
-git push origin "v$VERSION"
-gh release create "v$VERSION" --verify-tag --generate-notes
-```
-
-Stop if the working tree is not clean or commit/tag signing is unavailable. Do not tag a later
-post-publication commit.
-
-## 8. Update The Expo Example
-
-Update the standalone Expo example to the newly published npm tarball:
-
-```sh
-yarn expo-example:install:published
-```
-
-Commit the updated `examples/expo-example/package-lock.json` and any manifest change produced by
-npm. The release PR can declare the new package name and version in `package.json`, but npm cannot
-produce its registry lock entry until that package has been published.
-
-If the package should become the default install later, move the npm dist-tag deliberately in a
-separate step.
+The repository also needs access to `CHANGESET_RELEASE_BOT_APP_ID` and
+`CHANGESET_RELEASE_BOT_APP_PRIVATE_KEY`. No long-lived `NPM_TOKEN` is used.

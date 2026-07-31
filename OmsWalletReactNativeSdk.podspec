@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
   s.authors      = package["author"]
 
   s.platforms    = { :ios => min_ios_version_supported }
-  s.source       = { :git => "https://github.com/0xsequence/react-native-sdk.git", :tag => "v#{s.version}" }
+  s.source       = { :git => "https://github.com/0xPolygon/oms-wallet-react-native-sdk.git", :tag => "v#{s.version}" }
 
   s.source_files = "ios/**/*.{h,m,mm,swift,cpp}"
   s.private_header_files = "ios/**/*.h"

@@ -30,3 +30,41 @@ updates:
     labels:
       - dependencies
       - ci
+
+  # Ruby and CocoaPods tooling for the bare React Native examples
+  - package-ecosystem: bundler
+    directory: /examples/sdk-example
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+
+  - package-ecosystem: bundler
+    directory: /examples/trails-actions-example
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+
+  # Gradle wrappers and example build tooling. Native OMS SDK pins remain coordinated manually.
+  - package-ecosystem: gradle
+    directory: /examples/sdk-example/android
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+
+  - package-ecosystem: gradle
+    directory: /examples/trails-actions-example/android
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies

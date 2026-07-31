@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      snapshot_tag:
+        description: npm dist-tag for a throwaway snapshot (for example canary or pre-0.3.0)
+        required: true
+        default: snapshot
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verification:
+    uses: ./.github/workflows/verification.yml
+
+  release:
+    name: Release PR or publish
+    if: github.event_name == 'push'
+    needs: verification
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Create release app token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ secrets.CHANGESET_RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.CHANGESET_RELEASE_BOT_APP_PRIVATE_KEY }}
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+      - name: Setup without release caches
+        uses: ./.github/actions/setup
+        with:
+          cache-dependencies: 'false'
+      - name: Require npm trusted-publishing support
+        run: |
+          NPM_VERSION=$(npm --version)
+          node -e 'const [major, minor, patch = 0] = process.argv[1].split(".").map(Number); if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) throw new Error(`npm ${process.argv[1]} does not support trusted publishing; npm 11.5.1 or newer is required`)' "$NPM_VERSION"
+      - name: Create release pull request or publish
+        id: changesets
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+        with:
+          title: 'chore(release): publish package'
+          commit: 'chore(release): version package'
+          commitMode: github-api
+          version: yarn changeset version
+          publish: yarn changeset publish
+          createGithubReleases: true
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+      - name: Open published Expo example update
+        if: steps.changesets.outputs.published == 'true'
+        run: node scripts/open-expo-update-pr.mjs
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
+
+  snapshot:
+    name: Publish snapshot
+    if: github.event_name == 'workflow_dispatch'
+    needs: verification
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Validate snapshot tag
+        env:
+          SNAPSHOT_TAG: ${{ inputs.snapshot_tag }}
+        run: |
+          if [[ "$SNAPSHOT_TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([+-].*)?$ ]]; then
+            echo "::error title=Invalid snapshot tag::$SNAPSHOT_TAG looks like a real SemVer release."
+            exit 1
+          fi
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - name: Setup without release caches
+        uses: ./.github/actions/setup
+        with:
+          cache-dependencies: 'false'
+      - name: Require npm trusted-publishing support
+        run: |
+          NPM_VERSION=$(npm --version)
+          node -e 'const [major, minor, patch = 0] = process.argv[1].split(".").map(Number); if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) throw new Error(`npm ${process.argv[1]} does not support trusted publishing; npm 11.5.1 or newer is required`)' "$NPM_VERSION"
+      - name: Version snapshot
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SNAPSHOT_TAG: ${{ inputs.snapshot_tag }}
+        run: yarn changeset version --snapshot "$SNAPSHOT_TAG"
+      - name: Publish snapshot
+        env:
+          SNAPSHOT_TAG: ${{ inputs.snapshot_tag }}
+        run: yarn changeset publish --tag "$SNAPSHOT_TAG" --no-git-tag

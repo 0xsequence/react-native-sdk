@@ -16,6 +16,7 @@
 - [ ] `yarn lint` passes
 - [ ] `yarn typecheck` passes
 - [ ] `yarn prepare` (library build) succeeds
+- [ ] A user-facing or empty changeset is included
 - [ ] Native layer unchanged **or** manually verified on device/simulator
 - [ ] `API.md` updated if public exports changed
 
