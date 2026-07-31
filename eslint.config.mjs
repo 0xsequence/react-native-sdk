@@ -24,6 +24,26 @@ export default defineConfig([
     },
   },
   {
-    ignores: ['node_modules/', 'lib/'],
+    files: ['**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+    },
+  },
+  {
+    files: ['**/*.cjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'commonjs',
+    },
+  },
+  {
+    files: ['scripts/generate-api.mjs'],
+    rules: {
+      'no-bitwise': 'off',
+    },
+  },
+  {
+    ignores: ['node_modules/', '.yarn/', 'lib/'],
   },
 ]);

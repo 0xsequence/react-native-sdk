@@ -49,12 +49,9 @@ For multi-step tasks, state a brief plan with a verify step for each item.
 
 ## Third-Party Library Docs
 
-For **any third-party library**, use the **context7** MCP to fetch up-to-date documentation rather
-than relying on training data, which lags real library APIs. If the context7 MCP server is not
-available, set it up: https://context7.com/install
-
-Key libraries in this repo to pull docs for: `react-native`, `react-native-builder-bob`, `turbo`,
-`@0xtrails/api`, `@0xtrails/wallet`, `0xtrails`.
+For version-sensitive third-party APIs, prefer official documentation or locally installed package
+types and source. Use context7 when it is already available, but do not block repository work or
+change developer tooling just to enable it.
 
 ---
 
@@ -74,7 +71,8 @@ and Expo apps.
 - `examples/sdk-example/` — React Native CLI example app
 - `examples/trails-actions-example/` — Trails demo with redirect auth
 - `examples/expo-example/` — standalone Expo example (not in Yarn workspace; uses `npm`)
-- `.github/workflows/` — CI (lint, typecheck, Android + iOS builds)
+- `.changeset/` — release intent and single-root-package Changesets configuration
+- `.github/workflows/` — CI, Changeset enforcement, release, CodeQL, and dependency review
 
 ## Tech Stack
 
@@ -92,6 +90,9 @@ yarn install
 
 # Build the library
 yarn prepare
+
+# Add release intent for every pull request
+yarn changeset
 
 # Typecheck
 yarn typecheck
@@ -120,6 +121,8 @@ plan for when automated tests are added.
 
 - Commit messages and PR titles follow [Conventional Commits](https://www.conventionalcommits.org),
   e.g. `feat(auth): add OIDC refresh token support`.
+- Every pull request includes a Changeset. Use `yarn changeset` for consumer-facing changes and
+  `yarn changeset add --empty` for documentation, CI, tooling, or example-only changes.
 - The public API surface is documented in `API.md` — update it whenever `src/index.tsx` exports
   change.
 - The `lib/` directory is generated; never edit it by hand.
@@ -127,14 +130,20 @@ plan for when automated tests are added.
   `package.json#workspaces`) — install its deps from the repo root with `yarn expo-example:install`.
 - Native builds (Android/iOS) are slow; validate JS-layer changes with `yarn lint && yarn typecheck`
   first; leave full native builds to CI.
-- Pre-release versions use the `0.x.y-alpha.N` scheme. Publishing steps are in `PUBLISHING.md`.
+- Publishing is CI-only through Changesets and npm OIDC trusted publishing. See `PUBLISHING.md`.
+- The npm wrapper version is independent of the native SDK version. Swift and Kotlin dependency
+  pins normally remain equal, but do not manufacture native releases to match npm-only changes.
 
 ## CI/CD
 
-Two workflows in `.github/workflows/`:
-- **`ci.yml`** — runs on pull requests, workflow dispatch, and pushes to `master`: lint, typecheck,
-  library build, Android build, iOS build.
-- **`quick-checks.yml`** — runs on push to non-master branches: lint + typecheck only.
+- **`ci.yml`** — invokes the complete reusable verification workflow on pull requests.
+- **`verification.yml`** — Yarn verification, package/API gates, Expo autolinking, Android, and iOS.
+- **`changeset-check.yml`** — requires a user-facing or empty Changeset on pull requests.
+- **`quick-checks.yml`** — fast verification on pushes to non-master branches.
+- **`release.yml`** — verifies `master`, opens release pull requests, publishes through npm OIDC,
+  and opens the post-publish Expo example update.
+- **`codeql.yml`** — JavaScript/TypeScript, Kotlin, and Swift analysis.
+- **`dependency-review.yml`** — blocks newly introduced vulnerable dependencies.
 
 Pull requests run full CI, including native builds. If the native layer changed, make sure the
 Android and iOS PR checks pass before merging; validate locally when you need faster feedback.
@@ -157,7 +166,8 @@ Android and iOS PR checks pass before merging; validate locally when you need fa
 |-------------------------------------------|-----------------------------------------------------------|
 | `src/index.tsx` exports                   | `API.md`, `lib/` (run `yarn prepare`)                     |
 | Native SDK version (Swift / Kotlin)       | `OmsWalletReactNativeSdk.podspec`, `android/build.gradle` |
-| `package.json` scripts or test commands   | `TESTING.md`, `.github/workflows/ci.yml`                  |
+| `package.json` scripts or test commands   | `TESTING.md`, `.github/workflows/verification.yml`        |
 | Node version (`.nvmrc`)                   | `turbo.json#globalDependencies`, CI setup action          |
+| Publish/release behavior                  | `PUBLISHING.md`, `.changeset/config.json`, `release.yml`  |
 | Repo structure (new top-level dirs)       | `AGENTS.md` structure section                             |
 | Contributing workflow                     | `CONTRIBUTING.md`, `README.md`                            |

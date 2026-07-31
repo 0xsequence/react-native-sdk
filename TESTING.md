@@ -26,6 +26,11 @@ npm --prefix examples/expo-example run typecheck
 
 # Build the library
 yarn prepare
+
+# Package exports, native version parity, and npm contents
+yarn check:exports
+yarn check:native-versions
+yarn check:package
 ```
 
 Native builds (Android + iOS) run automatically in CI for pull requests and pushes to `master`. If
@@ -62,12 +67,15 @@ Android and iOS CI checks pass before merging; validate locally when you need fa
 
 ## Execution summary
 
-| Goal                        | Command                                      |
-|-----------------------------|----------------------------------------------|
-| Lint                        | `yarn lint`                                  |
-| Typecheck (library)         | `yarn typecheck`                             |
-| Install Expo example deps   | `yarn expo-example:install`                 |
-| Typecheck (Expo example)    | `npm --prefix examples/expo-example run typecheck` |
-| Build library               | `yarn prepare`                               |
-| Run unit tests              | `yarn test`                                  |
-| SDK verification            | `yarn verify`                                |
+| Goal                          | Command                                      |
+|-------------------------------|----------------------------------------------|
+| Lint                          | `yarn lint`                                  |
+| Typecheck (library)           | `yarn typecheck`                             |
+| Install Expo example deps     | `yarn expo-example:install`                 |
+| Typecheck (Expo example)      | `npm --prefix examples/expo-example run typecheck` |
+| Build library                 | `yarn prepare`                               |
+| Run unit tests                | `yarn test`                                  |
+| SDK verification              | `yarn verify`                                |
+| Validate package exports      | `yarn check:exports`                         |
+| Validate native SDK parity    | `yarn check:native-versions`                 |
+| Validate npm package contents | `yarn check:package`                         |

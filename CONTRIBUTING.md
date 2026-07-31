@@ -10,8 +10,8 @@
 ## Setup
 
 ```bash
-git clone https://github.com/0xsequence/react-native-sdk.git
-cd react-native-sdk
+git clone https://github.com/0xPolygon/oms-wallet-react-native-sdk.git
+cd oms-wallet-react-native-sdk
 yarn install
 yarn prepare        # build lib/
 ```
@@ -46,16 +46,19 @@ yarn expo-example
 ## Before opening a PR
 
 1. `yarn lint && yarn typecheck && yarn prepare` must pass cleanly.
-2. Update `API.md` if you changed public exports in `src/index.tsx`.
-3. Update `TESTING.md` if you added or changed test commands.
-4. If you changed the native layer (`android/`, `ios/`, `.podspec`), note it in the PR and make
+2. Add a user-facing changeset with `yarn changeset`, or an empty changeset with
+   `yarn changeset add --empty` for documentation, CI, tooling, or example-only changes.
+3. Update `API.md` if you changed public exports in `src/index.tsx`.
+4. Update `TESTING.md` if you added or changed test commands.
+5. If you changed the native layer (`android/`, `ios/`, `.podspec`), note it in the PR and make
    sure the Android and iOS CI checks pass before merging.
-5. PR title must follow [Conventional Commits](https://www.conventionalcommits.org), e.g. `fix(auth): handle expired OTP correctly`.
+6. PR title and commits must follow [Conventional Commits](https://www.conventionalcommits.org),
+   e.g. `fix(auth): handle expired OTP correctly`.
 
-## Publishing (alpha)
+## Publishing
 
-Publishing steps are documented in `PUBLISHING.md`. Only maintainers with npm publish access should
-publish.
+Publishing is CI-only and driven by Changesets. See `PUBLISHING.md`; never publish a real release
+from a local machine.
 
 ## Signed commits
 

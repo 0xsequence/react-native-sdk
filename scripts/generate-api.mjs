@@ -192,8 +192,8 @@ function publicDeclarationText(
   function isHiddenBrandMember(member) {
     return Boolean(
       member.name &&
-        ts.isComputedPropertyName(member.name) &&
-        localSupportSymbol(member.name.expression)
+      ts.isComputedPropertyName(member.name) &&
+      localSupportSymbol(member.name.expression)
     );
   }
 
@@ -260,7 +260,8 @@ function publicDeclarationText(
 
     const own = interfaceDeclaration.members
       .filter(
-        (member) => !hasNonPublicModifier(member) && !isHiddenBrandMember(member)
+        (member) =>
+          !hasNonPublicModifier(member) && !isHiddenBrandMember(member)
       )
       .map((member) => visit(member, stack, context));
     const ownNames = new Set(own.map(publicMemberId).filter(Boolean));
@@ -477,15 +478,15 @@ export function getPublicDeclarations(declarationEntryPath) {
     throw new Error('The package declaration entry is not an external module');
   }
 
-  const exportedEntries = checker.getExportsOfModule(moduleSymbol).map(
-    (exportedSymbol) => ({
+  const exportedEntries = checker
+    .getExportsOfModule(moduleSymbol)
+    .map((exportedSymbol) => ({
       exportedSymbol,
       symbol:
         exportedSymbol.flags & ts.SymbolFlags.Alias
           ? checker.getAliasedSymbol(exportedSymbol)
           : exportedSymbol,
-    })
-  );
+    }));
   const exportedSymbols = new Set(exportedEntries.map(({ symbol }) => symbol));
   const declarations = new Map();
   const exportedClasses = [];

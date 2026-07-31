@@ -2,7 +2,16 @@
   "name": "@polygonlabs/oms-wallet-react-native",
   "version": "0.2.0",
   "description": "OMS Wallet SDK for React Native and Expo development builds.",
-  "homepage": "https://github.com/0xsequence/react-native-sdk",
+  "type": "commonjs",
+  "sideEffects": false,
+  "homepage": "https://github.com/0xPolygon/oms-wallet-react-native-sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0xPolygon/oms-wallet-react-native-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/0xPolygon/oms-wallet-react-native-sdk/issues"
+  },
   "main": "./lib/commonjs/index.js",
   "module": "./lib/module/index.js",
   "types": "./lib/typescript/commonjs/src/index.d.ts",
@@ -28,9 +37,7 @@
     "lib",
     "android",
     "ios",
-    "cpp",
     "*.podspec",
-    "react-native.config.js",
     "!examples/**",
     "!ios/build",
     "!android/build",
@@ -55,17 +62,25 @@
     "expo-example:prebuild": "cd examples/expo-example && npx expo prebuild --no-install --clean",
     "expo-example:verify-autolinking": "node scripts/verify-expo-autolinking.mjs",
     "clean": "del-cli android/build examples/sdk-example/android/build examples/sdk-example/android/app/build examples/sdk-example/ios/build examples/trails-actions-example/android/build examples/trails-actions-example/android/app/build examples/trails-actions-example/ios/build lib",
-    "prepare": "bob build",
-    "prepack": "yarn prepare && yarn check:api:built",
-    "generate:api": "yarn prepare && yarn generate:api:built",
+    "build": "bob build",
+    "prepare": "yarn build && husky",
+    "prepack": "yarn build && yarn check:api:built && yarn check:native-versions",
+    "generate:api": "yarn build && yarn generate:api:built",
     "generate:api:built": "node scripts/generate-api.mjs",
-    "check:api": "yarn prepare && yarn check:api:built",
+    "check:api": "yarn build && yarn check:api:built",
     "check:api:built": "node scripts/generate-api.mjs --check",
-    "test": "yarn prepare && yarn test:built",
+    "check:exports": "publint",
+    "check:package": "node scripts/check-package.mjs",
+    "check:native-versions": "node scripts/check-native-sdk-versions.mjs",
+    "codegen-drift-check": "yarn build && yarn check:api:built && yarn check:exports && yarn check:native-versions && yarn check:package",
+    "test": "yarn build && yarn test:built",
     "test:built": "node --test test/*.test.js",
     "typecheck": "tsc",
-    "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "verify": "yarn lint && yarn typecheck && yarn prepare && yarn test:built && yarn check:api:built"
+    "lint": "eslint \"**/*.{js,cjs,mjs,ts,tsx}\"",
+    "commitlint": "commitlint",
+    "lint-staged": "lint-staged",
+    "changeset": "changeset",
+    "verify": "yarn lint && yarn typecheck && yarn build && yarn test:built && yarn check:api:built && yarn check:exports && yarn check:native-versions"
   },
   "keywords": [
     "react-native",
@@ -76,10 +91,18 @@
   ],
   "author": "0xSequence <dev@sequence.xyz> (https://sequence.xyz)",
   "license": "Apache-2.0",
+  "engines": {
+    "node": "^20.19.4 || ^22.13.0 || ^24.3.0 || >=25.0.0"
+  },
   "publishConfig": {
+    "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.7.0",
+    "@changesets/cli": "^2.30.0",
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
     "@eslint/compat": "^2.0.3",
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
@@ -91,7 +114,10 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-ft-flow": "^3.0.11",
     "eslint-plugin-prettier": "^5.5.5",
+    "husky": "^9.0.0",
+    "lint-staged": "^16.2.7",
     "prettier": "^3.8.1",
+    "publint": "^0.3.22",
     "react": "19.2.3",
     "react-native": "0.85.3",
     "react-native-builder-bob": "^0.42.1",
@@ -103,6 +129,7 @@
     "react-native": ">=0.85.0"
   },
   "workspaces": [
+    ".",
     "examples/*",
     "!examples/expo-example"
   ],
