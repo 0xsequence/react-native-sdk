@@ -6,7 +6,8 @@
 
 Releases are driven by Changesets. The only publishable package is the repository-root
 `@polygonlabs/oms-wallet-react-native`; the example workspaces are private and are never versioned
-or tagged.
+or tagged. The `.` entry in `package.json#workspaces` intentionally makes the root package visible
+to Changesets while keeping the package at the repository root.
 
 ## Day-to-day changesets
 

@@ -2,6 +2,8 @@
   "name": "@polygonlabs/oms-wallet-react-native",
   "version": "0.2.0",
   "description": "OMS Wallet SDK for React Native and Expo development builds.",
+  "type": "commonjs",
+  "sideEffects": false,
   "homepage": "https://github.com/0xPolygon/oms-wallet-react-native-sdk#readme",
   "repository": {
     "type": "git",
@@ -89,6 +91,9 @@
   ],
   "author": "0xSequence <dev@sequence.xyz> (https://sequence.xyz)",
   "license": "Apache-2.0",
+  "engines": {
+    "node": "^20.19.4 || ^22.13.0 || ^24.3.0 || >=25.0.0"
+  },
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
@@ -124,6 +129,7 @@
     "react-native": ">=0.85.0"
   },
   "workspaces": [
+    ".",
     "examples/*",
     "!examples/expo-example"
   ],
