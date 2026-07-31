@@ -74,7 +74,7 @@
     "test": "yarn build && yarn test:built",
     "test:built": "node --test test/*.test.js",
     "typecheck": "tsc",
-    "lint": "eslint \"**/*.{js,ts,tsx}\"",
+    "lint": "eslint \"**/*.{js,cjs,mjs,ts,tsx}\"",
     "commitlint": "commitlint",
     "lint-staged": "lint-staged",
     "changeset": "changeset",
